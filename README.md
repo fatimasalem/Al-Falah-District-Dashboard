@@ -45,6 +45,25 @@ npm run build
 npm run preview
 ```
 
+## GitHub Pages
+
+This project is configured to deploy automatically to GitHub Pages when changes are pushed to `main`.
+
+**Live site:** [https://fatimasalem.github.io/Al-Falah-District-Dashboard/](https://fatimasalem.github.io/Al-Falah-District-Dashboard/)
+
+### One-time GitHub setup
+
+1. Open the repository on GitHub: [Al-Falah-District-Dashboard](https://github.com/fatimasalem/Al-Falah-District-Dashboard)
+2. Go to **Settings → Pages**
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+After the first successful workflow run on `main`, the site will be published at the URL above.
+
+### How it works
+
+- `vite.config.ts` sets the production base path to `/Al-Falah-District-Dashboard/` so assets load correctly on GitHub Pages
+- `.github/workflows/deploy.yml` builds the app and publishes the `dist` folder on every push to `main`
+
 ## Project structure
 
 ```

@@ -14,7 +14,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('current');
 
   useEffect(() => {
-    fetch('/data/survey-data.json')
+    fetch(`${import.meta.env.BASE_URL}data/survey-data.json`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load survey data');
         return res.json();
