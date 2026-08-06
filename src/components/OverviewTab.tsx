@@ -1,11 +1,12 @@
 import type { SurveyData, ViewMode } from '../types';
 import {
-  PillarScoresChart,
-  TrendChart,
   PartnerChart,
-  DistributionChart,
   DataTable,
+  EducationDivergingBar,
+  HealthWaffleChart,
+  EnvironmentStackedBar,
 } from './Charts';
+import { getEducationChartData, getEnvironmentChartData } from '../utils';
 
 interface OverviewChartsProps {
   data: SurveyData;
@@ -22,7 +23,8 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
       value2024: s.score2024,
       value2025: s.score2025,
       value: viewMode === 'current' ? s.score2025 : s.yoyChange,
-      positive: s.positive2025,
+      satisfied: s.positive2025,
+      unsatisfied: s.negative2025,
     }))
     .sort((a, b) => b.score2025 - a.score2025);
 
@@ -32,43 +34,53 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
     value: viewMode === 'current' ? s.score2025 : s.value2025 - s.value2024,
   }));
 
-  const compositionData = scores.slice(0, 6).map((s) => ({
-    name: s.name.length > 18 ? s.name.slice(0, 16) + '…' : s.name,
-    fullName: s.fullName,
-    value: viewMode === 'current' ? s.score2025 : s.value2025 - s.value2024,
-  }));
+  const tableRows = Object.values(data.sectionScores)
+    .map((s) => ({
+      pillar: s.sectionNameEn,
+      score2024: s.score2024,
+      score2025: s.score2025,
+      satisfied2024: s.positive2024,
+      satisfied2025: s.positive2025,
+      unsatisfied2024: s.negative2024,
+      unsatisfied2025: s.negative2025,
+    }))
+    .sort((a, b) => b.score2025 - a.score2025);
 
-  const tableRows = scores.map((s) => ({
-    pillar: s.fullName,
-    score2024: s.score2024,
-    score2025: s.score2025,
-    change: s.score2025 - s.score2024,
-    positive: s.positive,
-  }));
+  const educationSection = data.sections.education;
+  const environmentSection = data.sections.environment;
+  const healthScore = data.sectionScores.health;
+
+  const educationData = educationSection
+    ? getEducationChartData(educationSection, '2025')
+    : [];
+  const environmentData = environmentSection
+    ? getEnvironmentChartData(environmentSection, '2025')
+    : [];
+
+  const healthNeutral = Math.max(
+    0,
+    100 - healthScore.positive2025 - healthScore.negative2025,
+  );
 
   return (
     <div className="main-content">
-      <div className="chart-grid-top">
-        <TrendChart
-          overall2024={data.overview.overallScore2024}
-          overall2025={data.overview.overallScore2025}
-          mode={viewMode}
-        />
+      <div className="chart-grid-overview">
         <PartnerChart data={partnerData} mode={viewMode} />
-      </div>
-      <div className="chart-grid-bottom">
-        <DistributionChart
-          data={compositionData}
-          title="Pillar Composition (% of Total)"
-          subtitle={viewMode === 'current' ? '2025 satisfaction share' : 'YoY change by pillar'}
-        />
-        <PillarScoresChart
-          data={scores}
+        {educationData.length > 0 && (
+          <EducationDivergingBar data={educationData} mode={viewMode} />
+        )}
+        <HealthWaffleChart
+          satisfied={healthScore.positive2025}
+          unsatisfied={healthScore.negative2025}
+          neutral={healthNeutral}
+          score={healthScore.score2025}
           mode={viewMode}
-          title="Pillar Scores — Annual (%)"
         />
+        {environmentData.length > 0 && (
+          <EnvironmentStackedBar data={environmentData} mode={viewMode} />
+        )}
       </div>
-      <DataTable rows={tableRows} />
+      <DataTable rows={tableRows} mode={viewMode} />
     </div>
   );
 }

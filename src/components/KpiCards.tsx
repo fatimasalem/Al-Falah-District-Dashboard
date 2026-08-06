@@ -1,6 +1,14 @@
-import type { ViewMode, CategoryQuestion, MeanQuestion } from '../types';
+import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData } from '../types';
 import { KPI_GRADIENTS } from '../types';
-import { formatDelta, isCategory, isMean } from '../utils';
+import {
+  formatDelta,
+  isCategory,
+  isMean,
+  getIncomeComfortPercent,
+  getEmploymentPercent,
+  getSafetyPercent,
+  getOverviewKpiSentence,
+} from '../utils';
 
 export interface KpiItem {
   label: string;
@@ -13,12 +21,13 @@ export interface KpiItem {
 
 interface KpiCardsProps {
   items: KpiItem[];
+  viewMode?: ViewMode;
 }
 
-export function KpiCards({ items }: KpiCardsProps) {
+export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   return (
     <div className="kpi-row">
-      {items.slice(0, 5).map((item, i) => (
+      {items.slice(0, 4).map((item, i) => (
         <div
           key={item.label}
           className="kpi-card"
@@ -29,7 +38,7 @@ export function KpiCards({ items }: KpiCardsProps) {
             {item.value}
             {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
           </div>
-          {item.delta !== undefined && (
+          {viewMode === 'yoy' && item.delta !== undefined && (
             <div className={`kpi-delta ${item.delta >= 0 ? 'positive' : 'negative'}`}>
               <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
               {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? 'YoY'}
@@ -42,49 +51,48 @@ export function KpiCards({ items }: KpiCardsProps) {
   );
 }
 
-export function buildOverviewKpis(
-  overview: import('../types').SurveyData['overview'],
-  mode: ViewMode,
-): KpiItem[] {
-  if (mode === 'current') {
-    return [
-      {
-        label: 'Overall Satisfaction',
-        value: `${overview.overallScore2025}`,
-        suffix: '%',
-        delta: overview.overallYoyChange,
-      },
-      {
-        label: 'Highest Pillar',
-        value: overview.highestScore.section,
-        subtext: `${overview.highestScore.score}% score`,
-        delta: overview.highestScore.score,
-        deltaLabel: 'score',
-      },
-      {
-        label: 'Lowest Pillar',
-        value: overview.lowestScore.section,
-        subtext: `${overview.lowestScore.score}% score`,
-      },
-      {
-        label: 'Best Improved',
-        value: overview.bestImproved.section,
-        delta: overview.bestImproved.change,
-      },
-      {
-        label: 'Needs Attention',
-        value: overview.mostDeclined.section,
-        delta: overview.mostDeclined.change,
-      },
-    ];
-  }
-  return [
-    { label: 'Overall Change', value: formatDelta(overview.overallYoyChange), suffix: ' pp' },
-    { label: 'Best Improved', value: overview.bestImproved.section, delta: overview.bestImproved.change },
-    { label: 'Most Declined', value: overview.mostDeclined.section, delta: overview.mostDeclined.change },
-    { label: '2024 Baseline', value: `${overview.overallScore2024}`, suffix: '%' },
-    { label: '2025 Current', value: `${overview.overallScore2025}`, suffix: '%', delta: overview.overallYoyChange },
+export function buildOverviewKpis(data: SurveyData, mode: ViewMode): KpiItem[] {
+  const { overview } = data;
+  const satisfaction = overview.overallScore2025;
+  const incomeComfort = getIncomeComfortPercent(data, '2025');
+  const employment = getEmploymentPercent(data, '2025');
+  const safety = getSafetyPercent(data, '2025');
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Overall Satisfaction',
+      value: `${satisfaction.toFixed(1)}`,
+      suffix: '%',
+      subtext: getOverviewKpiSentence('satisfaction', satisfaction),
+      delta: overview.overallYoyChange,
+    },
+    {
+      label: 'Income Comfort',
+      value: `${incomeComfort.toFixed(1)}`,
+      suffix: '%',
+      subtext: getOverviewKpiSentence('income', incomeComfort),
+      delta: incomeComfort - getIncomeComfortPercent(data, '2024'),
+    },
+    {
+      label: 'Employment',
+      value: `${employment.toFixed(1)}`,
+      suffix: '%',
+      subtext: getOverviewKpiSentence('employment', employment),
+      delta: employment - getEmploymentPercent(data, '2024'),
+    },
+    {
+      label: 'Safety',
+      value: `${safety.toFixed(1)}`,
+      suffix: '%',
+      subtext: getOverviewKpiSentence('safety', safety),
+      delta: safety - getSafetyPercent(data, '2024'),
+    },
   ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
 }
 
 export function buildDemographicsKpis(

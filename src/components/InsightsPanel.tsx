@@ -13,7 +13,7 @@ export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
     <aside className="insights-panel">
       <div className="insights-header">
         <h2 className="insights-title">AI Insights</h2>
-        <span className="insights-badge">Powered by SCAD AI</span>
+        <span className="insights-badge">Bayaan AI</span>
       </div>
       <p className="insights-text">
         Al Falah district resident survey data for {data.years.join(' and ')} shows overall satisfaction

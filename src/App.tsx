@@ -34,7 +34,7 @@ export default function App() {
   const activeSection = activeTab !== 'overview' ? data.sections[activeTab] : null;
   const kpiItems =
     activeTab === 'overview'
-      ? buildOverviewKpis(data.overview, viewMode)
+      ? buildOverviewKpis(data, viewMode)
       : activeTab === 'demographics' && activeSection
         ? buildDemographicsKpis(activeSection, viewMode)
         : activeSection?.score
@@ -59,7 +59,7 @@ export default function App() {
         tabs={PILLAR_TABS}
       />
       <div className="dashboard-content">
-        <KpiCards items={kpiItems} />
+        <KpiCards items={kpiItems} viewMode={viewMode} />
         <div className="dashboard-split">
           {activeTab === 'overview' ? (
             <OverviewCharts data={data} viewMode={viewMode} />
