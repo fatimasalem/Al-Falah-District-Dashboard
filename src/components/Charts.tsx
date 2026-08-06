@@ -124,6 +124,87 @@ function segmentLabel(value: number): string {
   return amount >= 6 ? `${amount.toFixed(0)}%` : '';
 }
 
+const SEGMENT_VALUE_LABEL_STYLE = { fontSize: 10, fill: '#ffffff', fontWeight: 600 as const };
+
+type StatementComparisonRow = {
+  name: string;
+  fullName: string;
+  dissatisfied2024: number;
+  neutral2024: number;
+  satisfied2024: number;
+  dissatisfied2025: number;
+  neutral2025: number;
+  satisfied2025: number;
+};
+
+type ComparisonSegmentKey = 'dissatisfied' | 'neutral' | 'satisfied';
+
+function buildStatementComparisonTooltipSegments(
+  row: StatementComparisonRow,
+  yearKey: '2024' | '2025',
+) {
+  const segments: { key: ComparisonSegmentKey; name: string; color: string }[] = [
+    { key: 'dissatisfied', name: 'Dissatisfied', color: DESIGN.negative },
+    { key: 'neutral', name: 'Neutral', color: '#94a3b8' },
+    { key: 'satisfied', name: 'Satisfied', color: DESIGN.chart.export },
+  ];
+
+  return segments.map((segment) => ({
+    name: segment.name,
+    value: row[`${segment.key}${yearKey}`],
+    color: segment.color,
+    change:
+      yearKey === '2025'
+        ? row[`${segment.key}2025`] - row[`${segment.key}2024`]
+        : undefined,
+  }));
+}
+
+type TrendDirection = 'up' | 'down' | 'same';
+
+function getTrend(previous: number, current: number): { direction: TrendDirection; className: string } {
+  const change = current - previous;
+  if (change > 0) return { direction: 'up', className: 'growth-positive' };
+  if (change < 0) return { direction: 'down', className: 'growth-negative' };
+  return { direction: 'same', className: 'growth-neutral' };
+}
+
+function ChangeIndicator({ change, className = '' }: { change: number; className?: string }) {
+  const { direction, className: trendClass } = getTrend(0, change);
+  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
+
+  return (
+    <span className={`chart-change-indicator trend-value ${trendClass} ${className}`.trim()}>
+      <span className="trend-arrow" aria-hidden="true">{arrow}</span>
+      {formatDelta(change)}
+    </span>
+  );
+}
+
+function HeatmapCellValue({
+  value,
+  change,
+  showChange = false,
+  invert = false,
+}: {
+  value: number;
+  change?: number;
+  showChange?: boolean;
+  invert?: boolean;
+}) {
+  return (
+    <div className={`health-heatmap-cell-content${showChange ? ' health-heatmap-cell-content-inline' : ''}`}>
+      <span className="health-heatmap-cell-value">{value.toFixed(0)}%</span>
+      {showChange && change !== undefined && Math.abs(change) >= 0.5 && (
+        <ChangeIndicator
+          change={change}
+          className={`health-heatmap-cell-change${invert ? ' health-heatmap-cell-change-invert' : ''}`}
+        />
+      )}
+    </div>
+  );
+}
+
 function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
   if (mode === 'current') {
     return <span className="chart-badge">{score.toFixed(1)}% Score</span>;
@@ -140,6 +221,7 @@ interface ChartTooltipEntry {
   name?: string;
   value?: number;
   color?: string;
+  change?: number;
 }
 
 function ChartTooltip({
@@ -167,6 +249,10 @@ function ChartTooltip({
         const name = entry.name ?? 'Value';
         const value = Math.abs(Number(entry.value ?? 0)).toFixed(1);
         const headerLabel = entries.length === 1 ? (label ?? name) : name;
+        const change =
+          entry.change !== undefined && Math.abs(entry.change) >= 0.5
+            ? formatDelta(entry.change)
+            : null;
         return (
           <div key={name} className="chart-tooltip-entry">
             <div className="chart-tooltip-header">
@@ -175,6 +261,7 @@ function ChartTooltip({
             </div>
             <div className="chart-tooltip-value">
               {headerLabel}: {value}{suffix}
+              {change && <span className="chart-tooltip-change"> ({change})</span>}
             </div>
           </div>
         );
@@ -569,15 +656,6 @@ interface DataTableProps {
   mode: ViewMode;
 }
 
-type TrendDirection = 'up' | 'down' | 'same';
-
-function getTrend(previous: number, current: number): { direction: TrendDirection; className: string } {
-  const change = current - previous;
-  if (change > 0) return { direction: 'up', className: 'growth-positive' };
-  if (change < 0) return { direction: 'down', className: 'growth-negative' };
-  return { direction: 'same', className: 'growth-neutral' };
-}
-
 function TrendValue({ previous, current }: { previous: number; current: number }) {
   const { direction, className } = getTrend(previous, current);
   const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
@@ -603,6 +681,10 @@ function CurrentValue({ value, tone }: { value: number; tone?: 'positive' | 'neg
   );
 }
 
+function ChangeValue({ change }: { change: number }) {
+  return <ChangeIndicator change={change} />;
+}
+
 export function DataTable({ rows, mode }: DataTableProps) {
   const isCurrent = mode === 'current';
   const insight = generatePillarTableInsight(rows, mode);
@@ -626,6 +708,7 @@ export function DataTable({ rows, mode }: DataTableProps) {
             <th>Pillar</th>
             {!isCurrent && <th>2024 Score</th>}
             <th>2025 Score</th>
+            {!isCurrent && <th>Score Change</th>}
             <th>Satisfied %</th>
             <th>Unsatisfied %</th>
           </tr>
@@ -634,14 +717,19 @@ export function DataTable({ rows, mode }: DataTableProps) {
           {rows.map((row) => (
             <tr key={row.pillar}>
               <td>{row.pillar}</td>
-              {!isCurrent && <td>{row.score2024.toFixed(1)}%</td>}
+              {!isCurrent && (
+                <td>
+                  <span className="table-score table-score-2024">{row.score2024.toFixed(1)}%</span>
+                </td>
+              )}
               <td>
-                {isCurrent ? (
-                  <CurrentValue value={row.score2025} tone={getScoreTone(row.score2025)} />
-                ) : (
-                  <TrendValue previous={row.score2024} current={row.score2025} />
-                )}
+                <CurrentValue value={row.score2025} tone={getScoreTone(row.score2025)} />
               </td>
+              {!isCurrent && (
+                <td>
+                  <ChangeValue change={row.score2025 - row.score2024} />
+                </td>
+              )}
               <td>
                 {isCurrent ? (
                   <CurrentValue value={row.satisfied2025} tone="positive" />
@@ -786,17 +874,6 @@ function EducationCategoryTick({
   );
 }
 
-type StatementComparisonRow = {
-  name: string;
-  fullName: string;
-  dissatisfied2024: number;
-  neutral2024: number;
-  satisfied2024: number;
-  dissatisfied2025: number;
-  neutral2025: number;
-  satisfied2025: number;
-};
-
 const EDUCATION_CHART_MARGIN = { top: 12, right: 12, left: 4, bottom: 48 };
 const EDUCATION_COMPARISON_MARGIN = { top: 28, right: 12, left: 4, bottom: 48 };
 
@@ -845,13 +922,13 @@ function renderEducationCurrentChart(data: EducationChartRow[], rows: EducationC
       />
       <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
       <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
     </BarChart>
   );
@@ -912,32 +989,23 @@ function renderEducationComparisonChart(data: StatementComparisonRow[], rows: Ed
           const row = payload[0]?.payload as StatementComparisonRow;
           const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
           const yearKey = year as '2024' | '2025';
-          const segments = [
-            { name: 'Dissatisfied', value: row[`dissatisfied${yearKey}`], color: DESIGN.negative },
-            { name: 'Neutral', value: row[`neutral${yearKey}`], color: '#94a3b8' },
-            { name: 'Satisfied', value: row[`satisfied${yearKey}`], color: DESIGN.chart.export },
-          ];
           return (
             <ChartTooltip
               active={active}
               label={`${row.fullName} (${year})`}
-              payload={segments.map((entry) => ({
-                name: entry.name,
-                value: entry.value,
-                color: entry.color,
-              }))}
+              payload={buildStatementComparisonTooltipSegments(row, yearKey)}
             />
           );
         }}
       />
       <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55} radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
         <LabelList
           dataKey="satisfied2024"
           position="top"
@@ -945,13 +1013,13 @@ function renderEducationComparisonChart(data: StatementComparisonRow[], rows: Ed
         />
       </Bar>
       <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none" radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
-        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
         <LabelList
           dataKey="satisfied2025"
           position="top"
@@ -1182,7 +1250,7 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHe
                   }}
                   title={`${row.fullName} (2024): ${row.agreement2024.toFixed(1)}%`}
                 >
-                  {row.agreement2024.toFixed(0)}%
+                  <HeatmapCellValue value={row.agreement2024} />
                 </div>
               )}
               <div
@@ -1191,9 +1259,14 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHe
                   background: agreementHeatColor(row.agreement2025),
                   color: agreementHeatTextColor(row.agreement2025),
                 }}
-                title={`${row.fullName} (2025): ${row.agreement2025.toFixed(1)}%`}
+                title={`${row.fullName} (2025): ${row.agreement2025.toFixed(1)}% (${formatDelta(row.agreement2025 - row.agreement2024)})`}
               >
-                {row.agreement2025.toFixed(0)}%
+                <HeatmapCellValue
+                  value={row.agreement2025}
+                  change={row.agreement2025 - row.agreement2024}
+                  showChange={!isCurrent}
+                  invert={agreementHeatTextColor(row.agreement2025) === '#ffffff'}
+                />
               </div>
             </div>
           ))}
@@ -1318,13 +1391,13 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
       />
       <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
       <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied">
-        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
     </BarChart>
   );
@@ -1356,32 +1429,23 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
           const row = payload[0]?.payload as StatementComparisonRow;
           const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
           const yearKey = year as '2024' | '2025';
-          const segments = [
-            { name: 'Dissatisfied', value: row[`dissatisfied${yearKey}`], color: DESIGN.negative },
-            { name: 'Neutral', value: row[`neutral${yearKey}`], color: '#94a3b8' },
-            { name: 'Satisfied', value: row[`satisfied${yearKey}`], color: DESIGN.chart.export },
-          ];
           return (
             <ChartTooltip
               active={active}
               label={`${row.fullName} (${year})`}
-              payload={segments.map((entry) => ({
-                name: entry.name,
-                value: entry.value,
-                color: entry.color,
-              }))}
+              payload={buildStatementComparisonTooltipSegments(row, yearKey)}
             />
           );
         }}
       />
       <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
         <LabelList
           dataKey="satisfied2024"
           position="right"
@@ -1389,13 +1453,13 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
         />
       </Bar>
       <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none">
-        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
-        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
       </Bar>
       <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
         <LabelList
           dataKey="satisfied2025"
           position="right"

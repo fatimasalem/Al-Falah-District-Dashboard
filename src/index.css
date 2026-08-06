@@ -606,6 +606,65 @@ button {
   font-weight: 600;
 }
 
+.health-heatmap-cell-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 3px 4px;
+  text-align: center;
+  width: 100%;
+}
+
+.health-heatmap-cell-content-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.health-heatmap-cell-value {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.health-heatmap-cell-change {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15;
+  gap: 4px;
+}
+
+.health-heatmap-cell-change .trend-arrow {
+  font-size: 0.6875rem;
+}
+
+.health-heatmap-cell-change-invert.growth-positive {
+  color: #bbf7d0;
+}
+
+.health-heatmap-cell-change-invert.growth-negative {
+  color: #fecaca;
+}
+
+.health-heatmap-cell-change-invert.growth-neutral {
+  color: #dbeafe;
+}
+
+.chart-change-indicator {
+  white-space: nowrap;
+}
+
+.table-score-2024 {
+  color: #64748b;
+  font-weight: 600;
+}
+
 .health-heatmap-scale {
   display: flex;
   align-items: center;
@@ -820,6 +879,11 @@ button {
   color: #d1d5db;
   font-size: 0.75rem;
   padding-left: 18px;
+}
+
+.chart-tooltip-change {
+  color: #bbf7d0;
+  font-weight: 600;
 }
 
 .data-table-card .chart-insight-footer {
