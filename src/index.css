@@ -275,6 +275,8 @@ button {
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  position: relative;
+  z-index: 2;
 }
 
 /* ── KPI Cards (4 equal columns) ── */
@@ -383,6 +385,87 @@ button {
   align-items: stretch;
 }
 
+.statement-bar-chart {
+  display: grid;
+  grid-template-columns: minmax(108px, 36%) minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.statement-bar-labels {
+  display: grid;
+  grid-template-rows: repeat(var(--statement-rows), 1fr);
+  padding: 8px 0 40px;
+  min-width: 0;
+}
+
+.statement-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.625rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  text-align: left;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.statement-bar-label-text {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.statement-bar-label-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+.statement-bar-plot {
+  min-width: 0;
+}
+
+.chart-card-body:has(.statement-bar-chart) {
+  min-height: 0;
+}
+
+.education-axis-tick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  text-align: center;
+}
+
+.education-axis-tick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.education-axis-tick-label {
+  display: block;
+  font-size: 0.625rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  max-width: 76px;
+}
+
 /* ── Waffle chart ── */
 .waffle-chart {
   display: flex;
@@ -451,11 +534,23 @@ button {
   flex: 1;
   width: 100%;
   min-height: 280px;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+.chart-card > .recharts-responsive-container,
+.chart-card > .partner-chart-body {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
 }
 
 .chart-insight-footer {
   margin-top: auto;
   padding-top: 4px;
+  position: relative;
+  z-index: 0;
 }
 
 .chart-insight-separator {
@@ -499,6 +594,8 @@ button {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
   font-size: 0.8125rem;
   min-width: 128px;
+  position: relative;
+  z-index: 1000;
 }
 
 .chart-tooltip-title {
@@ -842,66 +939,88 @@ button {
 
 /* ── Insights sidebar ── */
 .insights-panel {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  padding: 22px;
+  background: #f8f5ff;
+  border-radius: 12px;
+  border: 1px solid #ebe4f5;
+  box-shadow: 0 1px 3px rgba(135, 3, 153, 0.06);
+  padding: 20px 22px 22px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   position: sticky;
   top: 20px;
+  z-index: 1;
 }
 
 .insights-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+}
+
+.insights-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.insights-sparkle {
+  display: flex;
+  align-items: center;
+  color: #9333ea;
+  flex-shrink: 0;
 }
 
 .insights-title {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
+  line-height: 1.2;
 }
 
 .insights-badge {
   font-size: 0.625rem;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: #fdefff;
-  color: #870399;
+  background: #dbeafe;
+  color: #1d4ed8;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .insights-text {
   font-size: 0.8125rem;
-  color: var(--text-muted);
+  color: #4b5563;
   line-height: 1.65;
+}
+
+.insights-takeaways {
+  display: flex;
+  flex-direction: column;
 }
 
 .insights-section-title {
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-bottom: 10px;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  margin-bottom: 12px;
 }
 
 .insights-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .insights-list li {
   font-size: 0.8125rem;
-  color: var(--text-secondary);
+  color: #374151;
   padding-left: 16px;
   position: relative;
   line-height: 1.55;
@@ -911,27 +1030,31 @@ button {
   content: '';
   position: absolute;
   left: 0;
-  top: 8px;
+  top: 7px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--positive);
+  background: #2563eb;
 }
 
 .insights-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #2563eb;
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
   transition: background 0.15s;
-  margin-top: 4px;
+  margin-top: auto;
 }
 
 .insights-cta:hover {
-  background: var(--accent-hover);
+  background: #1d4ed8;
 }
 
 .demo-banner {
@@ -959,6 +1082,15 @@ button {
   min-height: 60vh;
   font-size: 1rem;
   color: var(--text-muted);
+}
+
+.recharts-wrapper {
+  overflow: visible !important;
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 1000 !important;
+  pointer-events: none;
 }
 
 .recharts-default-tooltip {

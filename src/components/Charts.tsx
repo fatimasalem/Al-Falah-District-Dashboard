@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import {
   BarChart,
   Bar,
@@ -26,63 +26,51 @@ import {
   type InsightPart,
 } from '../utils';
 
-const STATEMENT_LABEL_WIDTH = 240;
-const STATEMENT_CHARS_PER_LINE = 34;
+const STATEMENT_ROW_HEIGHT = 54;
+const STATEMENT_CHART_CHROME = 56;
 
-function wrapStatementLabel(text: string, maxChars = STATEMENT_CHARS_PER_LINE, maxLines = 3): string[] {
-  const lines: string[] = [];
-  let current = '';
-  for (const word of text.split(' ')) {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length > maxChars && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current) lines.push(current);
-  if (lines.length <= maxLines) return lines;
-  const trimmed = lines.slice(0, maxLines);
-  trimmed[maxLines - 1] = `${trimmed[maxLines - 1].slice(0, maxChars - 1)}…`;
-  return trimmed;
+function estimateStatementChartHeight(rowCount: number): number {
+  return Math.max(280, rowCount * STATEMENT_ROW_HEIGHT + STATEMENT_CHART_CHROME);
 }
 
-function StatementAxisTick({
-  x,
-  y,
-  payload,
+interface StatementChartRow {
+  name: string;
+  fullName: string;
+}
+
+function StatementChartShell({
+  data,
+  chartHeight,
+  children,
+  renderLabelIcon,
 }: {
-  x: number;
-  y: number;
-  payload: { value: string };
+  data: StatementChartRow[];
+  chartHeight: number;
+  children: ReactElement;
+  renderLabelIcon?: (row: StatementChartRow) => ReactElement;
 }) {
-  const lines = wrapStatementLabel(payload.value);
   return (
-    <g transform={`translate(${x},${y})`}>
-      {lines.map((line, i) => (
-        <text
-          key={i}
-          x={0}
-          y={0}
-          dy={(i - (lines.length - 1) / 2) * 13}
-          textAnchor="end"
-          fill={DESIGN.chart.axis}
-          fontSize={10}
-        >
-          {line}
-        </text>
-      ))}
-    </g>
+    <div
+      className="statement-bar-chart"
+      style={{ height: chartHeight, ['--statement-rows' as string]: data.length }}
+    >
+      <div className="statement-bar-labels">
+        {data.map((row) => (
+          <div key={row.fullName} className="statement-bar-label" title={row.fullName}>
+            {renderLabelIcon && (
+              <span className="statement-bar-label-icon">{renderLabelIcon(row)}</span>
+            )}
+            <span className="statement-bar-label-text">{row.name}</span>
+          </div>
+        ))}
+      </div>
+      <div className="statement-bar-plot">
+        <ResponsiveContainer width="100%" height="100%">
+          {children}
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
-}
-
-function estimateStatementChartHeight(labels: string[]): number {
-  const rowHeight = labels.reduce((max, label) => {
-    const lines = wrapStatementLabel(label).length;
-    return Math.max(max, lines * 14 + 28);
-  }, 52);
-  return Math.max(280, labels.length * rowHeight + 48);
 }
 
 function segmentLabel(value: number): string {
@@ -556,13 +544,148 @@ export function DataTable({ rows, mode }: DataTableProps) {
   );
 }
 
+type EducationChartRow = {
+  name: string;
+  fullName: string;
+  dissatisfied: number;
+  neutral: number;
+  satisfied: number;
+};
+
+function getEducationStatementIconType(fullName: string): string {
+  const lower = fullName.toLowerCase();
+  if (/financial|cost/i.test(lower)) return 'cost';
+  if (/university/i.test(lower)) return 'university';
+  if (/private school/i.test(lower)) return 'private-school';
+  if (/government|public school/i.test(lower)) return 'public-school';
+  if (/quality/i.test(lower)) return 'quality';
+  if (/ease|enrolling|attending|access/i.test(lower)) return 'access';
+  if (/proximity|close|near/i.test(lower)) return 'location';
+  return 'book';
+}
+
+function EducationStatementIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  switch (getEducationStatementIconType(fullName)) {
+    case 'cost':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4" />
+        </svg>
+      );
+    case 'university':
+      return (
+        <svg {...props}>
+          <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+          <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+        </svg>
+      );
+    case 'private-school':
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" />
+          <path d="M12 7v3M10.5 8.5L12 7l1.5 1.5" />
+        </svg>
+      );
+    case 'public-school':
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" />
+          <path d="M12 3v4" />
+        </svg>
+      );
+    case 'quality':
+      return (
+        <svg {...props}>
+          <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8l-6.3 4.2 2.3-7-6-4.6h7.6L12 2z" />
+        </svg>
+      );
+    case 'access':
+      return (
+        <svg {...props}>
+          <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+          <polyline points="10 17 15 12 10 7" />
+          <line x1="15" y1="12" x2="3" y2="12" />
+        </svg>
+      );
+    case 'location':
+      return (
+        <svg {...props}>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+        </svg>
+      );
+  }
+}
+
+function EducationCategoryTick({
+  x = 0,
+  y = 0,
+  payload,
+  rows,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+  rows: EducationChartRow[];
+}) {
+  const label = payload?.value ?? '';
+  const row = rows.find((item) => item.name === label);
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x={-40} y={6} width={80} height={78}>
+        <div className="education-axis-tick">
+          <span className="education-axis-tick-icon">
+            <EducationStatementIcon fullName={row?.fullName ?? label} />
+          </span>
+          <span className="education-axis-tick-label" title={row?.fullName ?? label}>
+            {label}
+          </span>
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
+function normalizeEducationChartData(data: EducationChartRow[]): EducationChartRow[] {
+  return data.map((row) => {
+    const dissatisfied = Math.abs(row.dissatisfied);
+    const total = dissatisfied + row.neutral + row.satisfied;
+    const scale = total > 0 ? 100 / total : 0;
+    return {
+      ...row,
+      dissatisfied: dissatisfied * scale,
+      neutral: row.neutral * scale,
+      satisfied: row.satisfied * scale,
+    };
+  });
+}
+
 interface EducationDivergingBarProps {
-  data: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
+  data: EducationChartRow[];
   mode: ViewMode;
 }
 
 export function EducationDivergingBar({ data, mode }: EducationDivergingBarProps) {
-  const chartHeight = estimateStatementChartHeight(data.map((d) => d.fullName));
+  const chartData = normalizeEducationChartData(data);
   const insight = generateEducationChartInsight(data);
 
   return (
@@ -571,32 +694,31 @@ export function EducationDivergingBar({ data, mode }: EducationDivergingBarProps
         <div>
           <div className="chart-title">Education Satisfaction</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? '2025 response breakdown by statement' : '2025 agreement vs disagreement'}
+            {mode === 'current' ? '2025 response breakdown by statement' : '2025 satisfaction distribution'}
           </div>
         </div>
       </div>
-      <div className="chart-card-body" style={{ height: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="chart-card-body">
+        <ResponsiveContainer width="100%" height={340}>
           <BarChart
-            data={data}
-            layout="vertical"
-            stackOffset="sign"
-            margin={{ top: 8, right: 28, left: 8, bottom: 8 }}
-            barCategoryGap="20%"
+            data={chartData}
+            margin={{ top: 12, right: 12, left: 4, bottom: 4 }}
+            barCategoryGap="18%"
           >
-            <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
             <XAxis
-              type="number"
-              tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
-              domain={[-100, 100]}
-              ticks={[-100, -75, -50, -25, 0, 25, 50, 75, 100]}
-              tickFormatter={(v) => `${Math.abs(v)}%`}
+              dataKey="name"
+              interval={0}
+              height={86}
+              tickLine={false}
+              axisLine={{ stroke: DESIGN.chart.grid }}
+              tick={(props) => <EducationCategoryTick {...props} rows={chartData} />}
             />
             <YAxis
-              type="category"
-              dataKey="name"
-              width={STATEMENT_LABEL_WIDTH}
-              tick={(props) => <StatementAxisTick {...props} />}
+              tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+              domain={[0, 100]}
+              ticks={[0, 25, 50, 75, 100]}
+              tickFormatter={(v) => `${v}%`}
             />
             <Tooltip
               cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
@@ -613,13 +735,13 @@ export function EducationDivergingBar({ data, mode }: EducationDivergingBarProps
               )}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-            <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[4, 0, 0, 4]}>
+            <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[0, 0, 4, 4]}>
               <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
             </Bar>
             <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
               <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
             </Bar>
-            <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[4, 4, 0, 0]}>
               <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
             </Bar>
           </BarChart>
@@ -699,8 +821,74 @@ interface EnvironmentStackedBarProps {
   mode: ViewMode;
 }
 
+function getEnvironmentStatementIconType(fullName: string): string {
+  const lower = fullName.toLowerCase();
+  if (/cleanliness|hygiene|clean/i.test(lower)) return 'cleanliness';
+  if (/urban planning|streets|parking|sidewalks/i.test(lower)) return 'planning';
+  if (/architectural|aesthetic|facades|buildings/i.test(lower)) return 'architecture';
+  if (/gardens|parks|public facilities/i.test(lower)) return 'parks';
+  if (/road services|lighting|walkways/i.test(lower)) return 'roads';
+  return 'leaf';
+}
+
+function EnvironmentStatementIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 14,
+    height: 14,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  switch (getEnvironmentStatementIconType(fullName)) {
+    case 'cleanliness':
+      return (
+        <svg {...props}>
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+          <path d="M5 19h14" />
+        </svg>
+      );
+    case 'planning':
+      return (
+        <svg {...props}>
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case 'architecture':
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M6 21V9l6-4 6 4v12M10 21v-4h4v4" />
+        </svg>
+      );
+    case 'parks':
+      return (
+        <svg {...props}>
+          <path d="M12 22v-8M8 14c-2-3-1-7 4-7s6 4 4 7" />
+          <path d="M12 14c2-3 1-7-4-7" />
+        </svg>
+      );
+    case 'roads':
+      return (
+        <svg {...props}>
+          <path d="M4 19l4-14M20 19l-4-14M12 5v14" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <path d="M11 20A7 7 0 019.5 6.5c.5-2 2-3.5 4.5-4 0 3 1 5.5 2.5 7.5S20 14 20 16a7 7 0 01-9 4z" />
+        </svg>
+      );
+  }
+}
+
 export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps) {
-  const chartHeight = estimateStatementChartHeight(data.map((d) => d.fullName));
+  const chartHeight = estimateStatementChartHeight(data.length);
   const insight = generateEnvironmentChartInsight(data);
 
   return (
@@ -713,13 +901,17 @@ export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps
           </div>
         </div>
       </div>
-      <div className="chart-card-body" style={{ height: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="chart-card-body">
+        <StatementChartShell
+          data={data}
+          chartHeight={chartHeight}
+          renderLabelIcon={(row) => <EnvironmentStatementIcon fullName={row.fullName} />}
+        >
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 8, right: 28, left: 8, bottom: 8 }}
-            barCategoryGap="20%"
+            margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
+            barCategoryGap="12%"
           >
             <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
             <XAxis
@@ -730,12 +922,7 @@ export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps
               ticks={[0, 25, 50, 75, 100]}
               tickFormatter={(v) => `${v}%`}
             />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={STATEMENT_LABEL_WIDTH}
-              tick={(props) => <StatementAxisTick {...props} />}
-            />
+            <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
             <Tooltip
               cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
               content={({ active, payload }) => (
@@ -761,7 +948,7 @@ export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps
               <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </StatementChartShell>
       </div>
       <ChartInsightFooter insight={insight} />
     </div>

@@ -45,7 +45,7 @@ export default function App() {
     <div className="dashboard">
       {data.isDemoData && (
         <div className="demo-banner">
-          This is a demo of the dashboard.
+          This is a demo dashboard.
           {/* Demo data — the attached Excel file contains survey structure only. Replace with populated data and run{' '} */}
           {/* <code>npm run data:build</code> to load real values. */}
         </div>

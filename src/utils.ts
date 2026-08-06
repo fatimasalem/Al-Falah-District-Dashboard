@@ -6,6 +6,125 @@ const INCOME_COMFORT_CATEGORIES = [
   'We live comfortably on current income',
 ];
 
+const STATEMENT_COMPACT_MAX_CHARS = 46;
+const AXIS_LABEL_MAX_LINES = 2;
+const AXIS_LABEL_MAX_CHARS = 21;
+
+function wrapAxisLabel(text: string, maxChars = AXIS_LABEL_MAX_CHARS): string[] {
+  const lines: string[] = [];
+  let current = '';
+  for (const word of text.split(' ')) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+export function compactStatementLabel(text: string): string {
+  let label = text.trim().replace(/\.$/, '');
+
+  const prefixPatterns = [
+    /^In general,\s*I am satisfied with the\s+/i,
+    /^In general,\s*I am satisfied with\s+/i,
+    /^Satisfied with the\s+/i,
+    /^Satisfied with\s+/i,
+    /^I am satisfied with the\s+/i,
+    /^I am satisfied with\s+/i,
+  ];
+  for (const pattern of prefixPatterns) {
+    label = label.replace(pattern, '');
+  }
+
+  const phraseReplacements: [RegExp, string][] = [
+    [/financial costs of (public|private) school education/gi, 'cost of $1 school'],
+    [/financial costs of university education/gi, 'university cost'],
+    [/quality of school education/gi, 'school quality'],
+    [/ease of attending school education/gi, 'school access'],
+    [/ease of enrolling in university education/gi, 'university enrollment'],
+    [/proximity of the educational facility \(schools and universities\) to the residence/gi, 'schools & universities proximity to home'],
+    [/government school education system/gi, 'government school education'],
+    [/private school education system/gi, 'private school education'],
+    [/public school education/gi, 'public school'],
+    [/private school education/gi, 'private school'],
+    [/university education system/gi, 'university education'],
+    [/university education/gi, 'university'],
+    [/school education/gi, 'schooling'],
+    [/education system/gi, 'education'],
+    [/cleanliness of the neighborhood/gi, 'neighborhood cleanliness'],
+    [/cleanliness of public facilities and their compliance with health requirements/gi, 'public facility hygiene standards'],
+    [/urban planning of the city \(planning of residential areas, streets, parking lots, sidewalks, entrances and exits to the areas\)/gi, 'Urban planning: streets, parking, sidewalks'],
+    [/architectural \(aesthetic\) character of buildings, residential neighborhoods, market facades and shops/gi, 'architectural character (buildings, shops)'],
+    [/quality of service facilities, such as gardens, parks, and public facilities/gi, 'parks & public facility quality'],
+    [/quality of internal road services such as sidewalks, street lighting, parking lots, and walkways/gi, 'road services (sidewalks, lighting, parking)'],
+    [/in my residential area/gi, 'in area'],
+    [/in a residential area/gi, 'in area'],
+    [/in the emirate/gi, 'in emirate'],
+    [/to the residence/gi, 'to home'],
+  ];
+
+  for (const [pattern, replacement] of phraseReplacements) {
+    label = label.replace(pattern, replacement);
+  }
+
+  label = label.replace(/\s+/g, ' ').trim();
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+
+  if (label.length <= STATEMENT_COMPACT_MAX_CHARS) return label;
+
+  const removableWords = new Set(['the', 'of', 'and', 'a', 'an', 'in', 'to', 'for', 'with']);
+  let words = label.split(' ');
+  while (words.join(' ').length > STATEMENT_COMPACT_MAX_CHARS && words.length > 4) {
+    const removableIndex = words.findIndex(
+      (word, index) => index > 0 && index < words.length - 1 && removableWords.has(word.toLowerCase()),
+    );
+    if (removableIndex === -1) break;
+    words.splice(removableIndex, 1);
+  }
+
+  return words.join(' ');
+}
+
+function fitAxisLabel(label: string): string {
+  let result = label;
+  const tightenings = [
+    (value: string) => value.replace(/: streets, parking, sidewalks/g, ': streets & parking'),
+    (value: string) => value.replace(/ \(buildings, shops\)/g, ' (buildings)'),
+    (value: string) => value.replace(/ standards /g, ' '),
+    (value: string) => value.replace(/ character /g, ' '),
+    (value: string) => value.replace(/ facility hygiene /g, ' hygiene '),
+    (value: string) => value.replace(/ neighborhood cleanliness /g, ' area cleanliness '),
+    (value: string) => value.replace(/ \(sidewalks, lighting, parking\)/g, ' (roads & parking)'),
+  ];
+
+  for (const tighten of tightenings) {
+    if (wrapAxisLabel(result).length <= AXIS_LABEL_MAX_LINES) return result;
+    const next = tighten(result);
+    if (next !== result) result = next;
+  }
+
+  const removableWords = new Set(['the', 'of', 'and', 'a', 'an', 'in', 'to', 'for', 'with']);
+  let words = result.split(' ');
+  while (wrapAxisLabel(words.join(' ')).length > AXIS_LABEL_MAX_LINES && words.length > 3) {
+    const removableIndex = words.findIndex(
+      (word, index) => index > 0 && index < words.length - 1 && removableWords.has(word.toLowerCase()),
+    );
+    if (removableIndex === -1) break;
+    words.splice(removableIndex, 1);
+  }
+
+  return words.join(' ');
+}
+
+export function formatStatementAxisLabel(text: string): string {
+  return fitAxisLabel(compactStatementLabel(text));
+}
+
 export function getIncomeComfortPercent(data: SurveyData, year: '2024' | '2025'): number {
   const questions = data.sections.income?.questions ?? [];
   return questions
@@ -82,10 +201,10 @@ export function getEducationChartData(section: import('./types').Section, year: 
     .map((q) => {
       const breakdown = q.data[year]?.breakdown ?? {};
       const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
-      const name = q.statementEn ?? q.statementAr;
+      const fullName = q.statementEn ?? q.statementAr;
       return {
-        name,
-        fullName: name,
+        name: formatStatementAxisLabel(fullName),
+        fullName,
         dissatisfied: -dissatisfied,
         neutral,
         satisfied,
@@ -108,10 +227,10 @@ export function getEnvironmentChartData(section: import('./types').Section, year
       const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
       const total = dissatisfied + neutral + satisfied;
       const scale = total > 0 ? 100 / total : 0;
-      const name = q.statementEn ?? q.statementAr;
+      const fullName = q.statementEn ?? q.statementAr;
       return {
-        name,
-        fullName: name,
+        name: formatStatementAxisLabel(fullName),
+        fullName,
         dissatisfied: dissatisfied * scale,
         neutral: neutral * scale,
         satisfied: satisfied * scale,
