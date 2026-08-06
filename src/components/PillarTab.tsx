@@ -1,4 +1,4 @@
-import type { Section, ViewMode } from '../types';
+import type { Section, SurveyYear, ViewMode } from '../types';
 import {
   SentimentDonut,
   LikertChart,
@@ -13,12 +13,14 @@ import {
   getTopCategories,
   isCategory,
   isMean,
+  pickYearValue,
 } from '../utils';
 import { translateLabel } from '../translations';
 
 interface PillarChartsProps {
   section: Section;
   viewMode: ViewMode;
+  selectedYear: SurveyYear;
 }
 
 function truncate(str: string, max = 36): string {
@@ -32,7 +34,7 @@ const DEMO_QUESTIONS: { code: string; title: string }[] = [
   { code: 'Q907', title: 'Education Level Distribution' },
 ];
 
-function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
+function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
     .filter(isMean)
     .filter((q) => q.dimensionAr === 'الإجمالي')
@@ -42,14 +44,18 @@ function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
       value2025: q.data['2025'] ?? 0,
     }));
 
+  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (pp)';
+
   const charts = DEMO_QUESTIONS.map(({ code, title }) => {
-    const items = getTopCategories(getCategoryByQuestion(section.questions, code), viewMode, 10);
+    const items = getTopCategories(getCategoryByQuestion(section.questions, code), viewMode, 10, selectedYear);
     return {
       title,
       data: items.map((c) => ({
         name: truncate(c.name, 24),
         fullName: c.name,
-        value: viewMode === 'current' ? c.value2025 : c.value,
+        value: viewMode === 'current'
+          ? pickYearValue(c.value2024, c.value2025, selectedYear)
+          : c.value,
       })),
     };
   }).filter((c) => c.data.length > 0);
@@ -62,11 +68,12 @@ function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
         <DistributionChart
           data={charts[0]?.data ?? []}
           title={charts[0]?.title ?? 'Gender Distribution'}
-          subtitle={viewMode === 'current' ? '2025 share (%)' : 'YoY change (pp)'}
+          subtitle={shareSubtitle}
         />
         <PartnerChart
           data={partnerData}
           mode={viewMode}
+          year={selectedYear}
         />
       </div>
       <div className="chart-grid-bottom">
@@ -75,7 +82,7 @@ function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
             key={chart.title}
             data={chart.data}
             title={chart.title}
-            subtitle={viewMode === 'current' ? '2025 share (%)' : 'YoY change (pp)'}
+            subtitle={shareSubtitle}
           />
         ))}
       </div>
@@ -83,7 +90,7 @@ function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
         <DistributionChart
           data={charts[3].data}
           title={charts[3].title}
-          subtitle={viewMode === 'current' ? '2025 share (%)' : 'YoY change (pp)'}
+          subtitle={shareSubtitle}
         />
       )}
       {meanComparison.length > 0 && (
@@ -93,12 +100,13 @@ function DemographicsCharts({ section, viewMode }: PillarChartsProps) {
   );
 }
 
-export function PillarCharts({ section, viewMode }: PillarChartsProps) {
+export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   if (section.id === 'demographics' || !section.score) {
-    return <DemographicsCharts section={section} viewMode={viewMode} />;
+    return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;
+  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (pp)';
 
   const likertStatements = getLikertStatements(questions).map((q) => ({
     name: truncate(translateLabel(q.statementEn ?? q.statementAr)),
@@ -107,17 +115,19 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
     value2025: q.data['2025']?.agreement ?? 0,
     value:
       viewMode === 'current'
-        ? (q.data['2025']?.agreement ?? 0)
+        ? pickYearValue(q.data['2024']?.agreement ?? 0, q.data['2025']?.agreement ?? 0, selectedYear)
         : (q.data['2025']?.agreement ?? 0) - (q.data['2024']?.agreement ?? 0),
   }));
 
   const categoricalQuestions = [...new Set(questions.filter(isCategory).map((q) => q.code))];
   const primaryCatCode = categoricalQuestions[0];
   const categoryData = primaryCatCode
-    ? getTopCategories(getCategoryByQuestion(questions, primaryCatCode), viewMode).map((c) => ({
+    ? getTopCategories(getCategoryByQuestion(questions, primaryCatCode), viewMode, undefined, selectedYear).map((c) => ({
         name: truncate(c.name, 28),
         fullName: c.name,
-        value: viewMode === 'current' ? c.value2025 : c.value,
+        value: viewMode === 'current'
+          ? pickYearValue(c.value2024, c.value2025, selectedYear)
+          : c.value,
       }))
     : [];
 
@@ -139,9 +149,10 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
     <div className="main-content">
       <div className="chart-grid">
         <SentimentDonut
-          positive={score.positive2025}
-          negative={score.negative2025}
+          positive={pickYearValue(score.positive2024, score.positive2025, selectedYear)}
+          negative={pickYearValue(score.negative2024, score.negative2025, selectedYear)}
           mode={viewMode}
+          year={selectedYear}
         />
         {hasMean ? (
           <YoYComparisonChart items={meanComparison} title="Key Metrics — Year Comparison" />
@@ -149,7 +160,7 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
           <DistributionChart
             data={categoryData}
             title="Response Distribution"
-            subtitle={viewMode === 'current' ? '2025 share (%)' : 'YoY change (pp)'}
+            subtitle={shareSubtitle}
           />
         ) : (
           <PillarScoresChart
@@ -160,6 +171,7 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
               value: score.yoyChange,
             }]}
             mode={viewMode}
+            year={selectedYear}
             title={`${section.nameEn} — Score Trend`}
           />
         )}
@@ -169,6 +181,7 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
         <LikertChart
           statements={likertStatements.sort((a, b) => b.value - a.value)}
           mode={viewMode}
+          year={selectedYear}
           title={`${section.nameEn} — Survey Statements`}
         />
       )}
@@ -177,7 +190,7 @@ export function PillarCharts({ section, viewMode }: PillarChartsProps) {
         <DistributionChart
           data={categoryData}
           title="Category Breakdown"
-          subtitle={viewMode === 'current' ? '2025 distribution (%)' : 'YoY change (pp)'}
+          subtitle={viewMode === 'current' ? `${selectedYear} distribution (%)` : 'YoY change (pp)'}
         />
       )}
 

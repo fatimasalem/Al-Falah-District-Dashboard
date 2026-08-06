@@ -1,4 +1,7 @@
 export type ViewMode = 'current' | 'yoy';
+export type SurveyYear = '2024' | '2025';
+
+export const SURVEY_YEARS: SurveyYear[] = ['2024', '2025'];
 
 export interface SectionScore {
   sectionId: string;

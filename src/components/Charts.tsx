@@ -15,7 +15,7 @@ import {
   Pie,
   LabelList,
 } from 'recharts';
-import type { SectionScore, ViewMode } from '../types';
+import type { SectionScore, SurveyYear, ViewMode } from '../types';
 import { CHART_COLORS, DESIGN } from '../types';
 import {
   generatePartnerChartInsight,
@@ -316,14 +316,15 @@ function ChartInsightFooter({ insight }: { insight: InsightPart[] }) {
 interface PillarScoresChartProps {
   data: { name: string; value2024: number; value2025: number; value: number }[];
   mode: ViewMode;
+  year?: SurveyYear;
   title?: string;
 }
 
-export function PillarScoresChart({ data, mode, title = 'Pillar Satisfaction — Annual (%)' }: PillarScoresChartProps) {
+export function PillarScoresChart({ data, mode, year = '2025', title = 'Pillar Satisfaction — Annual (%)' }: PillarScoresChartProps) {
   const chartData = data.map((d) => ({
     name: d.name.length > 12 ? d.name.slice(0, 10) + '…' : d.name,
     fullName: d.name,
-    value: mode === 'current' ? d.value2025 : d.value,
+    value: mode === 'current' ? (year === '2025' ? d.value2025 : d.value2024) : d.value,
     change: d.value,
   }));
 
@@ -333,7 +334,7 @@ export function PillarScoresChart({ data, mode, title = 'Pillar Satisfaction —
         <div>
           <div className="chart-title">{title}</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? '2025 satisfaction by pillar' : 'Year-over-year change (pp)'}
+            {mode === 'current' ? `${year} satisfaction by pillar` : 'Year-over-year change (pp)'}
           </div>
         </div>
       </div>
@@ -437,6 +438,7 @@ export function TrendChart({ overall2024, overall2025, mode }: TrendChartProps) 
 interface PartnerChartProps {
   data: { name: string; value: number; fullName?: string; value2024?: number; value2025?: number }[];
   mode: ViewMode;
+  year?: SurveyYear;
 }
 
 function PartnerBarChange({ previous, current }: { previous: number; current: number }) {
@@ -454,19 +456,12 @@ function PartnerBarChange({ previous, current }: { previous: number; current: nu
   );
 }
 
-export function PartnerChart({ data, mode }: PartnerChartProps) {
+export function PartnerChart({ data, mode, year = '2025' }: PartnerChartProps) {
   const isCurrent = mode === 'current';
   const getScore = (item: PartnerChartProps['data'][number]) =>
     isCurrent ? item.value : (item.value2025 ?? item.value);
   const sorted = [...data].sort((a, b) => getScore(b) - getScore(a)).slice(0, 7);
-  const top = sorted[0];
   const maxScore = Math.max(...sorted.map(getScore), 1);
-  const pieData = sorted.map((d, i) => ({
-    name: d.name,
-    fullName: d.fullName ?? d.name,
-    value: Math.max(getScore(d), 0),
-    fill: CHART_COLORS[i % CHART_COLORS.length],
-  }));
   const insight = generatePartnerChartInsight(data, mode);
 
   return (
@@ -475,57 +470,16 @@ export function PartnerChart({ data, mode }: PartnerChartProps) {
         <div>
           <div className="chart-title">Satisfaction by Pillar</div>
           <div className="chart-subtitle">
-            {isCurrent ? 'Share of total — 2025 scores' : '2024 vs 2025 scores by pillar'}
+            {isCurrent ? `Share of total — ${year} scores` : '2024 vs 2025 scores by pillar'}
           </div>
         </div>
       </div>
       <div className="partner-chart-body">
-        <div className="partner-donut-wrap">
-          <ResponsiveContainer width="100%" height="100%" minHeight={160}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={72}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const entry = payload[0];
-                  const name = String(entry.payload?.fullName ?? entry.name ?? 'Pillar');
-                  return (
-                    <ChartTooltip
-                      active
-                      payload={[{
-                        name,
-                        value: Number(entry.value),
-                        color: String(entry.payload?.fill ?? entry.color ?? CHART_COLORS[0]),
-                      }]}
-                    />
-                  );
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          {top && (
-            <div className="partner-donut-center">
-              <div className="partner-donut-center-value">{getScore(top).toFixed(0)}%</div>
-              <div className="partner-donut-center-label">{top.name}</div>
-            </div>
-          )}
-        </div>
         <div className={`partner-bar-list ${!isCurrent ? 'partner-bar-list-yoy' : ''}`}>
           {sorted.map((item, i) => {
             const score2025 = item.value2025 ?? item.value;
             const score2024 = item.value2024 ?? score2025 - item.value;
+            const currentScore = isCurrent ? getScore(item) : score2025;
             const barColor = CHART_COLORS[i % CHART_COLORS.length];
 
             return (
@@ -533,7 +487,7 @@ export function PartnerChart({ data, mode }: PartnerChartProps) {
                 <span className="partner-bar-label">{item.fullName ?? item.name}</span>
                 <span className="partner-bar-pct">
                   {isCurrent ? (
-                    `${score2025.toFixed(1)}%`
+                    `${currentScore.toFixed(1)}%`
                   ) : (
                     <>
                       {score2025.toFixed(1)}%
@@ -546,7 +500,7 @@ export function PartnerChart({ data, mode }: PartnerChartProps) {
                     <div
                       className="partner-bar-fill"
                       style={{
-                        width: `${Math.min(100, (score2025 / maxScore) * 100)}%`,
+                        width: `${Math.min(100, (currentScore / maxScore) * 100)}%`,
                         background: barColor,
                       }}
                     />
@@ -624,10 +578,11 @@ export function DistributionChart({ data, title, subtitle }: DistributionChartPr
 interface LikertChartProps {
   statements: { name: string; value2024: number; value2025: number; value: number; fullName?: string }[];
   mode: ViewMode;
+  year?: SurveyYear;
   title?: string;
 }
 
-export function LikertChart({ statements, mode, title = 'Key Survey Statements' }: LikertChartProps) {
+export function LikertChart({ statements, mode, year = '2025', title = 'Key Survey Statements' }: LikertChartProps) {
   const top = statements.slice(0, 6);
 
   return (
@@ -636,7 +591,7 @@ export function LikertChart({ statements, mode, title = 'Key Survey Statements' 
         <div>
           <div className="chart-title">{title}</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? 'Agreement rate (2025)' : 'Change in agreement (2024 → 2025)'}
+            {mode === 'current' ? `Agreement rate (${year})` : 'Change in agreement (2024 → 2025)'}
           </div>
         </div>
       </div>
@@ -671,6 +626,7 @@ interface DataTableProps {
     unsatisfied2025: number;
   }[];
   mode: ViewMode;
+  year?: SurveyYear;
 }
 
 function TrendValue({ previous, current }: { previous: number; current: number }) {
@@ -702,9 +658,13 @@ function ChangeValue({ change }: { change: number }) {
   return <ChangeIndicator change={change} />;
 }
 
-export function DataTable({ rows, mode }: DataTableProps) {
+export function DataTable({ rows, mode, year = '2025' }: DataTableProps) {
   const isCurrent = mode === 'current';
   const insight = generatePillarTableInsight(rows, mode);
+  const currentScoreKey = year === '2025' ? 'score2025' : 'score2024';
+  const currentSatisfiedKey = year === '2025' ? 'satisfied2025' : 'satisfied2024';
+  const currentUnsatisfiedKey = year === '2025' ? 'unsatisfied2025' : 'unsatisfied2024';
+  const scoreColumnLabel = `${year} Score`;
 
   return (
     <div className="data-table-card full-width">
@@ -724,7 +684,7 @@ export function DataTable({ rows, mode }: DataTableProps) {
           <tr>
             <th>Pillar</th>
             {!isCurrent && <th>2024 Score</th>}
-            <th>2025 Score</th>
+            <th>{isCurrent ? scoreColumnLabel : '2025 Score'}</th>
             {!isCurrent && <th>Score Change</th>}
             <th>Satisfied %</th>
             <th>Unsatisfied %</th>
@@ -740,7 +700,7 @@ export function DataTable({ rows, mode }: DataTableProps) {
                 </td>
               )}
               <td>
-                <CurrentValue value={row.score2025} tone={getScoreTone(row.score2025)} />
+                <CurrentValue value={row[currentScoreKey]} tone={getScoreTone(row[currentScoreKey])} />
               </td>
               {!isCurrent && (
                 <td>
@@ -749,14 +709,14 @@ export function DataTable({ rows, mode }: DataTableProps) {
               )}
               <td>
                 {isCurrent ? (
-                  <CurrentValue value={row.satisfied2025} tone="positive" />
+                  <CurrentValue value={row[currentSatisfiedKey]} tone="positive" />
                 ) : (
                   <TrendValue previous={row.satisfied2024} current={row.satisfied2025} />
                 )}
               </td>
               <td>
                 {isCurrent ? (
-                  <CurrentValue value={row.unsatisfied2025} tone="negative" />
+                  <CurrentValue value={row[currentUnsatisfiedKey]} tone="negative" />
                 ) : (
                   <TrendValue previous={row.unsatisfied2024} current={row.unsatisfied2025} />
                 )}
@@ -898,6 +858,7 @@ interface EducationDivergingBarProps {
   data: EducationChartRow[];
   data2024: EducationChartRow[];
   mode: ViewMode;
+  year?: SurveyYear;
   score: number;
 }
 
@@ -1047,7 +1008,7 @@ function renderEducationComparisonChart(data: StatementComparisonRow[], rows: Ed
   );
 }
 
-export function EducationDivergingBar({ data, data2024, mode, score }: EducationDivergingBarProps) {
+export function EducationDivergingBar({ data, data2024, mode, year = '2025', score }: EducationDivergingBarProps) {
   const isCurrent = mode === 'current';
   const comparisonData = mergeStatementComparisonData(data2024, data);
   const insight = generateEducationChartInsight(data, mode, data2024);
@@ -1059,7 +1020,7 @@ export function EducationDivergingBar({ data, data2024, mode, score }: Education
           <div className="chart-title">Education Satisfaction</div>
           <div className="chart-subtitle">
             {isCurrent
-              ? '2025 response breakdown by statement'
+              ? `${year} response breakdown by statement`
               : '2024 and 2025 response breakdown by statement'}
           </div>
         </div>
@@ -1087,6 +1048,7 @@ interface HealthHeatmapChartProps {
   }[];
   sectionScore: SectionScore;
   mode: ViewMode;
+  year?: SurveyYear;
 }
 
 function agreementHeatColor(value: number): string {
@@ -1223,12 +1185,16 @@ function HealthStatementIcon({ fullName }: { fullName: string }) {
   }
 }
 
-export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHeatmapChartProps) {
+export function HealthHeatmapChart({ heatmapData, sectionScore, mode, year = '2025' }: HealthHeatmapChartProps) {
   if (!sectionScore || heatmapData.length === 0) return null;
 
   const isCurrent = mode === 'current';
-  const badgeScore = isCurrent ? sectionScore.score2025 : sectionScore.yoyChange;
+  const badgeScore = isCurrent
+    ? (year === '2025' ? sectionScore.score2025 : sectionScore.score2024)
+    : sectionScore.yoyChange;
   const insight = generateHealthChartInsight(sectionScore, mode, heatmapData);
+  const currentAgreement = (row: HealthHeatmapChartProps['heatmapData'][number]) =>
+    year === '2025' ? row.agreement2025 : row.agreement2024;
 
   return (
     <div className="chart-card chart-card-fill">
@@ -1237,7 +1203,7 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHe
           <div className="chart-title">Health Satisfaction</div>
           <div className="chart-subtitle">
             {isCurrent
-              ? '2025 agreement by health statement'
+              ? `${year} agreement by health statement`
               : 'Agreement heatmap by statement (2024 vs 2025)'}
           </div>
         </div>
@@ -1248,9 +1214,11 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHe
           <div className="health-heatmap-header">
             <span className="health-heatmap-corner" />
             {!isCurrent && <span className="health-heatmap-column">2024</span>}
-            <span className="health-heatmap-column">2025</span>
+            <span className="health-heatmap-column">{isCurrent ? year : '2025'}</span>
           </div>
-          {heatmapData.map((row) => (
+          {heatmapData.map((row) => {
+            const agreement = currentAgreement(row);
+            return (
             <div className="health-heatmap-row" key={row.fullName}>
               <div className="health-heatmap-label" title={row.fullName}>
                 <span className="health-heatmap-label-icon">
@@ -1273,20 +1241,25 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHe
               <div
                 className="health-heatmap-cell"
                 style={{
-                  background: agreementHeatColor(row.agreement2025),
-                  color: agreementHeatTextColor(row.agreement2025),
+                  background: agreementHeatColor(isCurrent ? agreement : row.agreement2025),
+                  color: agreementHeatTextColor(isCurrent ? agreement : row.agreement2025),
                 }}
-                title={`${row.fullName} (2025): ${row.agreement2025.toFixed(1)}% (${formatDelta(row.agreement2025 - row.agreement2024)})`}
+                title={
+                  isCurrent
+                    ? `${row.fullName} (${year}): ${agreement.toFixed(1)}%`
+                    : `${row.fullName} (2025): ${row.agreement2025.toFixed(1)}% (${formatDelta(row.agreement2025 - row.agreement2024)})`
+                }
               >
                 <HeatmapCellValue
-                  value={row.agreement2025}
+                  value={isCurrent ? agreement : row.agreement2025}
                   change={row.agreement2025 - row.agreement2024}
                   showChange={!isCurrent}
-                  invert={agreementHeatTextColor(row.agreement2025) === '#ffffff'}
+                  invert={agreementHeatTextColor(isCurrent ? agreement : row.agreement2025) === '#ffffff'}
                 />
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <div className="health-heatmap-scale">
           <span>Low agreement</span>
@@ -1303,6 +1276,7 @@ interface EnvironmentStackedBarProps {
   data: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
   data2024: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
   mode: ViewMode;
+  year?: SurveyYear;
   score: number;
 }
 
@@ -1487,7 +1461,7 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
   );
 }
 
-export function EnvironmentStackedBar({ data, data2024, mode, score }: EnvironmentStackedBarProps) {
+export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', score }: EnvironmentStackedBarProps) {
   const isCurrent = mode === 'current';
   const comparisonData = mergeStatementComparisonData(data2024, data);
   const chartHeight = estimateStatementChartHeight(data.length);
@@ -1500,7 +1474,7 @@ export function EnvironmentStackedBar({ data, data2024, mode, score }: Environme
           <div className="chart-title">Environment Satisfaction</div>
           <div className="chart-subtitle">
             {isCurrent
-              ? '2025 response breakdown by statement'
+              ? `${year} response breakdown by statement`
               : '2024 and 2025 response breakdown by statement'}
           </div>
         </div>
@@ -1564,9 +1538,10 @@ interface SentimentDonutProps {
   negative: number;
   neutral?: number;
   mode: ViewMode;
+  year?: SurveyYear;
 }
 
-export function SentimentDonut({ positive, negative, neutral }: SentimentDonutProps) {
+export function SentimentDonut({ positive, negative, neutral, year = '2025' }: SentimentDonutProps) {
   const neu = neutral ?? Math.max(0, 100 - positive - negative);
   const pieData = [
     { name: 'Positive', value: positive, fill: DESIGN.chart.export },
@@ -1579,7 +1554,7 @@ export function SentimentDonut({ positive, negative, neutral }: SentimentDonutPr
       <div className="chart-card-header">
         <div>
           <div className="chart-title">Sentiment Breakdown</div>
-          <div className="chart-subtitle">2025 positive vs negative sentiment</div>
+          <div className="chart-subtitle">{year} positive vs negative sentiment</div>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={220}>

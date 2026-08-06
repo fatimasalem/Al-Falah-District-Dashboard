@@ -1,4 +1,4 @@
-import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData } from '../types';
+import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear } from '../types';
 import { KPI_GRADIENTS } from '../types';
 import {
   formatDelta,
@@ -8,6 +8,7 @@ import {
   getEmploymentPercent,
   getSafetyPercent,
   getOverviewKpiSentence,
+  pickYearValue,
 } from '../utils';
 
 export interface KpiItem {
@@ -51,12 +52,12 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   );
 }
 
-export function buildOverviewKpis(data: SurveyData, mode: ViewMode): KpiItem[] {
+export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: SurveyYear = '2025'): KpiItem[] {
   const { overview } = data;
-  const satisfaction = overview.overallScore2025;
-  const incomeComfort = getIncomeComfortPercent(data, '2025');
-  const employment = getEmploymentPercent(data, '2025');
-  const safety = getSafetyPercent(data, '2025');
+  const satisfaction = pickYearValue(overview.overallScore2024, overview.overallScore2025, year);
+  const incomeComfort = getIncomeComfortPercent(data, year);
+  const employment = getEmploymentPercent(data, year);
+  const safety = getSafetyPercent(data, year);
 
   const cards: KpiItem[] = [
     {
@@ -98,6 +99,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode): KpiItem[] {
 export function buildDemographicsKpis(
   section: import('../types').Section,
   mode: ViewMode,
+  year: SurveyYear = '2025',
 ): KpiItem[] {
   const catValue = (code: string, category: string): number => {
     const q = section.questions.find(
@@ -107,7 +109,7 @@ export function buildDemographicsKpis(
     if (!q) return 0;
     const v2025 = q.data['2025'] ?? 0;
     const v2024 = q.data['2024'] ?? 0;
-    return mode === 'current' ? v2025 : v2025 - v2024;
+    return mode === 'current' ? (q.data[year] ?? 0) : v2025 - v2024;
   };
 
   const meanValue = (code: string): number => {
@@ -118,7 +120,7 @@ export function buildDemographicsKpis(
     if (!q) return 0;
     const v2025 = q.data['2025'] ?? 0;
     const v2024 = q.data['2024'] ?? 0;
-    return mode === 'current' ? v2025 : v2025 - v2024;
+    return mode === 'current' ? (q.data[year] ?? 0) : v2025 - v2024;
   };
 
   if (mode === 'current') {
@@ -143,14 +145,15 @@ export function buildDemographicsKpis(
 export function buildPillarKpis(
   score: import('../types').SectionScore | null,
   mode: ViewMode,
+  year: SurveyYear = '2025',
 ): KpiItem[] {
   if (!score) return [];
   if (mode === 'current') {
     return [
-      { label: 'Section Score', value: `${score.score2025}`, suffix: '%', delta: score.yoyChange },
-      { label: 'Positive Sentiment', value: `${score.positive2025}`, suffix: '%', delta: score.positive2025 - score.positive2024 },
-      { label: 'Negative Sentiment', value: `${score.negative2025}`, suffix: '%', delta: score.negative2025 - score.negative2024 },
-      { label: '2024 Baseline', value: `${score.score2024}`, suffix: '%' },
+      { label: 'Section Score', value: `${pickYearValue(score.score2024, score.score2025, year)}`, suffix: '%', delta: score.yoyChange },
+      { label: 'Positive Sentiment', value: `${pickYearValue(score.positive2024, score.positive2025, year)}`, suffix: '%', delta: score.positive2025 - score.positive2024 },
+      { label: 'Negative Sentiment', value: `${pickYearValue(score.negative2024, score.negative2025, year)}`, suffix: '%', delta: score.negative2025 - score.negative2024 },
+      { label: year === '2025' ? '2024 Baseline' : '2025 Score', value: `${year === '2025' ? score.score2024 : score.score2025}`, suffix: '%' },
       { label: 'Top Partner', value: score.sectionNameEn, subtext: 'Current pillar', delta: score.yoyChange },
     ];
   }

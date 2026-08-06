@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { SurveyData, TabId, ViewMode } from './types';
-import { PILLAR_TABS } from './types';
+import type { SurveyData, TabId, ViewMode, SurveyYear } from './types';
+import { PILLAR_TABS, SURVEY_YEARS } from './types';
 import { Header } from './components/Header';
 import { InsightsPanel } from './components/InsightsPanel';
 import { OverviewCharts } from './components/OverviewTab';
@@ -8,10 +8,16 @@ import { PillarCharts } from './components/PillarTab';
 import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis } from './components/KpiCards';
 
 const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
+const SELECTED_YEAR_STORAGE_KEY = 'alfalah-selected-year';
 const VIEW_MODE_PARAM = 'view';
+const YEAR_PARAM = 'year';
 
 function isViewMode(value: string | null): value is ViewMode {
   return value === 'current' || value === 'yoy';
+}
+
+function isSurveyYear(value: string | null): value is SurveyYear {
+  return value === '2024' || value === '2025';
 }
 
 function readViewModeFromUrl(): ViewMode | null {
@@ -44,6 +50,52 @@ function writeViewModeToStorage(mode: ViewMode) {
   }
 }
 
+function readSelectedYearFromUrl(): SurveyYear | null {
+  const value = new URLSearchParams(window.location.search).get(YEAR_PARAM);
+  return isSurveyYear(value) ? value : null;
+}
+
+function readSelectedYearFromSession(): SurveyYear | null {
+  try {
+    const stored = sessionStorage.getItem(SELECTED_YEAR_STORAGE_KEY);
+    return isSurveyYear(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSelectedYearToSession(year: SurveyYear) {
+  try {
+    sessionStorage.setItem(SELECTED_YEAR_STORAGE_KEY, year);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeSelectedYearToStorage(year: SurveyYear) {
+  try {
+    localStorage.setItem(SELECTED_YEAR_STORAGE_KEY, year);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeSelectedYearToUrl(year: SurveyYear) {
+  const url = new URL(window.location.href);
+  url.searchParams.set(YEAR_PARAM, year);
+  window.history.replaceState(window.history.state, '', url);
+}
+
+function getInitialSelectedYear(): SurveyYear {
+  return readSelectedYearFromUrl() ?? readSelectedYearFromSession() ?? '2025';
+}
+
+function persistSelectedYear(year: SurveyYear) {
+  writeSelectedYearToUrl(year);
+  writeSelectedYearToSession(year);
+  writeSelectedYearToStorage(year);
+}
+
 function writeViewModeToUrl(mode: ViewMode) {
   const url = new URL(window.location.href);
   url.searchParams.set(VIEW_MODE_PARAM, mode);
@@ -51,7 +103,10 @@ function writeViewModeToUrl(mode: ViewMode) {
 }
 
 function getInitialViewMode(): ViewMode {
-  return readViewModeFromUrl() ?? readViewModeFromSession() ?? 'yoy';
+  const year = readSelectedYearFromUrl() ?? readSelectedYearFromSession() ?? '2025';
+  const mode = readViewModeFromUrl() ?? readViewModeFromSession() ?? 'yoy';
+  if (year === '2024' && mode === 'yoy') return 'current';
+  return mode;
 }
 
 function persistViewMode(mode: ViewMode) {
@@ -60,11 +115,17 @@ function persistViewMode(mode: ViewMode) {
   writeViewModeToStorage(mode);
 }
 
+function persistFilters(mode: ViewMode, year: SurveyYear) {
+  persistViewMode(mode);
+  persistSelectedYear(year);
+}
+
 export default function App() {
   const [data, setData] = useState<SurveyData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInitialViewMode());
+  const [selectedYear, setSelectedYear] = useState<SurveyYear>(() => getInitialSelectedYear());
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/survey-data.json`)
@@ -77,21 +138,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    persistViewMode(viewMode);
+    persistFilters(viewMode, selectedYear);
   }, []);
 
   useEffect(() => {
     const onPopState = () => {
       const mode = readViewModeFromUrl() ?? readViewModeFromSession();
+      const year = readSelectedYearFromUrl() ?? readSelectedYearFromSession();
       if (mode) setViewMode(mode);
+      if (year) setSelectedYear(year);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   const handleViewModeChange = (mode: ViewMode) => {
-    persistViewMode(mode);
+    if (selectedYear === '2024' && mode === 'yoy') return;
+    persistFilters(mode, selectedYear);
     setViewMode(mode);
+  };
+
+  const handleSelectedYearChange = (year: SurveyYear) => {
+    persistFilters('current', year);
+    setSelectedYear(year);
+    setViewMode('current');
   };
 
   if (error) {
@@ -105,11 +175,11 @@ export default function App() {
   const activeSection = activeTab !== 'overview' ? data.sections[activeTab] : null;
   const kpiItems =
     activeTab === 'overview'
-      ? buildOverviewKpis(data, viewMode)
+      ? buildOverviewKpis(data, viewMode, selectedYear)
       : activeTab === 'demographics' && activeSection
-        ? buildDemographicsKpis(activeSection, viewMode)
+        ? buildDemographicsKpis(activeSection, viewMode, selectedYear)
         : activeSection?.score
-          ? buildPillarKpis(activeSection.score, viewMode)
+          ? buildPillarKpis(activeSection.score, viewMode, selectedYear)
           : [];
 
   return (
@@ -117,13 +187,14 @@ export default function App() {
       {data.isDemoData && (
         <div className="demo-banner">
           This is a demo dashboard.
-          {/* Demo data — the attached Excel file contains survey structure only. Replace with populated data and run{' '} */}
-          {/* <code>npm run data:build</code> to load real values. */}
         </div>
       )}
       <Header
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
+        selectedYear={selectedYear}
+        onSelectedYearChange={handleSelectedYearChange}
+        availableYears={SURVEY_YEARS}
         updatedAt={data.updatedAt}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as TabId)}
@@ -133,9 +204,9 @@ export default function App() {
         <KpiCards items={kpiItems} viewMode={viewMode} />
         <div className="dashboard-split">
           {activeTab === 'overview' ? (
-            <OverviewCharts data={data} viewMode={viewMode} />
+            <OverviewCharts data={data} viewMode={viewMode} selectedYear={selectedYear} />
           ) : activeSection ? (
-            <PillarCharts section={activeSection} viewMode={viewMode} />
+            <PillarCharts section={activeSection} viewMode={viewMode} selectedYear={selectedYear} />
           ) : (
             <div className="error-state">Section not found</div>
           )}

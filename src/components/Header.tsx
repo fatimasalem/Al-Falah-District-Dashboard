@@ -1,8 +1,12 @@
-import type { ViewMode } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { SurveyYear, ViewMode } from '../types';
 
 interface HeaderProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  selectedYear: SurveyYear;
+  onSelectedYearChange: (year: SurveyYear) => void;
+  availableYears: readonly SurveyYear[];
   updatedAt: string;
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -45,6 +49,14 @@ function IconRefresh() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path d="M1 4v6h6M23 20v-6h-6" />
       <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+    </svg>
+  );
+}
+
+function IconChevronDown() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
     </svg>
   );
 }
@@ -136,11 +148,44 @@ function TabIcon({ name }: { name: string }) {
 export function Header({
   viewMode,
   onViewModeChange,
+  selectedYear,
+  onSelectedYearChange,
+  availableYears,
   updatedAt,
   activeTab,
   onTabChange,
   tabs,
 }: HeaderProps) {
+  const [yearMenuOpen, setYearMenuOpen] = useState(false);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+  const yoyDisabled = selectedYear === '2024';
+
+  useEffect(() => {
+    if (!yearMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!yearDropdownRef.current?.contains(event.target as Node)) {
+        setYearMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setYearMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [yearMenuOpen]);
+
+  const handleYearSelect = (year: SurveyYear) => {
+    onSelectedYearChange(year);
+    setYearMenuOpen(false);
+  };
+
   return (
     <>
       <header className="dashboard-header">
@@ -160,17 +205,41 @@ export function Header({
           </div>
           <div className="header-actions">
             <div className="filter-pills" role="group" aria-label="View mode">
-              <button
-                type="button"
-                className={`filter-pill ${viewMode === 'current' ? 'active' : ''}`}
-                onClick={() => onViewModeChange('current')}
-              >
-                2025
-              </button>
+              <div className="year-dropdown" ref={yearDropdownRef}>
+                <button
+                  type="button"
+                  className={`filter-pill year-dropdown-trigger ${viewMode === 'current' ? 'active' : ''}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={yearMenuOpen}
+                  aria-label={`Select survey year, currently ${selectedYear}`}
+                  onClick={() => setYearMenuOpen((open) => !open)}
+                >
+                  <span>{selectedYear}</span>
+                  <IconChevronDown />
+                </button>
+                {yearMenuOpen && (
+                  <ul className="year-dropdown-menu" role="listbox" aria-label="Survey year">
+                    {availableYears.map((year) => (
+                      <li key={year} role="option" aria-selected={selectedYear === year}>
+                        <button
+                          type="button"
+                          className={`year-dropdown-option ${selectedYear === year ? 'selected' : ''}`}
+                          onClick={() => handleYearSelect(year)}
+                        >
+                          {year}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <button
                 type="button"
                 className={`filter-pill ${viewMode === 'yoy' ? 'active' : ''}`}
                 onClick={() => onViewModeChange('yoy')}
+                disabled={yoyDisabled}
+                title={yoyDisabled ? 'Year-over-year comparison requires 2025 data' : undefined}
+                aria-disabled={yoyDisabled}
               >
                 YoY
               </button>

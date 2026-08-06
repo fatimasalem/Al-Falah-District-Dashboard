@@ -1,4 +1,4 @@
-import type { SurveyData, ViewMode } from '../types';
+import type { SurveyData, SurveyYear, ViewMode } from '../types';
 import {
   PartnerChart,
   DataTable,
@@ -11,14 +11,16 @@ import {
   getEnvironmentChartData,
   getHealthHeatmapData,
   getScoreValue,
+  pickYearValue,
 } from '../utils';
 
 interface OverviewChartsProps {
   data: SurveyData;
   viewMode: ViewMode;
+  selectedYear: SurveyYear;
 }
 
-export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
+export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsProps) {
   const scores = Object.values(data.sectionScores)
     .map((s) => ({
       name: s.sectionNameEn,
@@ -27,16 +29,20 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
       score2025: s.score2025,
       value2024: s.score2024,
       value2025: s.score2025,
-      value: viewMode === 'current' ? s.score2025 : s.yoyChange,
-      satisfied: s.positive2025,
-      unsatisfied: s.negative2025,
+      value: viewMode === 'current'
+        ? pickYearValue(s.score2024, s.score2025, selectedYear)
+        : s.yoyChange,
+      satisfied: pickYearValue(s.positive2024, s.positive2025, selectedYear),
+      unsatisfied: pickYearValue(s.negative2024, s.negative2025, selectedYear),
     }))
     .sort((a, b) => b.score2025 - a.score2025);
 
   const partnerData = scores.map((s) => ({
     name: s.name.length > 14 ? s.name.slice(0, 12) + '…' : s.name,
     fullName: s.fullName,
-    value: viewMode === 'current' ? s.score2025 : s.value2025 - s.value2024,
+    value: viewMode === 'current'
+      ? pickYearValue(s.value2024, s.value2025, selectedYear)
+      : s.value2025 - s.value2024,
     value2024: s.score2024,
     value2025: s.score2025,
   }));
@@ -61,13 +67,13 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
   const environmentScore = data.sectionScores.environment!;
 
   const educationData = educationSection
-    ? getEducationChartData(educationSection, '2025')
+    ? getEducationChartData(educationSection, selectedYear)
     : [];
   const educationData2024 = educationSection
     ? getEducationChartData(educationSection, '2024')
     : [];
   const environmentData = environmentSection
-    ? getEnvironmentChartData(environmentSection, '2025')
+    ? getEnvironmentChartData(environmentSection, selectedYear)
     : [];
   const environmentData2024 = environmentSection
     ? getEnvironmentChartData(environmentSection, '2024')
@@ -79,13 +85,14 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
   return (
     <div className="main-content">
       <div className="chart-grid-overview">
-        <PartnerChart data={partnerData} mode={viewMode} />
+        <PartnerChart data={partnerData} mode={viewMode} year={selectedYear} />
         {educationData.length > 0 && (
           <EducationDivergingBar
             data={educationData}
             data2024={educationData2024}
             mode={viewMode}
-            score={getScoreValue(educationScore, viewMode)}
+            year={selectedYear}
+            score={getScoreValue(educationScore, viewMode, selectedYear)}
           />
         )}
         {healthHeatmapData.length > 0 && healthScore && (
@@ -93,6 +100,7 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
             heatmapData={healthHeatmapData}
             sectionScore={healthScore}
             mode={viewMode}
+            year={selectedYear}
           />
         )}
         {environmentData.length > 0 && (
@@ -100,11 +108,12 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
             data={environmentData}
             data2024={environmentData2024}
             mode={viewMode}
-            score={getScoreValue(environmentScore, viewMode)}
+            year={selectedYear}
+            score={getScoreValue(environmentScore, viewMode, selectedYear)}
           />
         )}
       </div>
-      <DataTable rows={tableRows} mode={viewMode} />
+      <DataTable rows={tableRows} mode={viewMode} year={selectedYear} />
     </div>
   );
 }

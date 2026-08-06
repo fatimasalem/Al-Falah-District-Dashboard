@@ -551,16 +551,35 @@ export function formatDelta(value: number, suffix = 'pp'): string {
   return `${sign}${value.toFixed(1)}${suffix === 'pp' ? '' : ''}${suffix === 'pp' ? ' pp' : suffix === '%' ? '%' : ''}`;
 }
 
-export function getScoreValue(score: SectionScore, mode: ViewMode): number {
-  return mode === 'current' ? score.score2025 : score.yoyChange;
+export function pickYearValue<T>(value2024: T, value2025: T, year: import('./types').SurveyYear): T {
+  return year === '2025' ? value2025 : value2024;
 }
 
-export function getPositiveValue(score: SectionScore, mode: ViewMode): number {
-  return mode === 'current' ? score.positive2025 : score.positive2025 - score.positive2024;
+export function getScoreValue(
+  score: SectionScore,
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  if (mode === 'yoy') return score.yoyChange;
+  return pickYearValue(score.score2024, score.score2025, year);
 }
 
-export function getNegativeValue(score: SectionScore, mode: ViewMode): number {
-  return mode === 'current' ? score.negative2025 : score.negative2025 - score.negative2024;
+export function getPositiveValue(
+  score: SectionScore,
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  if (mode === 'yoy') return score.positive2025 - score.positive2024;
+  return pickYearValue(score.positive2024, score.positive2025, year);
+}
+
+export function getNegativeValue(
+  score: SectionScore,
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  if (mode === 'yoy') return score.negative2025 - score.negative2024;
+  return pickYearValue(score.negative2024, score.negative2025, year);
 }
 
 export function isCategory(q: { type: string }): q is import('./types').CategoryQuestion {
@@ -588,13 +607,17 @@ export function getTopCategories(
   items: import('./types').CategoryQuestion[],
   mode: ViewMode,
   limit = 8,
+  year: import('./types').SurveyYear = '2025',
 ) {
   return items
     .map((q) => ({
       name: translateLabel(q.categoryEn ?? q.categoryAr),
       value2024: q.data['2024'] ?? 0,
       value2025: q.data['2025'] ?? 0,
-      value: mode === 'current' ? (q.data['2025'] ?? 0) : (q.data['2025'] ?? 0) - (q.data['2024'] ?? 0),
+      value:
+        mode === 'current'
+          ? (q.data[year] ?? 0)
+          : (q.data['2025'] ?? 0) - (q.data['2024'] ?? 0),
     }))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
     .slice(0, limit);

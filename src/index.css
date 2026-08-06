@@ -169,6 +169,63 @@ button {
   box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
 }
 
+.filter-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.filter-pill:disabled:hover {
+  color: var(--text-muted);
+}
+
+.year-dropdown {
+  position: relative;
+}
+
+.year-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+  justify-content: center;
+}
+
+.year-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.year-dropdown-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+}
+
+.year-dropdown-option:hover {
+  background: #f3f4f6;
+}
+
+.year-dropdown-option.selected {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .action-btn {
   display: flex;
   align-items: center;
@@ -1004,42 +1061,12 @@ button {
   letter-spacing: -0.02em;
 }
 
-/* ── Partner chart (donut + bar list) ── */
+/* ── Partner chart (bar list) ── */
 .partner-chart-body {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 16px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-.partner-donut-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 0;
-}
-
-.partner-donut-center {
-  position: absolute;
-  text-align: center;
-  pointer-events: none;
-}
-
-.partner-donut-center-value {
-  font-size: 1.375rem;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1;
-}
-
-.partner-donut-center-label {
-  font-size: 0.625rem;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 .partner-chart-body:has(.partner-bar-list-yoy) {
@@ -1513,9 +1540,5 @@ button {
 
   .stat-row {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .partner-chart-body {
-    grid-template-columns: 1fr;
   }
 }
