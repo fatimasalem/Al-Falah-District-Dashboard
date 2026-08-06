@@ -7,11 +7,64 @@ import { OverviewCharts } from './components/OverviewTab';
 import { PillarCharts } from './components/PillarTab';
 import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis } from './components/KpiCards';
 
+const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
+const VIEW_MODE_PARAM = 'view';
+
+function isViewMode(value: string | null): value is ViewMode {
+  return value === 'current' || value === 'yoy';
+}
+
+function readViewModeFromUrl(): ViewMode | null {
+  const value = new URLSearchParams(window.location.search).get(VIEW_MODE_PARAM);
+  return isViewMode(value) ? value : null;
+}
+
+function readViewModeFromSession(): ViewMode | null {
+  try {
+    const stored = sessionStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return isViewMode(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeViewModeToSession(mode: ViewMode) {
+  try {
+    sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeViewModeToStorage(mode: ViewMode) {
+  try {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeViewModeToUrl(mode: ViewMode) {
+  const url = new URL(window.location.href);
+  url.searchParams.set(VIEW_MODE_PARAM, mode);
+  window.history.replaceState(window.history.state, '', url);
+}
+
+function getInitialViewMode(): ViewMode {
+  return readViewModeFromUrl() ?? readViewModeFromSession() ?? 'yoy';
+}
+
+function persistViewMode(mode: ViewMode) {
+  writeViewModeToUrl(mode);
+  writeViewModeToSession(mode);
+  writeViewModeToStorage(mode);
+}
+
 export default function App() {
   const [data, setData] = useState<SurveyData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [viewMode, setViewMode] = useState<ViewMode>('current');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getInitialViewMode());
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/survey-data.json`)
@@ -22,6 +75,24 @@ export default function App() {
       .then(setData)
       .catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    persistViewMode(viewMode);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const mode = readViewModeFromUrl() ?? readViewModeFromSession();
+      if (mode) setViewMode(mode);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    persistViewMode(mode);
+    setViewMode(mode);
+  };
 
   if (error) {
     return <div className="error-state">Error: {error}</div>;
@@ -52,7 +123,7 @@ export default function App() {
       )}
       <Header
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         updatedAt={data.updatedAt}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as TabId)}

@@ -125,6 +125,96 @@ export function formatStatementAxisLabel(text: string): string {
   return fitAxisLabel(compactStatementLabel(text));
 }
 
+const HEALTH_HEATMAP_LABEL_MAX_CHARS = 28;
+
+export function formatHealthHeatmapLabel(text: string): string {
+  const normalized = text.trim().replace(/\.$/, '');
+
+  const exactLabels: Record<string, string> = {
+    'Concerned authorities in the residential area promote raising the level of physical activity and community sports':
+      'Promote activity & sports',
+    'The concerned authorities in the residential area provide behavioral and cultural change programs that encourage physical exercise':
+      'Exercise encouragement programs',
+    'Cleanliness in general': 'General cleanliness',
+    'Treatment of register/counter staff': 'Counter staff treatment',
+    'Treatment and services of doctors': 'Doctor treatment & services',
+    'Treatment of pharmacy staff': 'Pharmacy staff treatment',
+    'Waiting time (turn)': 'Waiting time',
+    'Review dates': 'Review dates',
+    'Specialty clinics': 'Specialty clinics',
+    'Sanitary facilities (bathrooms)': 'Sanitary facilities',
+    'Rapid response to emergency situations': 'Emergency response',
+    'Laboratory readiness': 'Lab readiness',
+    'Radiology and imaging readiness': 'Radiology readiness',
+    'How close the health facility is to the place of residence': 'Facility proximity to home',
+    'The health system in general in government health facilities': 'Govt. health system',
+    'The health system in general in private health facilities': 'Private health system',
+    'The quality of health services provided in private health facilities in general':
+      'Private health service quality',
+    'Prices of health services within hospitals in the residential area': 'Hospital service prices',
+    'Drug prices in hospitals area of ​​residence': 'Hospital drug prices',
+    'Prices of medicines in pharmacies in the area of ​​residence': 'Pharmacy medicine prices',
+    'National vaccination program and distributional equity': 'Vaccination program equity',
+    'Justice in the distribution of health system services to individuals': 'Fair health service access',
+    'Feeling sad or depressed': 'Sadness or depression',
+    'Anxiety or insomnia': 'Anxiety or insomnia',
+    'Concentration or remembering': 'Concentration or memory',
+    'Physical pain': 'Physical pain',
+  };
+
+  if (exactLabels[normalized]) return exactLabels[normalized];
+
+  let label = compactStatementLabel(text);
+
+  const healthReplacements: [RegExp, string][] = [
+    [/^Concerned authorities in .+? promote raising the level of physical activity and community sports/i, 'Promote activity & sports'],
+    [/^The concerned authorities in .+? provide behavioral and cultural change programs that encourage physical exercise/i, 'Exercise encouragement programs'],
+    [/^Concerned authorities in .+? promote raising the level of /i, 'Promote '],
+    [/^The concerned authorities in .+? provide /i, 'Provide '],
+    [/behavioral and cultural change programs that encourage physical exercise/i, 'exercise programs'],
+    [/physical activity and community sports/i, 'activity & sports'],
+    [/how close the health facility is to the place of residence/i, 'Facility proximity to home'],
+    [/the health system in general in government health facilities/i, 'Govt. health system'],
+    [/the health system in general in private health facilities/i, 'Private health system'],
+    [/the quality of health services provided in private health facilities in general/i, 'Private health service quality'],
+    [/prices of health services within hospitals in .+/i, 'Hospital service prices'],
+    [/drug prices in hospitals .+/i, 'Hospital drug prices'],
+    [/prices of medicines in pharmacies in .+/i, 'Pharmacy medicine prices'],
+    [/national vaccination program and distributional equity/i, 'Vaccination program equity'],
+    [/justice in the distribution of health system services to individuals/i, 'Fair health service access'],
+    [/treatment of register\/counter staff/i, 'Counter staff treatment'],
+    [/treatment and services of doctors/i, 'Doctor treatment & services'],
+    [/treatment of pharmacy staff/i, 'Pharmacy staff treatment'],
+    [/waiting time \(turn\)/i, 'Waiting time'],
+    [/sanitary facilities \(bathrooms\)/i, 'Sanitary facilities'],
+    [/rapid response to emergency situations/i, 'Emergency response'],
+    [/radiology and imaging readiness/i, 'Radiology readiness'],
+    [/laboratory readiness/i, 'Lab readiness'],
+    [/feeling sad or depressed/i, 'Sadness or depression'],
+    [/concentration or remembering/i, 'Concentration or memory'],
+  ];
+
+  for (const [pattern, replacement] of healthReplacements) {
+    label = label.replace(pattern, replacement);
+  }
+
+  label = label.replace(/\s+/g, ' ').trim();
+
+  if (label.length <= HEALTH_HEATMAP_LABEL_MAX_CHARS) return label;
+
+  const removableWords = new Set(['the', 'of', 'and', 'a', 'an', 'in', 'to', 'for', 'with']);
+  let words = label.split(' ');
+  while (words.join(' ').length > HEALTH_HEATMAP_LABEL_MAX_CHARS && words.length > 3) {
+    const removableIndex = words.findIndex(
+      (word, index) => index > 0 && index < words.length - 1 && removableWords.has(word.toLowerCase()),
+    );
+    if (removableIndex === -1) break;
+    words.splice(removableIndex, 1);
+  }
+
+  return words.join(' ');
+}
+
 export function getIncomeComfortPercent(data: SurveyData, year: '2024' | '2025'): number {
   const questions = data.sections.income?.questions ?? [];
   return questions
@@ -188,7 +278,11 @@ export function getLikertBreakdownValues(
   };
 }
 
-export function getEducationChartData(section: import('./types').Section, year: '2024' | '2025') {
+export function isLikert(q: { type: string }): q is import('./types').LikertQuestion {
+  return q.type === 'likert' || q.type === 'rating';
+}
+
+function getTopLikertStatements(section: import('./types').Section, limit = 5) {
   const seen = new Set<string>();
   return section.questions
     .filter(isLikert)
@@ -197,45 +291,99 @@ export function getEducationChartData(section: import('./types').Section, year: 
       seen.add(q.statementAr);
       return true;
     })
-    .slice(0, 5)
-    .map((q) => {
-      const breakdown = q.data[year]?.breakdown ?? {};
-      const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
-      const fullName = q.statementEn ?? q.statementAr;
-      return {
-        name: formatStatementAxisLabel(fullName),
-        fullName,
-        dissatisfied: -dissatisfied,
-        neutral,
-        satisfied,
-      };
-    });
+    .slice(0, limit);
+}
+
+export function getEducationChartData(section: import('./types').Section, year: '2024' | '2025') {
+  return getTopLikertStatements(section).map((q) => {
+    const breakdown = q.data[year]?.breakdown ?? {};
+    const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+    const total = dissatisfied + neutral + satisfied;
+    const scale = total > 0 ? 100 / total : 0;
+    const fullName = q.statementEn ?? q.statementAr;
+    return {
+      name: formatStatementAxisLabel(fullName),
+      fullName,
+      dissatisfied: dissatisfied * scale,
+      neutral: neutral * scale,
+      satisfied: satisfied * scale,
+    };
+  });
 }
 
 export function getEnvironmentChartData(section: import('./types').Section, year: '2024' | '2025') {
-  const seen = new Set<string>();
-  return section.questions
-    .filter(isLikert)
-    .filter((q) => {
-      if (seen.has(q.statementAr)) return false;
-      seen.add(q.statementAr);
-      return true;
-    })
-    .slice(0, 5)
-    .map((q) => {
-      const breakdown = q.data[year]?.breakdown ?? {};
-      const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
-      const total = dissatisfied + neutral + satisfied;
-      const scale = total > 0 ? 100 / total : 0;
-      const fullName = q.statementEn ?? q.statementAr;
-      return {
-        name: formatStatementAxisLabel(fullName),
-        fullName,
-        dissatisfied: dissatisfied * scale,
-        neutral: neutral * scale,
-        satisfied: satisfied * scale,
-      };
-    });
+  return getTopLikertStatements(section).map((q) => {
+    const breakdown = q.data[year]?.breakdown ?? {};
+    const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+    const total = dissatisfied + neutral + satisfied;
+    const scale = total > 0 ? 100 / total : 0;
+    const fullName = q.statementEn ?? q.statementAr;
+    return {
+      name: formatStatementAxisLabel(fullName),
+      fullName,
+      dissatisfied: dissatisfied * scale,
+      neutral: neutral * scale,
+      satisfied: satisfied * scale,
+    };
+  });
+}
+
+export function mergeStatementComparisonData(
+  data2024: {
+    name: string;
+    fullName: string;
+    dissatisfied: number;
+    neutral: number;
+    satisfied: number;
+  }[],
+  data2025: {
+    name: string;
+    fullName: string;
+    dissatisfied: number;
+    neutral: number;
+    satisfied: number;
+  }[],
+) {
+  return data2025.map((row2025, index) => {
+    const row2024 = data2024[index] ?? row2025;
+    return {
+      name: row2025.name,
+      fullName: row2025.fullName,
+      dissatisfied2024: row2024.dissatisfied,
+      neutral2024: row2024.neutral,
+      satisfied2024: row2024.satisfied,
+      dissatisfied2025: row2025.dissatisfied,
+      neutral2025: row2025.neutral,
+      satisfied2025: row2025.satisfied,
+    };
+  });
+}
+
+export function getHealthHeatmapData(section: import('./types').Section) {
+  return getTopLikertStatements(section).map((q) => {
+    const fullName = q.statementEn ?? q.statementAr;
+    return {
+      name: formatHealthHeatmapLabel(fullName),
+      fullName,
+      agreement2024: q.data['2024']?.agreement ?? 0,
+      agreement2025: q.data['2025']?.agreement ?? 0,
+    };
+  });
+}
+
+export function getStatementYoYChartData(section: import('./types').Section) {
+  return getTopLikertStatements(section).map((q) => {
+    const fullName = q.statementEn ?? q.statementAr;
+    const value2024 = q.data['2024']?.agreement ?? 0;
+    const value2025 = q.data['2025']?.agreement ?? 0;
+    return {
+      name: formatStatementAxisLabel(fullName),
+      fullName,
+      change: value2025 - value2024,
+      value2024,
+      value2025,
+    };
+  });
 }
 
 export type InsightPart = string | { bold: string };
@@ -269,7 +417,23 @@ export function generatePartnerChartInsight(
 
 export function generateEducationChartInsight(
   data: { fullName: string; satisfied: number }[],
+  mode: ViewMode,
+  data2024: { satisfied: number }[] = [],
 ): InsightPart[] {
+  if (mode === 'yoy' && data2024.length > 0) {
+    const bestIndex = data.reduce((best, row, index) => {
+      const change = row.satisfied - (data2024[index]?.satisfied ?? 0);
+      const bestChange = data[best].satisfied - (data2024[best]?.satisfied ?? 0);
+      return change > bestChange ? index : best;
+    }, 0);
+    const change = data[bestIndex].satisfied - (data2024[bestIndex]?.satisfied ?? 0);
+    return [
+      { bold: 'Strongest improvement' },
+      ' at ',
+      { bold: formatDelta(change) },
+      ' on the top-rated education statement.',
+    ];
+  }
   if (data.length === 0) return ['Education satisfaction varies across resident survey statements.'];
   const best = [...data].sort((a, b) => b.satisfied - a.satisfied)[0];
   return [
@@ -281,10 +445,29 @@ export function generateEducationChartInsight(
 }
 
 export function generateHealthChartInsight(
-  satisfied: number,
-  unsatisfied: number,
-  score: number,
+  sectionScore: import('./types').SectionScore,
+  mode: ViewMode,
+  heatmapRows: { agreement2025: number; agreement2024: number }[] = [],
 ): InsightPart[] {
+  const satisfied = sectionScore.positive2025;
+  const unsatisfied = sectionScore.negative2025;
+  const score = sectionScore.score2025;
+
+  if (mode === 'yoy' && heatmapRows.length > 0) {
+    const best = [...heatmapRows].sort(
+      (a, b) => (b.agreement2025 - b.agreement2024) - (a.agreement2025 - a.agreement2024),
+    )[0];
+    const direction = sectionScore.yoyChange >= 0 ? 'improved' : 'declined';
+    return [
+      { bold: 'Health satisfaction' },
+      ` ${direction} `,
+      { bold: formatDelta(sectionScore.yoyChange) },
+      ' with agreement reaching ',
+      { bold: `${best.agreement2025.toFixed(1)}%` },
+      ' on the top statement.',
+    ];
+  }
+
   if (satisfied >= unsatisfied) {
     return [
       { bold: 'Satisfied residents' },
@@ -307,7 +490,23 @@ export function generateHealthChartInsight(
 
 export function generateEnvironmentChartInsight(
   data: { fullName: string; satisfied: number; dissatisfied: number }[],
+  mode: ViewMode,
+  data2024: { satisfied: number }[] = [],
 ): InsightPart[] {
+  if (mode === 'yoy' && data2024.length > 0) {
+    const bestIndex = data.reduce((best, row, index) => {
+      const change = row.satisfied - (data2024[index]?.satisfied ?? 0);
+      const bestChange = data[best].satisfied - (data2024[best]?.satisfied ?? 0);
+      return change > bestChange ? index : best;
+    }, 0);
+    const change = data[bestIndex].satisfied - (data2024[bestIndex]?.satisfied ?? 0);
+    return [
+      { bold: 'Strongest improvement' },
+      ' at ',
+      { bold: formatDelta(change) },
+      ' on the top-rated environment statement.',
+    ];
+  }
   if (data.length === 0) return ['Environment satisfaction reflects views on cleanliness and surroundings.'];
   const best = [...data].sort((a, b) => b.satisfied - a.satisfied)[0];
   return [
@@ -362,10 +561,6 @@ export function getPositiveValue(score: SectionScore, mode: ViewMode): number {
 
 export function getNegativeValue(score: SectionScore, mode: ViewMode): number {
   return mode === 'current' ? score.negative2025 : score.negative2025 - score.negative2024;
-}
-
-export function isLikert(q: { type: string }): q is import('./types').LikertQuestion {
-  return q.type === 'likert' || q.type === 'rating';
 }
 
 export function isCategory(q: { type: string }): q is import('./types').CategoryQuestion {

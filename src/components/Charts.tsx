@@ -15,7 +15,7 @@ import {
   Pie,
   LabelList,
 } from 'recharts';
-import type { ViewMode } from '../types';
+import type { SectionScore, ViewMode } from '../types';
 import { CHART_COLORS, DESIGN } from '../types';
 import {
   generatePartnerChartInsight,
@@ -23,14 +23,60 @@ import {
   generateHealthChartInsight,
   generateEnvironmentChartInsight,
   generatePillarTableInsight,
+  formatDelta,
+  mergeStatementComparisonData,
   type InsightPart,
 } from '../utils';
 
-const STATEMENT_ROW_HEIGHT = 54;
-const STATEMENT_CHART_CHROME = 56;
+const STATEMENT_ROW_HEIGHT = 64;
+const STATEMENT_CHART_CHROME = 64;
 
 function estimateStatementChartHeight(rowCount: number): number {
-  return Math.max(280, rowCount * STATEMENT_ROW_HEIGHT + STATEMENT_CHART_CHROME);
+  return Math.max(320, rowCount * STATEMENT_ROW_HEIGHT + STATEMENT_CHART_CHROME);
+}
+
+function BarYearTopLabel({
+  x,
+  y,
+  width,
+  value,
+  year,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  value?: number;
+  year: string;
+}) {
+  if (!value || value <= 0 || x == null || y == null || width == null) return null;
+  return (
+    <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#64748b">
+      {year}
+    </text>
+  );
+}
+
+function BarYearEndLabel({
+  x,
+  y,
+  width,
+  height,
+  value,
+  year,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
+  year: string;
+}) {
+  if (!value || value <= 0 || x == null || y == null || width == null || height == null) return null;
+  return (
+    <text x={x + width + 8} y={y + height / 2} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="#64748b">
+      {year}
+    </text>
+  );
 }
 
 interface StatementChartRow {
@@ -76,6 +122,18 @@ function StatementChartShell({
 function segmentLabel(value: number): string {
   const amount = Math.abs(value);
   return amount >= 6 ? `${amount.toFixed(0)}%` : '';
+}
+
+function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
+  if (mode === 'current') {
+    return <span className="chart-badge">{score.toFixed(1)}% Score</span>;
+  }
+
+  return (
+    <span className={`chart-badge ${score < 0 ? 'chart-badge-negative' : 'chart-badge-yoy'}`}>
+      {formatDelta(score)} YoY
+    </span>
+  );
 }
 
 interface ChartTooltipEntry {
@@ -273,17 +331,36 @@ export function TrendChart({ overall2024, overall2025, mode }: TrendChartProps) 
 }
 
 interface PartnerChartProps {
-  data: { name: string; value: number; fullName?: string }[];
+  data: { name: string; value: number; fullName?: string; value2024?: number; value2025?: number }[];
   mode: ViewMode;
 }
 
+function PartnerBarChange({ previous, current }: { previous: number; current: number }) {
+  const change = current - previous;
+  const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
+  const className = direction === 'up' ? 'growth-positive' : direction === 'down' ? 'growth-negative' : 'growth-neutral';
+  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
+  const prefix = change > 0 ? '+' : '';
+
+  return (
+    <span className={`partner-bar-change trend-value ${className}`}>
+      <span className="trend-arrow" aria-hidden="true">{arrow}</span>
+      {prefix}{change.toFixed(1)} pp
+    </span>
+  );
+}
+
 export function PartnerChart({ data, mode }: PartnerChartProps) {
-  const sorted = [...data].sort((a, b) => b.value - a.value).slice(0, 7);
+  const isCurrent = mode === 'current';
+  const getScore = (item: PartnerChartProps['data'][number]) =>
+    isCurrent ? item.value : (item.value2025 ?? item.value);
+  const sorted = [...data].sort((a, b) => getScore(b) - getScore(a)).slice(0, 7);
   const top = sorted[0];
+  const maxScore = Math.max(...sorted.map(getScore), 1);
   const pieData = sorted.map((d, i) => ({
     name: d.name,
     fullName: d.fullName ?? d.name,
-    value: Math.max(d.value, 0),
+    value: Math.max(getScore(d), 0),
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
   const insight = generatePartnerChartInsight(data, mode);
@@ -294,13 +371,13 @@ export function PartnerChart({ data, mode }: PartnerChartProps) {
         <div>
           <div className="chart-title">Satisfaction by Pillar</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? 'Share of total — 2025 scores' : 'YoY change by pillar'}
+            {isCurrent ? 'Share of total — 2025 scores' : '2024 vs 2025 scores by pillar'}
           </div>
         </div>
       </div>
       <div className="partner-chart-body">
         <div className="partner-donut-wrap">
-          <ResponsiveContainer width={160} height={160}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={160}>
             <PieChart>
               <Pie
                 data={pieData}
@@ -336,27 +413,71 @@ export function PartnerChart({ data, mode }: PartnerChartProps) {
           </ResponsiveContainer>
           {top && (
             <div className="partner-donut-center">
-              <div className="partner-donut-center-value">{top.value.toFixed(0)}%</div>
+              <div className="partner-donut-center-value">{getScore(top).toFixed(0)}%</div>
               <div className="partner-donut-center-label">{top.name}</div>
             </div>
           )}
         </div>
-        <div className="partner-bar-list">
-          {sorted.map((item, i) => (
-            <div key={item.name} className="partner-bar-item">
-              <span className="partner-bar-label">{item.fullName ?? item.name}</span>
-              <span className="partner-bar-pct">{item.value.toFixed(1)}%</span>
-              <div className="partner-bar-track">
-                <div
-                  className="partner-bar-fill"
-                  style={{
-                    width: `${Math.min(100, (item.value / (sorted[0]?.value || 1)) * 100)}%`,
-                    background: CHART_COLORS[i % CHART_COLORS.length],
-                  }}
-                />
+        <div className={`partner-bar-list ${!isCurrent ? 'partner-bar-list-yoy' : ''}`}>
+          {sorted.map((item, i) => {
+            const score2025 = item.value2025 ?? item.value;
+            const score2024 = item.value2024 ?? score2025 - item.value;
+            const barColor = CHART_COLORS[i % CHART_COLORS.length];
+
+            return (
+              <div key={item.name} className={`partner-bar-item ${!isCurrent ? 'partner-bar-item-yoy' : ''}`}>
+                <span className="partner-bar-label">{item.fullName ?? item.name}</span>
+                <span className="partner-bar-pct">
+                  {isCurrent ? (
+                    `${score2025.toFixed(1)}%`
+                  ) : (
+                    <>
+                      {score2025.toFixed(1)}%
+                      <PartnerBarChange previous={score2024} current={score2025} />
+                    </>
+                  )}
+                </span>
+                {isCurrent ? (
+                  <div className="partner-bar-track">
+                    <div
+                      className="partner-bar-fill"
+                      style={{
+                        width: `${Math.min(100, (score2025 / maxScore) * 100)}%`,
+                        background: barColor,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="partner-bar-dual">
+                    <div className="partner-bar-dual-row">
+                      <span className="partner-bar-year">2024</span>
+                      <div className="partner-bar-track">
+                        <div
+                          className="partner-bar-fill partner-bar-fill-muted"
+                          style={{
+                            width: `${Math.min(100, (score2024 / maxScore) * 100)}%`,
+                            background: barColor,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="partner-bar-dual-row">
+                      <span className="partner-bar-year">2025</span>
+                      <div className="partner-bar-track">
+                        <div
+                          className="partner-bar-fill"
+                          style={{
+                            width: `${Math.min(100, (score2025 / maxScore) * 100)}%`,
+                            background: barColor,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <ChartInsightFooter insight={insight} />
@@ -644,7 +765,7 @@ function EducationCategoryTick({
   x?: number;
   y?: number;
   payload?: { value?: string };
-  rows: EducationChartRow[];
+  rows: Array<{ name: string; fullName: string }>;
 }) {
   const label = payload?.value ?? '';
   const row = rows.find((item) => item.name === label);
@@ -665,29 +786,186 @@ function EducationCategoryTick({
   );
 }
 
-function normalizeEducationChartData(data: EducationChartRow[]): EducationChartRow[] {
-  return data.map((row) => {
-    const dissatisfied = Math.abs(row.dissatisfied);
-    const total = dissatisfied + row.neutral + row.satisfied;
-    const scale = total > 0 ? 100 / total : 0;
-    return {
-      ...row,
-      dissatisfied: dissatisfied * scale,
-      neutral: row.neutral * scale,
-      satisfied: row.satisfied * scale,
-    };
-  });
-}
+type StatementComparisonRow = {
+  name: string;
+  fullName: string;
+  dissatisfied2024: number;
+  neutral2024: number;
+  satisfied2024: number;
+  dissatisfied2025: number;
+  neutral2025: number;
+  satisfied2025: number;
+};
+
+const EDUCATION_CHART_MARGIN = { top: 12, right: 12, left: 4, bottom: 48 };
+const EDUCATION_COMPARISON_MARGIN = { top: 28, right: 12, left: 4, bottom: 48 };
 
 interface EducationDivergingBarProps {
   data: EducationChartRow[];
+  data2024: EducationChartRow[];
   mode: ViewMode;
   score: number;
 }
 
-export function EducationDivergingBar({ data, mode, score }: EducationDivergingBarProps) {
-  const chartData = normalizeEducationChartData(data);
-  const insight = generateEducationChartInsight(data);
+function renderEducationCurrentChart(data: EducationChartRow[], rows: EducationChartRow[]) {
+  return (
+    <BarChart
+      data={data}
+      margin={EDUCATION_CHART_MARGIN}
+      barCategoryGap="18%"
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+      <XAxis
+        dataKey="name"
+        interval={0}
+        height={86}
+        tickLine={false}
+        axisLine={{ stroke: DESIGN.chart.grid }}
+        tick={(props) => <EducationCategoryTick {...props} rows={rows} />}
+      />
+      <YAxis
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => (
+          <ChartTooltip
+            active={active}
+            label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
+            payload={payload?.map((entry) => ({
+              name: String(entry.name ?? 'Value'),
+              value: Number(entry.value),
+              color: String(entry.color ?? entry.fill ?? '#94a3b8'),
+            }))}
+          />
+        )}
+      />
+      <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
+      <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[0, 0, 4, 4]}>
+        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
+        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[4, 4, 0, 0]}>
+        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+    </BarChart>
+  );
+}
+
+function StackedComparisonLegend() {
+  return (
+    <div className="stacked-comparison-legend">
+      <div className="stacked-comparison-years">
+        <span className="year-chip year-chip-muted">2024</span>
+        <span className="year-chip">2025</span>
+      </div>
+      <div className="sentiment-legend">
+        <span className="sentiment-legend-item">
+          <span className="sentiment-legend-swatch" style={{ background: DESIGN.negative }} />
+          Dissatisfied
+        </span>
+        <span className="sentiment-legend-item">
+          <span className="sentiment-legend-swatch" style={{ background: '#94a3b8' }} />
+          Neutral
+        </span>
+        <span className="sentiment-legend-item">
+          <span className="sentiment-legend-swatch" style={{ background: DESIGN.chart.export }} />
+          Satisfied
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function renderEducationComparisonChart(data: StatementComparisonRow[], rows: EducationChartRow[]) {
+  return (
+    <BarChart
+      data={data}
+      margin={EDUCATION_COMPARISON_MARGIN}
+      barCategoryGap="14%"
+      barGap={4}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+      <XAxis
+        dataKey="name"
+        interval={0}
+        height={86}
+        tickLine={false}
+        axisLine={{ stroke: DESIGN.chart.grid }}
+        tick={(props) => <EducationCategoryTick {...props} rows={rows} />}
+      />
+      <YAxis
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => {
+          if (!active || !payload?.length) return null;
+          const row = payload[0]?.payload as StatementComparisonRow;
+          const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
+          const yearKey = year as '2024' | '2025';
+          const segments = [
+            { name: 'Dissatisfied', value: row[`dissatisfied${yearKey}`], color: DESIGN.negative },
+            { name: 'Neutral', value: row[`neutral${yearKey}`], color: '#94a3b8' },
+            { name: 'Satisfied', value: row[`satisfied${yearKey}`], color: DESIGN.chart.export },
+          ];
+          return (
+            <ChartTooltip
+              active={active}
+              label={`${row.fullName} (${year})`}
+              payload={segments.map((entry) => ({
+                name: entry.name,
+                value: entry.value,
+                color: entry.color,
+              }))}
+            />
+          );
+        }}
+      />
+      <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55} radius={[0, 0, 4, 4]}>
+        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
+        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[4, 4, 0, 0]}>
+        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList
+          dataKey="satisfied2024"
+          position="top"
+          content={(props) => <BarYearTopLabel {...props} year="2024" />}
+        />
+      </Bar>
+      <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none" radius={[0, 0, 4, 4]}>
+        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
+        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[4, 4, 0, 0]}>
+        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList
+          dataKey="satisfied2025"
+          position="top"
+          content={(props) => <BarYearTopLabel {...props} year="2025" />}
+        />
+      </Bar>
+    </BarChart>
+  );
+}
+
+export function EducationDivergingBar({ data, data2024, mode, score }: EducationDivergingBarProps) {
+  const isCurrent = mode === 'current';
+  const comparisonData = mergeStatementComparisonData(data2024, data);
+  const insight = generateEducationChartInsight(data, mode, data2024);
 
   return (
     <div className="chart-card chart-card-fill">
@@ -695,91 +973,177 @@ export function EducationDivergingBar({ data, mode, score }: EducationDivergingB
         <div>
           <div className="chart-title">Education Satisfaction</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? '2025 response breakdown by statement' : '2025 satisfaction distribution'}
+            {isCurrent
+              ? '2025 response breakdown by statement'
+              : '2024 and 2025 response breakdown by statement'}
           </div>
         </div>
-        <span className="chart-badge">{score.toFixed(1)}% Score</span>
+        <ChartScoreBadge score={score} mode={mode} />
       </div>
       <div className="chart-card-body">
-        <ResponsiveContainer width="100%" height={340}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 12, right: 12, left: 4, bottom: 4 }}
-            barCategoryGap="18%"
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
-            <XAxis
-              dataKey="name"
-              interval={0}
-              height={86}
-              tickLine={false}
-              axisLine={{ stroke: DESIGN.chart.grid }}
-              tick={(props) => <EducationCategoryTick {...props} rows={chartData} />}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
-              domain={[0, 100]}
-              ticks={[0, 25, 50, 75, 100]}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-              content={({ active, payload }) => (
-                <ChartTooltip
-                  active={active}
-                  label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
-                  payload={payload?.map((entry) => ({
-                    name: String(entry.name ?? 'Value'),
-                    value: Number(entry.value),
-                    color: String(entry.color ?? entry.fill ?? '#94a3b8'),
-                  }))}
-                />
-              )}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-            <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[0, 0, 4, 4]}>
-              <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-            <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-              <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-            <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[4, 4, 0, 0]}>
-              <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-          </BarChart>
+        <ResponsiveContainer width="100%" height={isCurrent ? 340 : 368}>
+          {isCurrent
+            ? renderEducationCurrentChart(data, data)
+            : renderEducationComparisonChart(comparisonData, data)}
         </ResponsiveContainer>
+        {!isCurrent && <StackedComparisonLegend />}
       </div>
       <ChartInsightFooter insight={insight} />
     </div>
   );
 }
 
-interface HealthWaffleChartProps {
-  satisfied: number;
-  unsatisfied: number;
-  neutral: number;
-  score: number;
+interface HealthHeatmapChartProps {
+  heatmapData: {
+    name: string;
+    fullName: string;
+    agreement2024: number;
+    agreement2025: number;
+  }[];
+  sectionScore: SectionScore;
   mode: ViewMode;
 }
 
-export function HealthWaffleChart({ satisfied, unsatisfied, neutral, score, mode }: HealthWaffleChartProps) {
-  const totalCells = 100;
-  const satisfiedCells = Math.round(satisfied);
-  const unsatisfiedCells = Math.round(unsatisfied);
-  const neutralCells = Math.max(0, totalCells - satisfiedCells - unsatisfiedCells);
-  const insight = generateHealthChartInsight(satisfied, unsatisfied, score);
+function agreementHeatColor(value: number): string {
+  const clamped = Math.max(0, Math.min(100, value));
+  if (clamped >= 70) return `rgba(16, 185, 129, ${0.28 + ((clamped - 70) / 30) * 0.52})`;
+  if (clamped >= 40) return `rgba(245, 158, 11, ${0.28 + ((clamped - 40) / 30) * 0.42})`;
+  return `rgba(220, 38, 38, ${0.28 + (clamped / 40) * 0.42})`;
+}
 
-  const cells: ('satisfied' | 'unsatisfied' | 'neutral')[] = [
-    ...Array(satisfiedCells).fill('satisfied' as const),
-    ...Array(unsatisfiedCells).fill('unsatisfied' as const),
-    ...Array(neutralCells).fill('neutral' as const),
-  ];
+function agreementHeatTextColor(value: number): string {
+  const clamped = Math.max(0, Math.min(100, value));
+  return clamped >= 55 ? '#ffffff' : '#1f2937';
+}
 
-  const cellColors = {
-    satisfied: DESIGN.chart.export,
-    unsatisfied: DESIGN.negative,
-    neutral: '#e2e8f0',
+function getHealthStatementIconType(fullName: string): string {
+  const lower = fullName.toLowerCase();
+  if (/physical activity|community sports|physical exercise|exercise programs/i.test(lower)) return 'activity';
+  if (/cleanliness|hygiene|sanitary/i.test(lower)) return 'cleanliness';
+  if (/register|counter staff|pharmacy staff|staff/i.test(lower)) return 'staff';
+  if (/doctor|treatment and services/i.test(lower)) return 'doctor';
+  if (/waiting time|review dates/i.test(lower)) return 'clock';
+  if (/specialty clinics|health facility|health system|health services|hospitals|clinics/i.test(lower)) return 'facility';
+  if (/emergency|rapid response/i.test(lower)) return 'emergency';
+  if (/laboratory|lab readiness|radiology|imaging/i.test(lower)) return 'lab';
+  if (/vaccination|medicine|drug prices|pharmacy/i.test(lower)) return 'medicine';
+  if (/sad|depressed|anxiety|insomnia|concentration|remembering|fear|unity|boredom|physical pain/i.test(lower)) return 'wellness';
+  if (/justice|distribution|equity|access/i.test(lower)) return 'equity';
+  if (/proximity|close to/i.test(lower)) return 'location';
+  return 'health';
+}
+
+function HealthStatementIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
   };
+
+  switch (getHealthStatementIconType(fullName)) {
+    case 'activity':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="5" r="2" />
+          <path d="M10 22V12l-2-4h8l-2 4v10" />
+          <path d="M8 12h8" />
+        </svg>
+      );
+    case 'cleanliness':
+      return (
+        <svg {...props}>
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+          <path d="M5 19h14" />
+        </svg>
+      );
+    case 'staff':
+      return (
+        <svg {...props}>
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    case 'doctor':
+      return (
+        <svg {...props}>
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+      );
+    case 'clock':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+    case 'facility':
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" />
+          <path d="M12 7v3" />
+        </svg>
+      );
+    case 'emergency':
+      return (
+        <svg {...props}>
+          <path d="M12 3l9 16H3L12 3z" />
+          <path d="M12 9v4M12 17h.01" />
+        </svg>
+      );
+    case 'lab':
+      return (
+        <svg {...props}>
+          <path d="M9 3h6v7l4 11H5L9 10V3z" />
+          <path d="M9 3h6" />
+        </svg>
+      );
+    case 'medicine':
+      return (
+        <svg {...props}>
+          <path d="M8 8l8 8M9 3h6l1 5H8L9 3zM8 21l-1-5h10l-1 5H8z" />
+        </svg>
+      );
+    case 'wellness':
+      return (
+        <svg {...props}>
+          <path d="M12 21s-7-4.5-7-10a4 4 0 017-2 4 4 0 017 2c0 5.5-7 10-7 10z" />
+        </svg>
+      );
+    case 'equity':
+      return (
+        <svg {...props}>
+          <path d="M12 3l7 4v6c0 5-3.5 8-7 8s-7-3-7-8V7l7-4z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
+    case 'location':
+      return (
+        <svg {...props}>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <path d="M12 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4l2-4z" />
+          <path d="M6 18h12" />
+        </svg>
+      );
+  }
+}
+
+export function HealthHeatmapChart({ heatmapData, sectionScore, mode }: HealthHeatmapChartProps) {
+  if (!sectionScore || heatmapData.length === 0) return null;
+
+  const isCurrent = mode === 'current';
+  const badgeScore = isCurrent ? sectionScore.score2025 : sectionScore.yoyChange;
+  const insight = generateHealthChartInsight(sectionScore, mode, heatmapData);
 
   return (
     <div className="chart-card chart-card-fill">
@@ -787,30 +1151,57 @@ export function HealthWaffleChart({ satisfied, unsatisfied, neutral, score, mode
         <div>
           <div className="chart-title">Health Satisfaction</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? '2025 resident health sentiment' : '2025 health sentiment breakdown'}
+            {isCurrent
+              ? '2025 agreement by health statement'
+              : 'Agreement heatmap by statement (2024 vs 2025)'}
           </div>
         </div>
-        <span className="chart-badge">{score.toFixed(1)}% Score</span>
+        <ChartScoreBadge score={badgeScore} mode={mode} />
       </div>
-      <div className="waffle-chart">
-        <div className="waffle-grid">
-          {cells.map((type, i) => (
-            <div key={i} className="waffle-cell" style={{ background: cellColors[type] }} />
+      <div className="health-heatmap">
+        <div className={`health-heatmap-grid ${isCurrent ? 'health-heatmap-grid--single' : ''}`}>
+          <div className="health-heatmap-header">
+            <span className="health-heatmap-corner" />
+            {!isCurrent && <span className="health-heatmap-column">2024</span>}
+            <span className="health-heatmap-column">2025</span>
+          </div>
+          {heatmapData.map((row) => (
+            <div className="health-heatmap-row" key={row.fullName}>
+              <div className="health-heatmap-label" title={row.fullName}>
+                <span className="health-heatmap-label-icon">
+                  <HealthStatementIcon fullName={row.fullName} />
+                </span>
+                <span className="health-heatmap-label-text">{row.name}</span>
+              </div>
+              {!isCurrent && (
+                <div
+                  className="health-heatmap-cell"
+                  style={{
+                    background: agreementHeatColor(row.agreement2024),
+                    color: agreementHeatTextColor(row.agreement2024),
+                  }}
+                  title={`${row.fullName} (2024): ${row.agreement2024.toFixed(1)}%`}
+                >
+                  {row.agreement2024.toFixed(0)}%
+                </div>
+              )}
+              <div
+                className="health-heatmap-cell"
+                style={{
+                  background: agreementHeatColor(row.agreement2025),
+                  color: agreementHeatTextColor(row.agreement2025),
+                }}
+                title={`${row.fullName} (2025): ${row.agreement2025.toFixed(1)}%`}
+              >
+                {row.agreement2025.toFixed(0)}%
+              </div>
+            </div>
           ))}
         </div>
-        <div className="waffle-legend">
-          <div className="waffle-legend-item">
-            <span className="waffle-legend-dot" style={{ background: cellColors.satisfied }} />
-            Satisfied <strong>{satisfied.toFixed(1)}%</strong>
-          </div>
-          <div className="waffle-legend-item">
-            <span className="waffle-legend-dot" style={{ background: cellColors.unsatisfied }} />
-            Unsatisfied <strong>{unsatisfied.toFixed(1)}%</strong>
-          </div>
-          <div className="waffle-legend-item">
-            <span className="waffle-legend-dot" style={{ background: cellColors.neutral }} />
-            Neutral <strong>{neutral.toFixed(1)}%</strong>
-          </div>
+        <div className="health-heatmap-scale">
+          <span>Low agreement</span>
+          <span className="health-heatmap-scale-bar" aria-hidden="true" />
+          <span>High agreement</span>
         </div>
       </div>
       <ChartInsightFooter insight={insight} />
@@ -820,6 +1211,7 @@ export function HealthWaffleChart({ satisfied, unsatisfied, neutral, score, mode
 
 interface EnvironmentStackedBarProps {
   data: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
+  data2024: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
   mode: ViewMode;
   score: number;
 }
@@ -890,9 +1282,135 @@ function EnvironmentStatementIcon({ fullName }: { fullName: string }) {
   }
 }
 
-export function EnvironmentStackedBar({ data, mode, score }: EnvironmentStackedBarProps) {
+const ENVIRONMENT_CHART_MARGIN = { top: 8, right: 48, left: 4, bottom: 36 };
+
+function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data']) {
+  return (
+    <BarChart
+      data={data}
+      layout="vertical"
+      margin={ENVIRONMENT_CHART_MARGIN}
+      barCategoryGap="12%"
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+      <XAxis
+        type="number"
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        allowDataOverflow
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => (
+          <ChartTooltip
+            active={active}
+            label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
+            payload={payload?.map((entry) => ({
+              name: String(entry.name ?? 'Value'),
+              value: Number(entry.value),
+              color: String(entry.color ?? entry.fill ?? '#94a3b8'),
+            }))}
+          />
+        )}
+      />
+      <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
+      <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied">
+        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
+        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[0, 4, 4, 0]}>
+        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+    </BarChart>
+  );
+}
+
+function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
+  return (
+    <BarChart
+      data={data}
+      layout="vertical"
+      margin={ENVIRONMENT_CHART_MARGIN}
+      barCategoryGap="10%"
+      barGap={3}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+      <XAxis
+        type="number"
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        allowDataOverflow
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => {
+          if (!active || !payload?.length) return null;
+          const row = payload[0]?.payload as StatementComparisonRow;
+          const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
+          const yearKey = year as '2024' | '2025';
+          const segments = [
+            { name: 'Dissatisfied', value: row[`dissatisfied${yearKey}`], color: DESIGN.negative },
+            { name: 'Neutral', value: row[`neutral${yearKey}`], color: '#94a3b8' },
+            { name: 'Satisfied', value: row[`satisfied${yearKey}`], color: DESIGN.chart.export },
+          ];
+          return (
+            <ChartTooltip
+              active={active}
+              label={`${row.fullName} (${year})`}
+              payload={segments.map((entry) => ({
+                name: entry.name,
+                value: entry.value,
+                color: entry.color,
+              }))}
+            />
+          );
+        }}
+      />
+      <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55}>
+        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
+        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[0, 4, 4, 0]}>
+        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList
+          dataKey="satisfied2024"
+          position="right"
+          content={(props) => <BarYearEndLabel {...props} year="2024" />}
+        />
+      </Bar>
+      <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none">
+        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
+        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+      </Bar>
+      <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[0, 4, 4, 0]}>
+        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={{ fontSize: 8, fill: '#fff', fontWeight: 600 }} />
+        <LabelList
+          dataKey="satisfied2025"
+          position="right"
+          content={(props) => <BarYearEndLabel {...props} year="2025" />}
+        />
+      </Bar>
+    </BarChart>
+  );
+}
+
+export function EnvironmentStackedBar({ data, data2024, mode, score }: EnvironmentStackedBarProps) {
+  const isCurrent = mode === 'current';
+  const comparisonData = mergeStatementComparisonData(data2024, data);
   const chartHeight = estimateStatementChartHeight(data.length);
-  const insight = generateEnvironmentChartInsight(data);
+  const insight = generateEnvironmentChartInsight(data, mode, data2024);
 
   return (
     <div className="chart-card chart-card-fill">
@@ -900,10 +1418,12 @@ export function EnvironmentStackedBar({ data, mode, score }: EnvironmentStackedB
         <div>
           <div className="chart-title">Environment Satisfaction</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? '2025 response breakdown by statement' : '2025 satisfaction distribution'}
+            {isCurrent
+              ? '2025 response breakdown by statement'
+              : '2024 and 2025 response breakdown by statement'}
           </div>
         </div>
-        <span className="chart-badge">{score.toFixed(1)}% Score</span>
+        <ChartScoreBadge score={score} mode={mode} />
       </div>
       <div className="chart-card-body">
         <StatementChartShell
@@ -911,48 +1431,11 @@ export function EnvironmentStackedBar({ data, mode, score }: EnvironmentStackedB
           chartHeight={chartHeight}
           renderLabelIcon={(row) => <EnvironmentStatementIcon fullName={row.fullName} />}
         >
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
-            barCategoryGap="12%"
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
-            <XAxis
-              type="number"
-              tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
-              domain={[0, 100]}
-              allowDataOverflow
-              ticks={[0, 25, 50, 75, 100]}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
-            <Tooltip
-              cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-              content={({ active, payload }) => (
-                <ChartTooltip
-                  active={active}
-                  label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
-                  payload={payload?.map((entry) => ({
-                    name: String(entry.name ?? 'Value'),
-                    value: Number(entry.value),
-                    color: String(entry.color ?? entry.fill ?? '#94a3b8'),
-                  }))}
-                />
-              )}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-            <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied">
-              <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-            <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-              <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-            <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[0, 4, 4, 0]}>
-              <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={{ fontSize: 9, fill: '#fff', fontWeight: 600 }} />
-            </Bar>
-          </BarChart>
+          {isCurrent
+            ? renderEnvironmentCurrentChart(data)
+            : renderEnvironmentComparisonChart(comparisonData)}
         </StatementChartShell>
+        {!isCurrent && <StackedComparisonLegend />}
       </div>
       <ChartInsightFooter insight={insight} />
     </div>

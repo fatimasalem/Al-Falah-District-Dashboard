@@ -3,10 +3,15 @@ import {
   PartnerChart,
   DataTable,
   EducationDivergingBar,
-  HealthWaffleChart,
+  HealthHeatmapChart,
   EnvironmentStackedBar,
 } from './Charts';
-import { getEducationChartData, getEnvironmentChartData } from '../utils';
+import {
+  getEducationChartData,
+  getEnvironmentChartData,
+  getHealthHeatmapData,
+  getScoreValue,
+} from '../utils';
 
 interface OverviewChartsProps {
   data: SurveyData;
@@ -32,6 +37,8 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
     name: s.name.length > 14 ? s.name.slice(0, 12) + '…' : s.name,
     fullName: s.fullName,
     value: viewMode === 'current' ? s.score2025 : s.value2025 - s.value2024,
+    value2024: s.score2024,
+    value2025: s.score2025,
   }));
 
   const tableRows = Object.values(data.sectionScores)
@@ -48,38 +55,53 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
 
   const educationSection = data.sections.education;
   const environmentSection = data.sections.environment;
+  const healthSection = data.sections.health;
   const healthScore = data.sectionScores.health;
-  const educationScore = data.sectionScores.education;
-  const environmentScore = data.sectionScores.environment;
+  const educationScore = data.sectionScores.education!;
+  const environmentScore = data.sectionScores.environment!;
 
   const educationData = educationSection
     ? getEducationChartData(educationSection, '2025')
     : [];
+  const educationData2024 = educationSection
+    ? getEducationChartData(educationSection, '2024')
+    : [];
   const environmentData = environmentSection
     ? getEnvironmentChartData(environmentSection, '2025')
     : [];
-
-  const healthNeutral = Math.max(
-    0,
-    100 - healthScore.positive2025 - healthScore.negative2025,
-  );
+  const environmentData2024 = environmentSection
+    ? getEnvironmentChartData(environmentSection, '2024')
+    : [];
+  const healthHeatmapData = healthSection
+    ? getHealthHeatmapData(healthSection)
+    : [];
 
   return (
     <div className="main-content">
       <div className="chart-grid-overview">
         <PartnerChart data={partnerData} mode={viewMode} />
         {educationData.length > 0 && (
-          <EducationDivergingBar data={educationData} mode={viewMode} score={educationScore.score2025} />
+          <EducationDivergingBar
+            data={educationData}
+            data2024={educationData2024}
+            mode={viewMode}
+            score={getScoreValue(educationScore, viewMode)}
+          />
         )}
-        <HealthWaffleChart
-          satisfied={healthScore.positive2025}
-          unsatisfied={healthScore.negative2025}
-          neutral={healthNeutral}
-          score={healthScore.score2025}
-          mode={viewMode}
-        />
+        {healthHeatmapData.length > 0 && healthScore && (
+          <HealthHeatmapChart
+            heatmapData={healthHeatmapData}
+            sectionScore={healthScore}
+            mode={viewMode}
+          />
+        )}
         {environmentData.length > 0 && (
-          <EnvironmentStackedBar data={environmentData} mode={viewMode} score={environmentScore.score2025} />
+          <EnvironmentStackedBar
+            data={environmentData}
+            data2024={environmentData2024}
+            mode={viewMode}
+            score={getScoreValue(environmentScore, viewMode)}
+          />
         )}
       </div>
       <DataTable rows={tableRows} mode={viewMode} />
