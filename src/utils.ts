@@ -16,9 +16,9 @@ export function getIncomeComfortPercent(data: SurveyData, year: '2024' | '2025')
 
 export function getEmploymentPercent(data: SurveyData, year: '2024' | '2025'): number {
   const questions = data.sections.work?.questions ?? [];
-  const employed = questions.find(
-    (q) => isCategory(q) && q.code === 'Q201' && q.categoryEn === 'Employed',
-  );
+  const employed = questions
+    .filter(isCategory)
+    .find((q) => q.code === 'Q201' && q.categoryEn === 'Employed');
   return employed?.data[year] ?? 0;
 }
 
