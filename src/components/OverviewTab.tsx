@@ -49,6 +49,8 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
   const educationSection = data.sections.education;
   const environmentSection = data.sections.environment;
   const healthScore = data.sectionScores.health;
+  const educationScore = data.sectionScores.education;
+  const environmentScore = data.sectionScores.environment;
 
   const educationData = educationSection
     ? getEducationChartData(educationSection, '2025')
@@ -67,7 +69,7 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
       <div className="chart-grid-overview">
         <PartnerChart data={partnerData} mode={viewMode} />
         {educationData.length > 0 && (
-          <EducationDivergingBar data={educationData} mode={viewMode} />
+          <EducationDivergingBar data={educationData} mode={viewMode} score={educationScore.score2025} />
         )}
         <HealthWaffleChart
           satisfied={healthScore.positive2025}
@@ -77,7 +79,7 @@ export function OverviewCharts({ data, viewMode }: OverviewChartsProps) {
           mode={viewMode}
         />
         {environmentData.length > 0 && (
-          <EnvironmentStackedBar data={environmentData} mode={viewMode} />
+          <EnvironmentStackedBar data={environmentData} mode={viewMode} score={environmentScore.score2025} />
         )}
       </div>
       <DataTable rows={tableRows} mode={viewMode} />

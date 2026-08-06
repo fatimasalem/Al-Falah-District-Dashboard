@@ -682,9 +682,10 @@ function normalizeEducationChartData(data: EducationChartRow[]): EducationChartR
 interface EducationDivergingBarProps {
   data: EducationChartRow[];
   mode: ViewMode;
+  score: number;
 }
 
-export function EducationDivergingBar({ data, mode }: EducationDivergingBarProps) {
+export function EducationDivergingBar({ data, mode, score }: EducationDivergingBarProps) {
   const chartData = normalizeEducationChartData(data);
   const insight = generateEducationChartInsight(data);
 
@@ -697,6 +698,7 @@ export function EducationDivergingBar({ data, mode }: EducationDivergingBarProps
             {mode === 'current' ? '2025 response breakdown by statement' : '2025 satisfaction distribution'}
           </div>
         </div>
+        <span className="chart-badge">{score.toFixed(1)}% Score</span>
       </div>
       <div className="chart-card-body">
         <ResponsiveContainer width="100%" height={340}>
@@ -819,6 +821,7 @@ export function HealthWaffleChart({ satisfied, unsatisfied, neutral, score, mode
 interface EnvironmentStackedBarProps {
   data: { name: string; fullName: string; dissatisfied: number; neutral: number; satisfied: number }[];
   mode: ViewMode;
+  score: number;
 }
 
 function getEnvironmentStatementIconType(fullName: string): string {
@@ -887,7 +890,7 @@ function EnvironmentStatementIcon({ fullName }: { fullName: string }) {
   }
 }
 
-export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps) {
+export function EnvironmentStackedBar({ data, mode, score }: EnvironmentStackedBarProps) {
   const chartHeight = estimateStatementChartHeight(data.length);
   const insight = generateEnvironmentChartInsight(data);
 
@@ -900,6 +903,7 @@ export function EnvironmentStackedBar({ data, mode }: EnvironmentStackedBarProps
             {mode === 'current' ? '2025 response breakdown by statement' : '2025 satisfaction distribution'}
           </div>
         </div>
+        <span className="chart-badge">{score.toFixed(1)}% Score</span>
       </div>
       <div className="chart-card-body">
         <StatementChartShell
