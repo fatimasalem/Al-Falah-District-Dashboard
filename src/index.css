@@ -54,9 +54,9 @@ button {
   flex-direction: column;
 }
 
-/* ── Header (white bar, reference style) ── */
+/* ── Header ── */
 .dashboard-header {
-  background: var(--surface);
+  background: transparent;
   border-bottom: 1px solid var(--border);
   padding: 18px 32px 16px;
 }
@@ -204,7 +204,7 @@ button {
 
 /* ── Tab bar ── */
 .tab-bar {
-  background: var(--surface);
+  background: transparent;
   border-bottom: 1px solid var(--border);
   padding: 0 32px;
 }

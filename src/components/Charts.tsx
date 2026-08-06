@@ -35,6 +35,14 @@ function estimateStatementChartHeight(rowCount: number): number {
   return Math.max(320, rowCount * STATEMENT_ROW_HEIGHT + STATEMENT_CHART_CHROME);
 }
 
+type BarLabelCoordinate = number | string | undefined;
+
+function toBarLabelNumber(value: BarLabelCoordinate): number | undefined {
+  if (value == null) return undefined;
+  const num = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
 function BarYearTopLabel({
   x,
   y,
@@ -42,15 +50,19 @@ function BarYearTopLabel({
   value,
   year,
 }: {
-  x?: number;
-  y?: number;
-  width?: number;
-  value?: number;
+  x?: BarLabelCoordinate;
+  y?: BarLabelCoordinate;
+  width?: BarLabelCoordinate;
+  value?: BarLabelCoordinate;
   year: string;
 }) {
-  if (!value || value <= 0 || x == null || y == null || width == null) return null;
+  const nx = toBarLabelNumber(x);
+  const ny = toBarLabelNumber(y);
+  const nwidth = toBarLabelNumber(width);
+  const nvalue = toBarLabelNumber(value);
+  if (!nvalue || nvalue <= 0 || nx == null || ny == null || nwidth == null) return null;
   return (
-    <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#64748b">
+    <text x={nx + nwidth / 2} y={ny - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#64748b">
       {year}
     </text>
   );
@@ -64,16 +76,21 @@ function BarYearEndLabel({
   value,
   year,
 }: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  value?: number;
+  x?: BarLabelCoordinate;
+  y?: BarLabelCoordinate;
+  width?: BarLabelCoordinate;
+  height?: BarLabelCoordinate;
+  value?: BarLabelCoordinate;
   year: string;
 }) {
-  if (!value || value <= 0 || x == null || y == null || width == null || height == null) return null;
+  const nx = toBarLabelNumber(x);
+  const ny = toBarLabelNumber(y);
+  const nwidth = toBarLabelNumber(width);
+  const nheight = toBarLabelNumber(height);
+  const nvalue = toBarLabelNumber(value);
+  if (!nvalue || nvalue <= 0 || nx == null || ny == null || nwidth == null || nheight == null) return null;
   return (
-    <text x={x + width + 8} y={y + height / 2} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="#64748b">
+    <text x={nx + nwidth + 8} y={ny + nheight / 2} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="#64748b">
       {year}
     </text>
   );
