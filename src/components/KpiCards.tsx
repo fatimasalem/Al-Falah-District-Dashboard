@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
-import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear } from '../types';
+import type { ReactElement, ReactNode } from 'react';
+import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear, Section } from '../types';
 import { KPI_GRADIENTS } from '../types';
 import {
   formatDelta,
@@ -10,6 +10,9 @@ import {
   getSafetyPercent,
   getOverviewKpiSentence,
   pickYearValue,
+  getAverageMonthlyIncome,
+  getTopMultiSelectCategory,
+  INCOME_DEBT_EXCLUSIONS,
 } from '../utils';
 
 export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield';
@@ -21,7 +24,7 @@ export interface KpiItem {
   delta?: number;
   deltaLabel?: string;
   suffix?: string;
-  subtext?: string;
+  subtext?: ReactNode;
 }
 
 function KpiIcon({ name }: { name: KpiIconName }) {
@@ -222,4 +225,112 @@ export function buildPillarKpis(
     { label: '2024 Score', value: `${score.score2024}`, suffix: '%' },
     { label: '2025 Score', value: `${score.score2025}`, suffix: '%', delta: score.yoyChange },
   ];
+}
+
+function formatAverageIncome(value: number): string {
+  return `AED ${Math.round(value).toLocaleString('en-US')}`;
+}
+
+function truncateLabel(str: string, max = 32): string {
+  return str.length > max ? `${str.slice(0, max - 1)}…` : str;
+}
+
+function incomeYoySubtext(delta: number, unit: 'pp' | 'pct' = 'pp'): ReactElement {
+  if (Math.abs(delta) < 0.05) {
+    return (
+      <span className="kpi-yoy-subtext">
+        <strong>Unchanged</strong> from <strong>2024</strong>.
+      </span>
+    );
+  }
+
+  const isIncrease = delta > 0;
+  const arrow = isIncrease ? '▲' : '▼';
+  const keyword = isIncrease ? 'increase' : 'decrease';
+  const article = isIncrease ? 'An' : 'A';
+  const amount = unit === 'pp' ? formatDelta(Math.abs(delta)) : `${Math.abs(delta).toFixed(1)}%`;
+
+  return (
+    <span className="kpi-yoy-subtext">
+      {article} <strong>{keyword}</strong> of{' '}
+      <span className={`kpi-yoy-change ${isIncrease ? 'positive' : 'negative'}`}>
+        <strong>{amount}</strong>
+        <span className="kpi-yoy-arrow" aria-hidden="true">{arrow}</span>
+      </span>{' '}
+      from <strong>2024</strong>.
+    </span>
+  );
+}
+
+export function buildIncomeKpis(
+  data: SurveyData,
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const avgIncome2024 = getAverageMonthlyIncome(data, '2024');
+  const avgIncome2025 = getAverageMonthlyIncome(data, '2025');
+  const avgIncome = pickYearValue(avgIncome2024, avgIncome2025, year);
+  const topExpense = getTopMultiSelectCategory(section.questions, 'Q102', year);
+  const topDebt = getTopMultiSelectCategory(section.questions, 'Q103', year, INCOME_DEBT_EXCLUSIONS);
+
+  const expenseDelta = topExpense ? topExpense.value2025 - topExpense.value2024 : 0;
+  const debtDelta = topDebt ? topDebt.value2025 - topDebt.value2024 : 0;
+  const incomePctChange =
+    avgIncome2024 > 0 ? ((avgIncome2025 - avgIncome2024) / avgIncome2024) * 100 : 0;
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Income & Living Score',
+      icon: 'wallet',
+      value: `${pickYearValue(score.score2024, score.score2025, year).toFixed(1)}`,
+      suffix: '%',
+      subtext:
+        mode === 'yoy'
+          ? incomeYoySubtext(score.yoyChange)
+          : 'Overall satisfaction with income and living standards',
+    },
+    {
+      label: 'Avg Monthly Income',
+      icon: 'wallet',
+      value: formatAverageIncome(avgIncome),
+      subtext:
+        mode === 'yoy'
+          ? incomeYoySubtext(incomePctChange, 'pct')
+          : 'Estimated from household income brackets',
+    },
+    {
+      label: 'Top Living Expense',
+      icon: 'wallet',
+      value: topExpense ? `${topExpense.value.toFixed(1)}` : '—',
+      suffix: topExpense ? '%' : undefined,
+      subtext:
+        mode === 'yoy'
+          ? topExpense
+            ? incomeYoySubtext(expenseDelta)
+            : 'Living expenses'
+          : topExpense
+            ? truncateLabel(topExpense.name)
+            : 'No expense data available',
+    },
+    {
+      label: 'Top Debt Obligation',
+      icon: 'wallet',
+      value: topDebt ? `${topDebt.value.toFixed(1)}` : '—',
+      suffix: topDebt ? '%' : undefined,
+      subtext:
+        mode === 'yoy'
+          ? topDebt
+            ? incomeYoySubtext(debtDelta)
+            : 'Debt obligations'
+          : topDebt
+            ? truncateLabel(topDebt.name)
+            : 'No debt data available',
+    },
+  ];
+
+  return cards;
 }

@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import {
   BarChart,
   Bar,
@@ -25,6 +25,11 @@ import {
   generatePillarTableInsight,
   formatDelta,
   mergeStatementComparisonData,
+  generateIncomeSpendingInsight,
+  generateIncomeSavingInsight,
+  generateIncomeBarrierInsight,
+  generateIncomeFeelingInsight,
+  type IncomeChartRow,
   type InsightPart,
 } from '../utils';
 
@@ -207,22 +212,30 @@ function StatementChartShell({
   chartHeight,
   children,
   renderLabelIcon,
+  labelIconClassName,
+  className,
 }: {
   data: StatementChartRow[];
   chartHeight: number;
   children: ReactElement;
   renderLabelIcon?: (row: StatementChartRow) => ReactElement;
+  labelIconClassName?: (row: StatementChartRow) => string | undefined;
+  className?: string;
 }) {
   return (
     <div
-      className="statement-bar-chart"
+      className={`statement-bar-chart ${className ?? ''}`.trim()}
       style={{ height: chartHeight, ['--statement-rows' as string]: data.length }}
     >
       <div className="statement-bar-labels">
         {data.map((row) => (
           <div key={row.fullName} className="statement-bar-label" title={row.fullName}>
             {renderLabelIcon && (
-              <span className="statement-bar-label-icon">{renderLabelIcon(row)}</span>
+              <span
+                className={`statement-bar-label-icon ${labelIconClassName?.(row) ?? ''}`.trim()}
+              >
+                {renderLabelIcon(row)}
+              </span>
             )}
             <span className="statement-bar-label-text">{row.name}</span>
           </div>
@@ -295,13 +308,34 @@ function HeatmapCellValue({
 
 function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
   if (mode === 'current') {
-    return <span className="chart-badge">{score.toFixed(1)}% Score</span>;
+    return (
+      <span className="chart-badge chart-badge-compact">
+        <strong>{score.toFixed(1)}%</strong> Score
+      </span>
+    );
   }
 
+  const arrow = score >= 0 ? '▲' : '▼';
   return (
-    <span className={`chart-badge ${score < 0 ? 'chart-badge-negative' : 'chart-badge-yoy'}`}>
-      {formatDelta(score)} YoY
+    <span className={`chart-badge chart-badge-compact ${score < 0 ? 'chart-badge-negative' : 'chart-badge-yoy'}`}>
+      <strong>{formatDelta(score)}</strong>
+      <span className="chart-badge-arrow" aria-hidden="true">{arrow}</span> YoY
     </span>
+  );
+}
+
+function YearComparisonLegend() {
+  return (
+    <div className="chart-legend chart-legend-bottom-right">
+      <span className="chart-legend-item">
+        <span className="chart-legend-swatch chart-legend-swatch-muted" aria-hidden="true" />
+        2024
+      </span>
+      <span className="chart-legend-item">
+        <span className="chart-legend-swatch chart-legend-swatch-current" aria-hidden="true" />
+        2025
+      </span>
+    </div>
   );
 }
 
@@ -939,16 +973,26 @@ function buildSentimentTooltipPayload(
     .filter((entry) => Math.abs(entry.value) > 0.05);
 }
 
-function SentimentLegend({ showYears = false }: { showYears?: boolean }) {
+function SentimentLegend({
+  showYears = false,
+  align = 'default',
+}: {
+  showYears?: boolean;
+  align?: 'default' | 'bottom-right';
+}) {
   return (
-    <div className="stacked-comparison-legend">
+    <div
+      className={`stacked-comparison-legend ${
+        align === 'bottom-right' ? 'stacked-comparison-legend-bottom-right' : ''
+      }`.trim()}
+    >
       {showYears && (
         <div className="stacked-comparison-years">
           <span className="year-chip year-chip-muted">2024</span>
           <span className="year-chip">2025</span>
         </div>
       )}
-      <div className="sentiment-legend">
+      <div className={`sentiment-legend ${align === 'bottom-right' ? 'sentiment-legend-bottom-right' : ''}`.trim()}>
         {SENTIMENT_LEGEND_ORDER.map((key) => (
           <span key={key} className="sentiment-legend-item">
             <span className="sentiment-legend-swatch" style={{ background: SENTIMENT_COLORS[key] }} />
@@ -1145,7 +1189,7 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
             ? renderEducationCurrentChart(data, data)
             : renderEducationComparisonChart(comparisonData, data)}
         </ResponsiveContainer>
-        <SentimentLegend showYears={!isCurrent} />
+        <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
       <ChartInsightFooter insight={insight} />
     </div>
@@ -1636,7 +1680,7 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
             ? renderEnvironmentCurrentChart(data)
             : renderEnvironmentComparisonChart(comparisonData)}
         </StatementChartShell>
-        <SentimentLegend showYears={!isCurrent} />
+        <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
       <ChartInsightFooter insight={insight} />
     </div>
@@ -1676,6 +1720,518 @@ export function YoYComparisonChart({ items, title = '2024 vs 2025 Comparison' }:
         </BarChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+interface IncomeChartCardProps {
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  insight: InsightPart[];
+  children: ReactNode;
+}
+
+function IncomeChartCard({
+  title,
+  description,
+  badgeScore,
+  mode,
+  insight,
+  children,
+}: IncomeChartCardProps) {
+  return (
+    <div className="chart-card chart-card-fill">
+      <div className="chart-card-header">
+        <div>
+          <div className="chart-title">{title}</div>
+          <div className="chart-subtitle">{description}</div>
+        </div>
+        <ChartScoreBadge score={badgeScore} mode={mode} />
+      </div>
+      <div className="chart-card-body">{children}</div>
+      <ChartInsightFooter insight={insight} />
+    </div>
+  );
+}
+
+const INCOME_PIE_COLORS: Record<string, string> = {
+  Yes: DESIGN.chart.export,
+  No: DESIGN.negative,
+  Higher: DESIGN.negative,
+  Lower: DESIGN.chart.export,
+  Same: '#94a3b8',
+  'Live comfortably': DESIGN.chart.export,
+  'Try to manage': '#94a3b8',
+  'Find it difficult': DESIGN.negative,
+};
+
+function incomePieColor(name: string, index: number): string {
+  return INCOME_PIE_COLORS[name] ?? CHART_COLORS[index % CHART_COLORS.length];
+}
+
+function incomeBarLabelIconClass(name: string, metric: 'spending' | 'feeling'): string {
+  if (metric === 'spending') {
+    if (name === 'Higher') return 'income-bar-label-icon--negative';
+    if (name === 'Lower') return 'income-bar-label-icon--positive';
+    return 'income-bar-label-icon--neutral';
+  }
+  if (name === 'Live comfortably') return 'income-bar-label-icon--positive';
+  if (name === 'Find it difficult') return 'income-bar-label-icon--negative';
+  return 'income-bar-label-icon--neutral';
+}
+
+function IncomeBarLabelIcon({ name, metric }: { name: string; metric: 'spending' | 'feeling' }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  if (metric === 'spending') {
+    switch (name) {
+      case 'Higher':
+        return (
+          <svg {...props}>
+            <path d="M3 17l6-6 4 4 8-8" />
+            <path d="M14 7h7v7" />
+          </svg>
+        );
+      case 'Lower':
+        return (
+          <svg {...props}>
+            <path d="M3 7l6 6 4-4 8 8" />
+            <path d="M14 17h7v-7" />
+          </svg>
+        );
+      case 'Same':
+      default:
+        return (
+          <svg {...props}>
+            <path d="M5 12h14" />
+            <path d="M5 8h10" />
+            <path d="M5 16h10" />
+          </svg>
+        );
+    }
+  }
+
+  switch (name) {
+    case 'Live comfortably':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+          <line x1="9" y1="9" x2="9.01" y2="9" />
+          <line x1="15" y1="9" x2="15.01" y2="9" />
+        </svg>
+      );
+    case 'Try to manage':
+      return (
+        <svg {...props}>
+          <path d="M12 3v18" />
+          <path d="M5 8h14" />
+          <path d="M7 16h10" />
+        </svg>
+      );
+    case 'Find it difficult':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
+          <line x1="9" y1="9" x2="9.01" y2="9" />
+          <line x1="15" y1="9" x2="15.01" y2="9" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+      );
+  }
+}
+
+const INCOME_BAR_CHART_MARGIN = { top: 4, right: 44, left: 0, bottom: 0 };
+const INCOME_BAR_CHART_MARGIN_YOY = { top: 4, right: 64, left: 0, bottom: 0 };
+
+function renderIncomePieSliceLabel({
+  cx = 0,
+  cy = 0,
+  midAngle = 0,
+  outerRadius = 0,
+  value = 0,
+}: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  outerRadius?: number;
+  value?: number;
+}) {
+  if (!value || value < 2) return null;
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 22;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#374151"
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={10}
+      fontWeight={700}
+    >
+      {`${value.toFixed(1)}%`}
+    </text>
+  );
+}
+
+function IncomePieLegend({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`chart-legend chart-legend-bottom-right ${compact ? 'chart-legend-compact' : ''}`.trim()}>
+      <span className="chart-legend-item">
+        <span className="chart-legend-swatch chart-legend-swatch-saving-yes" aria-hidden="true" />
+        Yes
+      </span>
+      <span className="chart-legend-item">
+        <span className="chart-legend-swatch chart-legend-swatch-saving-no" aria-hidden="true" />
+        No
+      </span>
+    </div>
+  );
+}
+
+interface IncomeBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  metric: 'spending' | 'feeling';
+}
+
+export function IncomeBarChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+  metric,
+}: IncomeBarChartCardProps) {
+  const isCurrent = mode === 'current';
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const chartData = sorted.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const insight =
+    metric === 'spending'
+      ? generateIncomeSpendingInsight(data, mode, year)
+      : generateIncomeFeelingInsight(data, mode, year);
+  const chartHeight = Math.max(200, chartData.length * (isCurrent ? 48 : 58));
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      <div className={`income-bar-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
+        <StatementChartShell
+          className="statement-bar-chart-income"
+          data={chartData}
+          chartHeight={chartHeight}
+          renderLabelIcon={(row) => <IncomeBarLabelIcon name={row.name} metric={metric} />}
+          labelIconClassName={(row) => incomeBarLabelIconClass(row.name, metric)}
+        >
+          {isCurrent ? (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={INCOME_BAR_CHART_MARGIN}
+              barCategoryGap="18%"
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']} />
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+              <Tooltip
+                formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                {chartData.map((entry, index) => (
+                  <Cell key={entry.fullName} fill={incomePieColor(entry.name, index)} />
+                ))}
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          ) : (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={INCOME_BAR_CHART_MARGIN_YOY}
+              barCategoryGap="18%"
+              barGap={2}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']} />
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+              <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+              <Bar dataKey="value2024" name="2024" fill={DESIGN.chart.barMuted} radius={[0, 4, 4, 0]} maxBarSize={14}>
+                <LabelList
+                  dataKey="value2024"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                />
+              </Bar>
+              <Bar dataKey="value2025" name="2025" fill={DESIGN.chart.barAlt} radius={[0, 4, 4, 0]} maxBarSize={14}>
+                <LabelList
+                  dataKey="value2025"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          )}
+        </StatementChartShell>
+        {!isCurrent && <YearComparisonLegend />}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+interface IncomePieChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+function renderIncomePie(rows: IncomeChartRow[], yearLabel: string, compact = false) {
+  const pieData = rows
+    .map((row, index) => ({
+      name: row.name,
+      value: yearLabel === '2024' ? row.value2024 : row.value2025,
+      fill: incomePieColor(row.name, index),
+    }))
+    .filter((entry) => entry.value > 0);
+
+  return (
+    <div className={`income-pie-panel ${compact ? 'income-pie-panel-compact' : ''}`.trim()}>
+      {compact && <div className="income-pie-year-label">{yearLabel}</div>}
+      <ResponsiveContainer width="100%" height={compact ? 190 : 240}>
+        <PieChart margin={{ top: 20, right: 36, bottom: compact ? 8 : 36, left: 36 }}>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy={compact ? '50%' : '46%'}
+            innerRadius={compact ? 40 : 46}
+            outerRadius={compact ? 64 : 72}
+            paddingAngle={2}
+            dataKey="value"
+            label={renderIncomePieSliceLabel}
+            labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+          >
+            {pieData.map((entry) => (
+              <Cell key={`${yearLabel}-${entry.name}`} fill={entry.fill} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']} />
+        </PieChart>
+      </ResponsiveContainer>
+      <IncomePieLegend compact={compact} />
+    </div>
+  );
+}
+
+export function IncomePieChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: IncomePieChartCardProps) {
+  const isCurrent = mode === 'current';
+  const insight = generateIncomeSavingInsight(data, mode, year);
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      {isCurrent ? (
+        renderIncomePie(data, year)
+      ) : (
+        <div className="income-pie-dual">
+          {renderIncomePie(data, '2024', true)}
+          {renderIncomePie(data, '2025', true)}
+        </div>
+      )}
+    </IncomeChartCard>
+  );
+}
+
+function getIncomeBarrierIconType(fullName: string): string {
+  const lower = fullName.toLowerCase();
+  if (/income|enough/.test(lower)) return 'income';
+  if (/believe|skeptical/.test(lower)) return 'belief';
+  if (/know how|unsure/.test(lower)) return 'help';
+  if (/debt/.test(lower)) return 'debt';
+  if (/expenses/.test(lower)) return 'expenses';
+  return 'barrier';
+}
+
+function IncomeBarrierIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  switch (getIncomeBarrierIconType(fullName)) {
+    case 'income':
+      return (
+        <svg {...props}>
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+        </svg>
+      );
+    case 'belief':
+      return (
+        <svg {...props}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    case 'help':
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" />
+        </svg>
+      );
+    case 'debt':
+      return (
+        <svg {...props}>
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M2 10h20" />
+        </svg>
+      );
+    case 'expenses':
+      return (
+        <svg {...props}>
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+          <path d="M3 6h18M16 10a4 4 0 01-8 0" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <path d="M12 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4l2-4z" />
+        </svg>
+      );
+  }
+}
+
+interface IncomeBarriersHeatmapProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function IncomeBarriersHeatmap({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: IncomeBarriersHeatmapProps) {
+  const isCurrent = mode === 'current';
+  const insight = generateIncomeBarrierInsight(data, mode, year);
+  const currentValue = (row: IncomeChartRow) => (year === '2025' ? row.value2025 : row.value2024);
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      <div className="health-heatmap income-barriers-heatmap">
+        <div className={`health-heatmap-grid ${isCurrent ? 'health-heatmap-grid--single' : ''}`}>
+          <div className="health-heatmap-header">
+            <span className="health-heatmap-corner" />
+            {!isCurrent && <span className="health-heatmap-column">2024</span>}
+            <span className="health-heatmap-column">{isCurrent ? year : '2025'}</span>
+          </div>
+          {data.map((row) => {
+            const agreement = currentValue(row);
+            return (
+              <div className="health-heatmap-row" key={row.fullName}>
+                <div className="health-heatmap-label" title={row.fullName}>
+                  <span className="health-heatmap-label-icon income-barrier-icon">
+                    <IncomeBarrierIcon fullName={row.fullName} />
+                  </span>
+                  <span className="health-heatmap-label-text">{row.name}</span>
+                </div>
+                {!isCurrent && (
+                  <div
+                    className="health-heatmap-cell"
+                    style={{
+                      background: agreementHeatColor(row.value2024),
+                      color: agreementHeatTextColor(row.value2024),
+                    }}
+                    title={`${row.fullName} (2024): ${row.value2024.toFixed(1)}%`}
+                  >
+                    <HeatmapCellValue value={row.value2024} />
+                  </div>
+                )}
+                <div
+                  className="health-heatmap-cell"
+                  style={{
+                    background: agreementHeatColor(isCurrent ? agreement : row.value2025),
+                    color: agreementHeatTextColor(isCurrent ? agreement : row.value2025),
+                  }}
+                  title={
+                    isCurrent
+                      ? `${row.fullName} (${year}): ${agreement.toFixed(1)}%`
+                      : `${row.fullName} (2025): ${row.value2025.toFixed(1)}% (${formatDelta(row.value2025 - row.value2024)})`
+                  }
+                >
+                  <HeatmapCellValue
+                    value={isCurrent ? agreement : row.value2025}
+                    change={row.value2025 - row.value2024}
+                    showChange={!isCurrent}
+                    invert
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="health-heatmap-scale">
+          <span>Low prevalence</span>
+          <span className="health-heatmap-scale-bar" aria-hidden="true" />
+          <span>High prevalence</span>
+        </div>
+      </div>
+    </IncomeChartCard>
   );
 }
 

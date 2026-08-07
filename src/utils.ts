@@ -6,6 +6,64 @@ const INCOME_COMFORT_CATEGORIES = [
   'We live comfortably on current income',
 ];
 
+const INCOME_BRACKET_MIDPOINTS: Record<string, number> = {
+  'Less than 5000 dirhams': 2500,
+  '5000-10000 dirhams': 7500,
+  '10,001-20,000 dirhams': 15000,
+  '20,001-30,000 dirhams': 25000,
+  '30,001-50,000 dirhams': 40000,
+  'More than 50,000 dirhams': 60000,
+};
+
+const INCOME_FEELING_GROUPS = [
+  {
+    name: 'Live comfortably',
+    categories: [
+      'We live very comfortably on current income',
+      'We live comfortably on current income',
+    ],
+  },
+  {
+    name: 'Try to manage',
+    categories: ['We manage on current income'],
+  },
+  {
+    name: 'Find it difficult',
+    categories: [
+      'We find things very difficult on current income',
+      'We find things difficult on current income',
+    ],
+  },
+] as const;
+
+const DEBT_NONE_CATEGORIES = new Set(['There is no debt', 'لا يوجد ديون']);
+
+export const INCOME_DEBT_EXCLUSIONS = DEBT_NONE_CATEGORIES;
+
+const INCOME_CATEGORY_LABELS: Record<string, string> = {
+  higher: 'Higher',
+  less: 'Lower',
+  'As it is': 'Same',
+  no: 'No',
+  Yes: 'Yes',
+};
+
+const INCOME_BARRIER_LABELS: Record<string, string> = {
+  'My income is not enough to save': 'Insufficient income',
+  "I don't believe in saving": 'Skeptical of saving',
+  "I don't know how to save": 'Unsure how to save',
+  'I have a lot of debt': 'Heavy debt load',
+  'I have a lot of expenses': 'High expenses',
+};
+
+export type IncomeChartRow = {
+  name: string;
+  fullName: string;
+  value2024: number;
+  value2025: number;
+  value: number;
+};
+
 const STATEMENT_COMPACT_MAX_CHARS = 46;
 const AXIS_LABEL_MAX_LINES = 2;
 const AXIS_LABEL_MAX_CHARS = 21;
@@ -221,6 +279,309 @@ export function getIncomeComfortPercent(data: SurveyData, year: '2024' | '2025')
     .filter(isCategory)
     .filter((q) => q.code === 'Q101' && INCOME_COMFORT_CATEGORIES.includes(q.categoryEn ?? ''))
     .reduce((sum, q) => sum + (q.data[year] ?? 0), 0);
+}
+
+export function getAverageMonthlyIncome(data: SurveyData, year: '2024' | '2025'): number {
+  const questions = data.sections.demographics?.questions ?? [];
+  const brackets = questions.filter(isCategory).filter((q) => q.code === 'Q909');
+  let weightedSum = 0;
+  let totalWeight = 0;
+
+  for (const bracket of brackets) {
+    const midpoint =
+      INCOME_BRACKET_MIDPOINTS[bracket.categoryEn ?? ''] ??
+      INCOME_BRACKET_MIDPOINTS[translateLabel(bracket.categoryEn ?? bracket.categoryAr)] ??
+      0;
+    const weight = bracket.data[year] ?? 0;
+    if (midpoint > 0 && weight > 0) {
+      weightedSum += midpoint * weight;
+      totalWeight += weight;
+    }
+  }
+
+  return totalWeight > 0 ? weightedSum / totalWeight : 0;
+}
+
+export function getTopMultiSelectCategory(
+  questions: import('./types').Question[],
+  code: string,
+  year: import('./types').SurveyYear,
+  excludeCategories: Set<string> = new Set(),
+): { name: string; value: number; value2024: number; value2025: number } | null {
+  const items = getCategoryByQuestion(questions, code)
+    .filter((q) => !excludeCategories.has(q.categoryEn ?? '') && !excludeCategories.has(q.categoryAr))
+    .map((q) => ({
+      name: translateLabel(q.categoryEn ?? q.categoryAr),
+      value2024: q.data['2024'] ?? 0,
+      value2025: q.data['2025'] ?? 0,
+      value: q.data[year] ?? 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  return items[0] ?? null;
+}
+
+export function getIncomeFeelingChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+) {
+  const incomeQuestions = getCategoryByQuestion(questions, 'Q101');
+
+  return INCOME_FEELING_GROUPS.map((group) => {
+    const matching = incomeQuestions.filter((q) =>
+      (group.categories as readonly string[]).includes(q.categoryEn ?? ''),
+    );
+    const value2024 = matching.reduce((sum, q) => sum + (q.data['2024'] ?? 0), 0);
+    const value2025 = matching.reduce((sum, q) => sum + (q.data['2025'] ?? 0), 0);
+    return {
+      name: group.name,
+      fullName: group.name,
+      value2024,
+      value2025,
+      value: pickYearValue(value2024, value2025, year),
+    };
+  });
+}
+
+export function getIncomeDistributionData(
+  questions: import('./types').Question[],
+  code: string,
+  year: import('./types').SurveyYear = '2025',
+  limit = 8,
+  excludeCategories: Set<string> = new Set(),
+  labelMap: Record<string, string> = INCOME_CATEGORY_LABELS,
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, code)
+    .filter((q) => !excludeCategories.has(q.categoryEn ?? '') && !excludeCategories.has(q.categoryAr))
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = labelMap[fullName] ?? labelMap[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+}
+
+export function getIncomeBarrierHeatmapData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q106')
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = INCOME_BARRIER_LABELS[fullName] ?? INCOME_BARRIER_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getSpendingOutlookScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  return rows
+    .filter((row) => row.name === 'Lower' || row.name === 'Same')
+    .reduce((sum, row) => sum + pickYearValue(row.value2024, row.value2025, year), 0);
+}
+
+export function getSavingRateScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  const yesRow = rows.find((row) => row.name === 'Yes');
+  return yesRow ? pickYearValue(yesRow.value2024, yesRow.value2025, year) : 0;
+}
+
+export function getBarrierCapacityScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  const peak = Math.max(...rows.map((row) => pickYearValue(row.value2024, row.value2025, year)));
+  return 100 - peak;
+}
+
+export function getIncomeComfortGroupScore(
+  rows: IncomeChartRow[],
+  year: import('./types').SurveyYear,
+): number {
+  const comfortable = rows.find((row) => row.name === 'Live comfortably');
+  return comfortable ? pickYearValue(comfortable.value2024, comfortable.value2025, year) : 0;
+}
+
+export function getIncomeChartBadgeScore(
+  rows: IncomeChartRow[],
+  year: import('./types').SurveyYear,
+  metric: 'spending' | 'saving' | 'barriers' | 'feeling',
+  mode: ViewMode,
+): number {
+  const score2024 =
+    metric === 'spending'
+      ? getSpendingOutlookScore(rows, '2024')
+      : metric === 'saving'
+        ? getSavingRateScore(rows, '2024')
+        : metric === 'barriers'
+          ? getBarrierCapacityScore(rows, '2024')
+          : getIncomeComfortGroupScore(rows, '2024');
+  const score2025 =
+    metric === 'spending'
+      ? getSpendingOutlookScore(rows, '2025')
+      : metric === 'saving'
+        ? getSavingRateScore(rows, '2025')
+        : metric === 'barriers'
+          ? getBarrierCapacityScore(rows, '2025')
+          : getIncomeComfortGroupScore(rows, '2025');
+
+  if (mode === 'yoy') return score2025 - score2024;
+  return year === '2025' ? score2025 : score2024;
+}
+
+export function generateIncomeSpendingInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const top = [...rows].sort((a, b) => b.value - a.value)[0];
+  if (!top) return ['Spending expectations show how residents anticipate household costs changing.'];
+
+  if (mode === 'yoy') {
+    const biggestShift = [...rows].sort(
+      (a, b) => Math.abs(b.value2025 - b.value2024) - Math.abs(a.value2025 - a.value2024),
+    )[0];
+    const change = biggestShift.value2025 - biggestShift.value2024;
+    return [
+      { bold: biggestShift.name },
+      ' saw the largest shift at ',
+      { bold: formatDelta(change) },
+      ', shaping next-quarter spending outlook.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' is the leading expectation at ',
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' for the next three months.',
+  ];
+}
+
+export function generateIncomeSavingInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const savingRate = getSavingRateScore(rows, year);
+  const notSaving = rows.find((row) => row.name === 'No');
+
+  if (mode === 'yoy') {
+    const change = getSavingRateScore(rows, '2025') - getSavingRateScore(rows, '2024');
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: 'Saving rate' },
+      ` ${direction} `,
+      { bold: formatDelta(change) },
+      ' with ',
+      { bold: `${getSavingRateScore(rows, '2025').toFixed(1)}%` },
+      ' now saving from monthly income.',
+    ];
+  }
+
+  return [
+    { bold: `${savingRate.toFixed(1)}%` },
+    ' of residents save from monthly income',
+    notSaving
+      ? `; ${pickYearValue(notSaving.value2024, notSaving.value2025, year).toFixed(1)}% do not save.`
+      : '.',
+  ];
+}
+
+export function generateIncomeBarrierInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const top = [...rows].sort((a, b) => b.value - a.value)[0];
+  if (!top) return ['Saving barriers highlight what prevents residents from putting income aside.'];
+
+  if (mode === 'yoy') {
+    const easing = [...rows].sort(
+      (a, b) => (a.value2025 - a.value2024) - (b.value2025 - b.value2024),
+    )[0];
+    const change = easing.value2025 - easing.value2024;
+    return [
+      { bold: easing.name },
+      ' eased most at ',
+      { bold: formatDelta(change) },
+      ' while ',
+      { bold: top.name },
+      ' remains the top cited barrier.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' is the most cited barrier at ',
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' of responses.',
+  ];
+}
+
+export function generateIncomeFeelingInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const comfortable = getIncomeComfortGroupScore(rows, year);
+  const difficult = rows.find((row) => row.name === 'Find it difficult');
+
+  if (mode === 'yoy') {
+    const change = getIncomeComfortGroupScore(rows, '2025') - getIncomeComfortGroupScore(rows, '2024');
+    const direction = change >= 0 ? 'improved' : 'weakened';
+    return [
+      { bold: 'Income comfort' },
+      ` ${direction} `,
+      { bold: formatDelta(change) },
+      ' with ',
+      { bold: `${getIncomeComfortGroupScore(rows, '2025').toFixed(1)}%` },
+      ' now living comfortably.',
+    ];
+  }
+
+  return [
+    { bold: `${comfortable.toFixed(1)}%` },
+    ' live comfortably on current income',
+    difficult
+      ? `; ${pickYearValue(difficult.value2024, difficult.value2025, year).toFixed(1)}% find it difficult.`
+      : '.',
+  ];
+}
+
+export function getCategoryChartData(
+  questions: import('./types').Question[],
+  code: string,
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+  limit = 8,
+  excludeCategories: Set<string> = new Set(),
+) {
+  return getTopCategories(
+    getCategoryByQuestion(questions, code).filter(
+      (q) => !excludeCategories.has(q.categoryEn ?? '') && !excludeCategories.has(q.categoryAr),
+    ),
+    mode,
+    limit,
+    year,
+  ).map((item) => ({
+    name: (() => {
+      const label = INCOME_CATEGORY_LABELS[item.name] ?? item.name;
+      return label.length > 28 ? `${label.slice(0, 27)}…` : label;
+    })(),
+    fullName: INCOME_CATEGORY_LABELS[item.name] ?? item.name,
+    value: item.value,
+  }));
 }
 
 export function getEmploymentPercent(data: SurveyData, year: '2024' | '2025'): number {
@@ -645,6 +1006,17 @@ export function generateInsights(
       'Demographics provides the resident profile breakdown — gender, nationality, age, and household composition.',
       'Use this tab to understand who lives in Al Falah and how the population mix changed between 2024 and 2025.',
       'Compare categorical distributions and household metrics to align services with the district\'s resident base.',
+    ];
+  }
+
+  if (tabId === 'income') {
+    const section = sectionScores.income;
+    if (!section) return ['Income and living standards data for Al Falah district residents.'];
+    const direction = section.yoyChange >= 0 ? 'improved' : 'declined';
+    return [
+      `Income & Living satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
+      'Living expense areas, debt obligations, and saving behaviour shape how residents manage household budgets.',
+      'Expected spending trends and income sentiment indicate whether residents feel financially secure or under pressure.',
     ];
   }
 

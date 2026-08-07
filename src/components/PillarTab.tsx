@@ -6,11 +6,18 @@ import {
   YoYComparisonChart,
   PillarScoresChart,
   PartnerChart,
+  IncomeBarChartCard,
+  IncomePieChartCard,
+  IncomeBarriersHeatmap,
 } from './Charts';
 import {
   getLikertStatements,
   getCategoryByQuestion,
   getTopCategories,
+  getIncomeFeelingChartData,
+  getIncomeDistributionData,
+  getIncomeBarrierHeatmapData,
+  getIncomeChartBadgeScore,
   isCategory,
   isMean,
   pickYearValue,
@@ -33,6 +40,56 @@ const DEMO_QUESTIONS: { code: string; title: string }[] = [
   { code: 'Q905', title: 'Nationality Distribution' },
   { code: 'Q907', title: 'Education Level Distribution' },
 ];
+
+function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const spendingExpectation = getIncomeDistributionData(section.questions, 'Q108', selectedYear, 6);
+  const savingBehaviour = getIncomeDistributionData(section.questions, 'Q105', selectedYear, 4);
+  const savingBarriers = getIncomeBarrierHeatmapData(section.questions, selectedYear);
+  const incomeFeelings = getIncomeFeelingChartData(section.questions, selectedYear);
+
+  return (
+    <div className="main-content">
+      <div className="chart-grid-top">
+        <IncomeBarChartCard
+          data={spendingExpectation}
+          title="Expected Monthly Spending"
+          description="Share of residents expecting lower, stable, or higher spending over the next three months."
+          badgeScore={getIncomeChartBadgeScore(spendingExpectation, selectedYear, 'spending', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          metric="spending"
+        />
+        <IncomePieChartCard
+          data={savingBehaviour}
+          title="Saving from Monthly Income"
+          description="Percentage of residents who save from monthly income versus those who do not."
+          badgeScore={getIncomeChartBadgeScore(savingBehaviour, selectedYear, 'saving', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+      </div>
+      <div className="chart-grid-bottom">
+        <IncomeBarriersHeatmap
+          data={savingBarriers}
+          title="Barriers to Saving"
+          description="Main reasons residents cite for not being able to save, as a share of responses."
+          badgeScore={getIncomeChartBadgeScore(savingBarriers, selectedYear, 'barriers', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+        <IncomeBarChartCard
+          data={incomeFeelings}
+          title="How Residents Feel About Income"
+          description="How residents describe their household's ability to live on current income."
+          badgeScore={getIncomeChartBadgeScore(incomeFeelings, selectedYear, 'feeling', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          metric="feeling"
+        />
+      </div>
+    </div>
+  );
+}
 
 function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
@@ -103,6 +160,10 @@ function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsPro
 export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   if (section.id === 'demographics' || !section.score) {
     return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'income') {
+    return <IncomeCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;

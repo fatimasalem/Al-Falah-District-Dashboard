@@ -429,17 +429,43 @@ button {
   z-index: 1;
 }
 
-/* ── Chart layout grids ── */
-.chart-grid-top {
-  display: grid;
-  grid-template-columns: 1.45fr 1fr;
-  gap: 20px;
+.kpi-yoy-subtext strong {
+  font-weight: 700;
 }
 
+.kpi-yoy-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.kpi-yoy-arrow {
+  font-size: 0.5625rem;
+  line-height: 1;
+}
+
+.kpi-yoy-change.positive .kpi-yoy-arrow {
+  color: #bbf7d0;
+}
+
+.kpi-yoy-change.negative .kpi-yoy-arrow {
+  color: #fecaca;
+}
+
+/* ── Chart layout grids ── */
 .chart-grid-bottom {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  align-items: stretch;
+}
+
+.chart-grid-top {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 20px;
+  align-items: stretch;
 }
 
 .chart-grid {
@@ -499,12 +525,109 @@ button {
   color: #059669;
 }
 
+.income-bar-label-icon--positive {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+.income-bar-label-icon--neutral {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+}
+
+.income-bar-label-icon--negative {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
 .statement-bar-plot {
   min-width: 0;
 }
 
+.statement-bar-chart-income {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+.statement-bar-chart-income .statement-bar-labels {
+  padding: 2px 0 0;
+  width: max-content;
+  max-width: none;
+}
+
+.statement-bar-chart-income .statement-bar-label {
+  padding-right: 0;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.statement-bar-chart-income .statement-bar-label-text {
+  overflow-wrap: normal;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.income-bar-chart-wrap {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.income-bar-chart-wrap .statement-bar-chart-income {
+  flex: 1;
+}
+
+.income-bar-chart-wrap-yoy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.income-bar-chart-wrap-yoy .statement-bar-chart-income .statement-bar-labels {
+  padding-bottom: 0;
+}
+
+.chart-card-body:has(.income-bar-chart-wrap),
+.chart-card-body:has(.income-barriers-heatmap) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.income-barriers-heatmap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.income-barriers-heatmap .health-heatmap-grid {
+  flex: 1;
+  min-height: 0;
+  justify-content: stretch;
+}
+
+.income-barriers-heatmap .health-heatmap-row {
+  flex: 1;
+  min-height: 44px;
+}
+
+.income-barriers-heatmap .health-heatmap-scale {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
 .chart-card-body:has(.statement-bar-chart) {
   min-height: 320px;
+}
+
+.chart-card-body:has(.income-bar-chart-wrap) {
+  min-height: 220px;
 }
 
 .education-axis-tick {
@@ -581,11 +704,79 @@ button {
   color: var(--text-secondary);
 }
 
+.stacked-comparison-legend-bottom-right {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.sentiment-legend-bottom-right {
+  justify-content: flex-end;
+}
+
 .sentiment-legend-swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: 3px;
   flex-shrink: 0;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.chart-legend-bottom-right {
+  justify-content: flex-end;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.chart-legend-compact {
+  padding-top: 2px;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+}
+
+.chart-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.chart-legend-swatch-muted {
+  background: var(--chart-bar-muted, #cbd5e1);
+}
+
+.chart-legend-swatch-current {
+  background: var(--chart-bar-alt, #3b82f6);
+}
+
+.chart-legend-swatch-saving-yes {
+  background: #059669;
+}
+
+.chart-legend-swatch-saving-no {
+  background: #dc2626;
+}
+
+.income-pie-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.income-pie-panel-compact {
+  align-items: center;
 }
 
 /* ── Health heatmap ── */
@@ -659,6 +850,24 @@ button {
   border-radius: 4px;
   background: rgba(220, 38, 38, 0.08);
   color: #dc2626;
+}
+
+.income-barrier-icon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.income-pie-dual {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.income-pie-year-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
 }
 
 .health-heatmap-label-text {
@@ -837,7 +1046,9 @@ button {
 }
 
 .chart-card-fill > .partner-chart-body,
-.chart-card-fill > .health-heatmap {
+.chart-card-fill > .health-heatmap,
+.chart-card-fill > .chart-card-body:has(.health-heatmap),
+.chart-card-fill > .chart-card-body:has(.income-barriers-heatmap) {
   flex: 1;
   min-height: 0;
 }
@@ -998,6 +1209,9 @@ button {
 }
 
 .chart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.6875rem;
   font-weight: 600;
   padding: 4px 10px;
@@ -1005,6 +1219,22 @@ button {
   background: #ecfdf5;
   color: var(--positive);
   border: 1px solid #a7f3d0;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.chart-badge-compact {
+  padding: 4px 8px;
+}
+
+.chart-badge-arrow {
+  font-size: 0.5625rem;
+  line-height: 1;
+}
+
+.chart-badge strong {
+  font-weight: 700;
 }
 
 .chart-badge-yoy {

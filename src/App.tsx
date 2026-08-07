@@ -5,7 +5,7 @@ import { Header } from './components/Header';
 import { InsightsPanel } from './components/InsightsPanel';
 import { OverviewCharts } from './components/OverviewTab';
 import { PillarCharts } from './components/PillarTab';
-import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis } from './components/KpiCards';
+import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis } from './components/KpiCards';
 
 const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
 const SELECTED_YEAR_STORAGE_KEY = 'alfalah-selected-year';
@@ -178,9 +178,11 @@ export default function App() {
       ? buildOverviewKpis(data, viewMode, selectedYear)
       : activeTab === 'demographics' && activeSection
         ? buildDemographicsKpis(activeSection, viewMode, selectedYear)
-        : activeSection?.score
-          ? buildPillarKpis(activeSection.score, viewMode, selectedYear)
-          : [];
+        : activeTab === 'income' && activeSection
+          ? buildIncomeKpis(data, activeSection, viewMode, selectedYear)
+          : activeSection?.score
+            ? buildPillarKpis(activeSection.score, viewMode, selectedYear)
+            : [];
 
   return (
     <div className="dashboard">
