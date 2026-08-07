@@ -47,22 +47,26 @@ npm run preview
 
 ## GitHub Pages
 
-This project is configured to deploy automatically to GitHub Pages when changes are pushed to `main`.
+This project deploys automatically when changes are pushed to `main`.
 
 **Live site:** [https://fatimasalem.github.io/Al-Falah-District-Dashboard/](https://fatimasalem.github.io/Al-Falah-District-Dashboard/)
 
-### One-time GitHub setup
+### One-time GitHub setup (required)
+
+The site will stay blank until Pages is pointed at the **built** output, not the raw source on `main`.
 
 1. Open the repository on GitHub: [Al-Falah-District-Dashboard](https://github.com/fatimasalem/Al-Falah-District-Dashboard)
 2. Go to **Settings → Pages**
-3. Under **Build and deployment**, set **Source** to **GitHub Actions**
+3. Under **Build and deployment → Source**, choose **Deploy from a branch**
+4. Set **Branch** to **`gh-pages`** and folder to **`/ (root)`**, then click **Save**
+5. Push to `main` (or re-run **Deploy to GitHub Pages** under **Actions**) and wait for the workflow to finish
 
-After the first successful workflow run on `main`, the site will be published at the URL above.
+After the first successful deploy, the `gh-pages` branch will contain the production build and the live URL above should load correctly.
 
 ### How it works
 
 - `vite.config.ts` sets the production base path to `/Al-Falah-District-Dashboard/` so assets load correctly on GitHub Pages
-- `.github/workflows/deploy.yml` builds the app and publishes the `dist` folder on every push to `main`
+- `.github/workflows/deploy.yml` runs `npm run build` and publishes the `dist` folder to the `gh-pages` branch on every push to `main`
 
 ## Project structure
 
