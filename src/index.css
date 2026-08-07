@@ -365,6 +365,9 @@ button {
 }
 
 .kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -373,6 +376,17 @@ button {
   margin-bottom: 8px;
   position: relative;
   z-index: 1;
+}
+
+.kpi-label-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .kpi-value {
@@ -1090,7 +1104,7 @@ button {
 .partner-bar-list-yoy {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: 280px;
+  max-height: 400px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;

@@ -43,54 +43,155 @@ function toBarLabelNumber(value: BarLabelCoordinate): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
-function BarYearTopLabel({
-  x,
-  y,
-  width,
-  value,
-  year,
-}: {
-  x?: BarLabelCoordinate;
-  y?: BarLabelCoordinate;
-  width?: BarLabelCoordinate;
-  value?: BarLabelCoordinate;
-  year: string;
-}) {
-  const nx = toBarLabelNumber(x);
-  const ny = toBarLabelNumber(y);
-  const nwidth = toBarLabelNumber(width);
-  const nvalue = toBarLabelNumber(value);
-  if (!nvalue || nvalue <= 0 || nx == null || ny == null || nwidth == null) return null;
-  return (
-    <text x={nx + nwidth / 2} y={ny - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#64748b">
-      {year}
-    </text>
-  );
+const SENTIMENT_COLORS = {
+  dissatisfied: DESIGN.negative,
+  neutral: '#94a3b8',
+  satisfied: DESIGN.chart.export,
+} as const;
+
+const SENTIMENT_LABELS = {
+  dissatisfied: 'Unsatisfied',
+  neutral: 'Neutral',
+  satisfied: 'Satisfied',
+} as const;
+
+type SentimentKey = keyof typeof SENTIMENT_COLORS;
+
+const SENTIMENT_LEGEND_ORDER: SentimentKey[] = ['satisfied', 'neutral', 'dissatisfied'];
+
+function sentimentDataKey(key: SentimentKey, year?: '2024' | '2025'): string {
+  return year ? `${key}${year}` : key;
 }
 
-function BarYearEndLabel({
+function getSegmentLabelFill(segment: SentimentKey, value: number): string {
+  if (segment === 'neutral') return '#1f2937';
+  return value >= 16 ? '#ffffff' : '#1f2937';
+}
+
+function BarSegmentScoreLabel({
   x,
   y,
   width,
   height,
   value,
-  year,
+  segment,
 }: {
   x?: BarLabelCoordinate;
   y?: BarLabelCoordinate;
   width?: BarLabelCoordinate;
   height?: BarLabelCoordinate;
   value?: BarLabelCoordinate;
-  year: string;
+  segment: SentimentKey;
 }) {
   const nx = toBarLabelNumber(x);
   const ny = toBarLabelNumber(y);
   const nwidth = toBarLabelNumber(width);
   const nheight = toBarLabelNumber(height);
   const nvalue = toBarLabelNumber(value);
-  if (!nvalue || nvalue <= 0 || nx == null || ny == null || nwidth == null || nheight == null) return null;
+  if (nvalue == null || nvalue < 4 || nx == null || ny == null || nwidth == null || nheight == null || nheight < 14) {
+    return null;
+  }
+
   return (
-    <text x={nx + nwidth + 8} y={ny + nheight / 2} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="#64748b">
+    <text
+      x={nx + nwidth / 2}
+      y={ny + nheight / 2}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize={9}
+      fontWeight={600}
+      fill={getSegmentLabelFill(segment, nvalue)}
+    >
+      {`${nvalue.toFixed(0)}%`}
+    </text>
+  );
+}
+
+function BarSegmentScoreLabelHorizontal({
+  x,
+  y,
+  width,
+  height,
+  value,
+  segment,
+}: {
+  x?: BarLabelCoordinate;
+  y?: BarLabelCoordinate;
+  width?: BarLabelCoordinate;
+  height?: BarLabelCoordinate;
+  value?: BarLabelCoordinate;
+  segment: SentimentKey;
+}) {
+  const nx = toBarLabelNumber(x);
+  const ny = toBarLabelNumber(y);
+  const nwidth = toBarLabelNumber(width);
+  const nheight = toBarLabelNumber(height);
+  const nvalue = toBarLabelNumber(value);
+  if (nvalue == null || nvalue < 4 || nx == null || ny == null || nwidth == null || nheight == null || nwidth < 28) {
+    return null;
+  }
+
+  return (
+    <text
+      x={nx + nwidth / 2}
+      y={ny + nheight / 2}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize={9}
+      fontWeight={600}
+      fill={getSegmentLabelFill(segment, nvalue)}
+    >
+      {`${nvalue.toFixed(0)}%`}
+    </text>
+  );
+}
+
+function BarYearChartTopLabel({
+  x,
+  width,
+  year,
+}: {
+  x?: BarLabelCoordinate;
+  width?: BarLabelCoordinate;
+  year: string;
+}) {
+  const nx = toBarLabelNumber(x);
+  const nwidth = toBarLabelNumber(width);
+  if (nx == null || nwidth == null) return null;
+  return (
+    <text x={nx + nwidth / 2} y={14} textAnchor="middle" fontSize={10} fontWeight={600} fill="#64748b">
+      {year}
+    </text>
+  );
+}
+
+function BarYearBarSideLabel({
+  x,
+  y,
+  width,
+  height,
+  year,
+}: {
+  x?: BarLabelCoordinate;
+  y?: BarLabelCoordinate;
+  width?: BarLabelCoordinate;
+  height?: BarLabelCoordinate;
+  year: string;
+}) {
+  const nx = toBarLabelNumber(x);
+  const ny = toBarLabelNumber(y);
+  const nwidth = toBarLabelNumber(width);
+  const nheight = toBarLabelNumber(height);
+  if (nx == null || ny == null || nwidth == null || nheight == null) return null;
+  return (
+    <text
+      x={nx + nwidth + 8}
+      y={ny + nheight / 2}
+      dominantBaseline="middle"
+      fontSize={10}
+      fontWeight={600}
+      fill="#64748b"
+    >
       {year}
     </text>
   );
@@ -136,13 +237,6 @@ function StatementChartShell({
   );
 }
 
-function segmentLabel(value: number): string {
-  const amount = Math.abs(value);
-  return amount >= 6 ? `${amount.toFixed(0)}%` : '';
-}
-
-const SEGMENT_VALUE_LABEL_STYLE = { fontSize: 10, fill: '#ffffff', fontWeight: 600 as const };
-
 type StatementComparisonRow = {
   name: string;
   fullName: string;
@@ -153,29 +247,6 @@ type StatementComparisonRow = {
   neutral2025: number;
   satisfied2025: number;
 };
-
-type ComparisonSegmentKey = 'dissatisfied' | 'neutral' | 'satisfied';
-
-function buildStatementComparisonTooltipSegments(
-  row: StatementComparisonRow,
-  yearKey: '2024' | '2025',
-) {
-  const segments: { key: ComparisonSegmentKey; name: string; color: string }[] = [
-    { key: 'dissatisfied', name: 'Dissatisfied', color: DESIGN.negative },
-    { key: 'neutral', name: 'Neutral', color: '#94a3b8' },
-    { key: 'satisfied', name: 'Satisfied', color: DESIGN.chart.export },
-  ];
-
-  return segments.map((segment) => ({
-    name: segment.name,
-    value: row[`${segment.key}${yearKey}`],
-    color: segment.color,
-    change:
-      yearKey === '2025'
-        ? row[`${segment.key}2025`] - row[`${segment.key}2024`]
-        : undefined,
-  }));
-}
 
 type TrendDirection = 'up' | 'down' | 'same';
 
@@ -852,7 +923,42 @@ function EducationCategoryTick({
 }
 
 const EDUCATION_CHART_MARGIN = { top: 12, right: 12, left: 4, bottom: 48 };
-const EDUCATION_COMPARISON_MARGIN = { top: 28, right: 12, left: 4, bottom: 48 };
+const EDUCATION_COMPARISON_MARGIN = { top: 32, right: 12, left: 4, bottom: 48 };
+
+function buildSentimentTooltipPayload(
+  row: Record<string, number | string> | undefined,
+  year?: '2024' | '2025',
+): ChartTooltipEntry[] {
+  if (!row) return [];
+  return (Object.keys(SENTIMENT_LABELS) as SentimentKey[])
+    .map((key) => ({
+      name: SENTIMENT_LABELS[key],
+      value: Number(row[sentimentDataKey(key, year)] ?? 0),
+      color: SENTIMENT_COLORS[key],
+    }))
+    .filter((entry) => Math.abs(entry.value) > 0.05);
+}
+
+function SentimentLegend({ showYears = false }: { showYears?: boolean }) {
+  return (
+    <div className="stacked-comparison-legend">
+      {showYears && (
+        <div className="stacked-comparison-years">
+          <span className="year-chip year-chip-muted">2024</span>
+          <span className="year-chip">2025</span>
+        </div>
+      )}
+      <div className="sentiment-legend">
+        {SENTIMENT_LEGEND_ORDER.map((key) => (
+          <span key={key} className="sentiment-legend-item">
+            <span className="sentiment-legend-swatch" style={{ background: SENTIMENT_COLORS[key] }} />
+            {SENTIMENT_LABELS[key]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface EducationDivergingBarProps {
   data: EducationChartRow[];
@@ -886,58 +992,65 @@ function renderEducationCurrentChart(data: EducationChartRow[], rows: EducationC
       />
       <Tooltip
         cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-        content={({ active, payload }) => (
-          <ChartTooltip
-            active={active}
-            label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
-            payload={payload?.map((entry) => ({
-              name: String(entry.name ?? 'Value'),
-              value: Number(entry.value),
-              color: String(entry.color ?? entry.fill ?? '#94a3b8'),
-            }))}
-          />
-        )}
+        content={({ active, payload }) => {
+          const row = payload?.[0]?.payload as Record<string, number | string> | undefined;
+          return (
+            <ChartTooltip
+              active={active}
+              label={String(row?.fullName ?? '') || undefined}
+              payload={buildSentimentTooltipPayload(row)}
+            />
+          );
+        }}
       />
-      <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-      <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied" radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="dissatisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.dissatisfied}
+        name={SENTIMENT_LABELS.dissatisfied}
+        legendType="none"
+        radius={[0, 0, 4, 4]}
+        maxBarSize={48}
+      >
+        <LabelList
+          dataKey="dissatisfied"
+          content={(props) => <BarSegmentScoreLabel {...props} segment="dissatisfied" />}
+        />
       </Bar>
-      <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="neutral"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.neutral}
+        name={SENTIMENT_LABELS.neutral}
+        legendType="none"
+        maxBarSize={48}
+      >
+        <LabelList
+          dataKey="neutral"
+          content={(props) => <BarSegmentScoreLabel {...props} segment="neutral" />}
+        />
       </Bar>
-      <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="satisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.satisfied}
+        name={SENTIMENT_LABELS.satisfied}
+        legendType="none"
+        radius={[4, 4, 0, 0]}
+        maxBarSize={48}
+      >
+        <LabelList
+          dataKey="satisfied"
+          content={(props) => <BarSegmentScoreLabel {...props} segment="satisfied" />}
+        />
       </Bar>
     </BarChart>
   );
 }
 
-function StackedComparisonLegend() {
-  return (
-    <div className="stacked-comparison-legend">
-      <div className="stacked-comparison-years">
-        <span className="year-chip year-chip-muted">2024</span>
-        <span className="year-chip">2025</span>
-      </div>
-      <div className="sentiment-legend">
-        <span className="sentiment-legend-item">
-          <span className="sentiment-legend-swatch" style={{ background: DESIGN.negative }} />
-          Dissatisfied
-        </span>
-        <span className="sentiment-legend-item">
-          <span className="sentiment-legend-swatch" style={{ background: '#94a3b8' }} />
-          Neutral
-        </span>
-        <span className="sentiment-legend-item">
-          <span className="sentiment-legend-swatch" style={{ background: DESIGN.chart.export }} />
-          Satisfied
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function renderEducationComparisonChart(data: StatementComparisonRow[], rows: EducationChartRow[]) {
+  const comparisonBars: Array<'2024' | '2025'> = ['2024', '2025'];
+
   return (
     <BarChart
       data={data}
@@ -966,44 +1079,44 @@ function renderEducationComparisonChart(data: StatementComparisonRow[], rows: Ed
           if (!active || !payload?.length) return null;
           const row = payload[0]?.payload as StatementComparisonRow;
           const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
-          const yearKey = year as '2024' | '2025';
           return (
             <ChartTooltip
               active={active}
               label={`${row.fullName} (${year})`}
-              payload={buildStatementComparisonTooltipSegments(row, yearKey)}
+              payload={buildSentimentTooltipPayload(row, year)}
             />
           );
         }}
       />
-      <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55} radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-        <LabelList
-          dataKey="satisfied2024"
-          position="top"
-          content={(props) => <BarYearTopLabel {...props} year="2024" />}
-        />
-      </Bar>
-      <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none" radius={[0, 0, 4, 4]}>
-        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
-        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[4, 4, 0, 0]}>
-        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-        <LabelList
-          dataKey="satisfied2025"
-          position="top"
-          content={(props) => <BarYearTopLabel {...props} year="2025" />}
-        />
-      </Bar>
+      {comparisonBars.flatMap((year) =>
+        (['dissatisfied', 'neutral', 'satisfied'] as SentimentKey[]).map((segment, segmentIndex) => {
+          const dataKey = sentimentDataKey(segment, year);
+          const isBottom = segmentIndex === 0;
+          const isTop = segmentIndex === 2;
+          return (
+            <Bar
+              key={dataKey}
+              dataKey={dataKey}
+              stackId={year}
+              fill={SENTIMENT_COLORS[segment]}
+              legendType="none"
+              fillOpacity={year === '2024' ? 0.82 : 1}
+              radius={isBottom ? [0, 0, 4, 4] : isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              maxBarSize={32}
+            >
+              <LabelList
+                dataKey={dataKey}
+                content={(props) => (
+                  <>
+                    <BarSegmentScoreLabel {...props} segment={segment} />
+                    {isTop && <BarYearChartTopLabel {...props} year={year} />}
+                  </>
+                )}
+              />
+            </Bar>
+          );
+        })
+      )}
     </BarChart>
   );
 }
@@ -1020,8 +1133,8 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
           <div className="chart-title">Education Satisfaction</div>
           <div className="chart-subtitle">
             {isCurrent
-              ? `${year} response breakdown by statement`
-              : '2024 and 2025 response breakdown by statement'}
+              ? `${year} sentiment breakdown by statement`
+              : '2024 vs 2025 sentiment breakdown by statement'}
           </div>
         </div>
         <ChartScoreBadge score={score} mode={mode} />
@@ -1032,7 +1145,7 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
             ? renderEducationCurrentChart(data, data)
             : renderEducationComparisonChart(comparisonData, data)}
         </ResponsiveContainer>
-        {!isCurrent && <StackedComparisonLegend />}
+        <SentimentLegend showYears={!isCurrent} />
       </div>
       <ChartInsightFooter insight={insight} />
     </div>
@@ -1347,6 +1460,7 @@ function EnvironmentStatementIcon({ fullName }: { fullName: string }) {
 }
 
 const ENVIRONMENT_CHART_MARGIN = { top: 8, right: 48, left: 4, bottom: 36 };
+const ENVIRONMENT_COMPARISON_MARGIN = { top: 8, right: 56, left: 4, bottom: 36 };
 
 function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data']) {
   return (
@@ -1368,38 +1482,70 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
       <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
       <Tooltip
         cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-        content={({ active, payload }) => (
-          <ChartTooltip
-            active={active}
-            label={String(payload?.[0]?.payload?.fullName ?? '') || undefined}
-            payload={payload?.map((entry) => ({
-              name: String(entry.name ?? 'Value'),
-              value: Number(entry.value),
-              color: String(entry.color ?? entry.fill ?? '#94a3b8'),
-            }))}
-          />
-        )}
+        content={({ active, payload }) => {
+          const row = payload?.[0]?.payload as Record<string, number | string> | undefined;
+          return (
+            <ChartTooltip
+              active={active}
+              label={String(row?.fullName ?? '') || undefined}
+              payload={buildSentimentTooltipPayload(row)}
+            />
+          );
+        }}
       />
-      <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-      <Bar dataKey="dissatisfied" stackId="stack" fill={DESIGN.negative} name="Dissatisfied">
-        <LabelList dataKey="dissatisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="dissatisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.dissatisfied}
+        name={SENTIMENT_LABELS.dissatisfied}
+        legendType="none"
+        radius={[4, 0, 0, 4]}
+        maxBarSize={22}
+      >
+        <LabelList
+          dataKey="dissatisfied"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="dissatisfied" />}
+        />
       </Bar>
-      <Bar dataKey="neutral" stackId="stack" fill="#94a3b8" name="Neutral">
-        <LabelList dataKey="neutral" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="neutral"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.neutral}
+        name={SENTIMENT_LABELS.neutral}
+        legendType="none"
+        maxBarSize={22}
+      >
+        <LabelList
+          dataKey="neutral"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="neutral" />}
+        />
       </Bar>
-      <Bar dataKey="satisfied" stackId="stack" fill={DESIGN.chart.export} name="Satisfied" radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
+      <Bar
+        dataKey="satisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.satisfied}
+        name={SENTIMENT_LABELS.satisfied}
+        legendType="none"
+        radius={[0, 4, 4, 0]}
+        maxBarSize={22}
+      >
+        <LabelList
+          dataKey="satisfied"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="satisfied" />}
+        />
       </Bar>
     </BarChart>
   );
 }
 
 function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
+  const comparisonBars: Array<'2024' | '2025'> = ['2024', '2025'];
+
   return (
     <BarChart
       data={data}
       layout="vertical"
-      margin={ENVIRONMENT_CHART_MARGIN}
+      margin={ENVIRONMENT_COMPARISON_MARGIN}
       barCategoryGap="10%"
       barGap={3}
     >
@@ -1419,44 +1565,44 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
           if (!active || !payload?.length) return null;
           const row = payload[0]?.payload as StatementComparisonRow;
           const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
-          const yearKey = year as '2024' | '2025';
           return (
             <ChartTooltip
               active={active}
               label={`${row.fullName} (${year})`}
-              payload={buildStatementComparisonTooltipSegments(row, yearKey)}
+              payload={buildSentimentTooltipPayload(row, year)}
             />
           );
         }}
       />
-      <Bar dataKey="dissatisfied2024" stackId="2024" fill={DESIGN.negative} legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="dissatisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="neutral2024" stackId="2024" fill="#94a3b8" legendType="none" fillOpacity={0.55}>
-        <LabelList dataKey="neutral2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="satisfied2024" stackId="2024" fill={DESIGN.chart.export} legendType="none" fillOpacity={0.55} radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied2024" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-        <LabelList
-          dataKey="satisfied2024"
-          position="right"
-          content={(props) => <BarYearEndLabel {...props} year="2024" />}
-        />
-      </Bar>
-      <Bar dataKey="dissatisfied2025" stackId="2025" fill={DESIGN.negative} legendType="none">
-        <LabelList dataKey="dissatisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="neutral2025" stackId="2025" fill="#94a3b8" legendType="none">
-        <LabelList dataKey="neutral2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-      </Bar>
-      <Bar dataKey="satisfied2025" stackId="2025" fill={DESIGN.chart.export} legendType="none" radius={[0, 4, 4, 0]}>
-        <LabelList dataKey="satisfied2025" position="center" formatter={segmentLabel} style={SEGMENT_VALUE_LABEL_STYLE} />
-        <LabelList
-          dataKey="satisfied2025"
-          position="right"
-          content={(props) => <BarYearEndLabel {...props} year="2025" />}
-        />
-      </Bar>
+      {comparisonBars.flatMap((year) =>
+        (['dissatisfied', 'neutral', 'satisfied'] as SentimentKey[]).map((segment, segmentIndex) => {
+          const dataKey = sentimentDataKey(segment, year);
+          const isFirst = segmentIndex === 0;
+          const isLast = segmentIndex === 2;
+          return (
+            <Bar
+              key={dataKey}
+              dataKey={dataKey}
+              stackId={year}
+              fill={SENTIMENT_COLORS[segment]}
+              legendType="none"
+              fillOpacity={year === '2024' ? 0.82 : 1}
+              radius={isFirst ? [4, 0, 0, 4] : isLast ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+              maxBarSize={18}
+            >
+              <LabelList
+                dataKey={dataKey}
+                content={(props) => (
+                  <>
+                    <BarSegmentScoreLabelHorizontal {...props} segment={segment} />
+                    {isLast && <BarYearBarSideLabel {...props} year={year} />}
+                  </>
+                )}
+              />
+            </Bar>
+          );
+        })
+      )}
     </BarChart>
   );
 }
@@ -1474,8 +1620,8 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
           <div className="chart-title">Environment Satisfaction</div>
           <div className="chart-subtitle">
             {isCurrent
-              ? `${year} response breakdown by statement`
-              : '2024 and 2025 response breakdown by statement'}
+              ? `${year} sentiment breakdown by statement`
+              : '2024 vs 2025 sentiment breakdown by statement'}
           </div>
         </div>
         <ChartScoreBadge score={score} mode={mode} />
@@ -1490,7 +1636,7 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
             ? renderEnvironmentCurrentChart(data)
             : renderEnvironmentComparisonChart(comparisonData)}
         </StatementChartShell>
-        {!isCurrent && <StackedComparisonLegend />}
+        <SentimentLegend showYears={!isCurrent} />
       </div>
       <ChartInsightFooter insight={insight} />
     </div>

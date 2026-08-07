@@ -66,14 +66,16 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
   const educationScore = data.sectionScores.education!;
   const environmentScore = data.sectionScores.environment!;
 
+  const chartYear = viewMode === 'yoy' ? '2025' : selectedYear;
+
   const educationData = educationSection
-    ? getEducationChartData(educationSection, selectedYear)
+    ? getEducationChartData(educationSection, chartYear)
     : [];
   const educationData2024 = educationSection
     ? getEducationChartData(educationSection, '2024')
     : [];
   const environmentData = environmentSection
-    ? getEnvironmentChartData(environmentSection, selectedYear)
+    ? getEnvironmentChartData(environmentSection, chartYear)
     : [];
   const environmentData2024 = environmentSection
     ? getEnvironmentChartData(environmentSection, '2024')

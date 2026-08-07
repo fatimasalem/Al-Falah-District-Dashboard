@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear } from '../types';
 import { KPI_GRADIENTS } from '../types';
 import {
@@ -11,13 +12,59 @@ import {
   pickYearValue,
 } from '../utils';
 
+export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield';
+
 export interface KpiItem {
   label: string;
   value: string;
+  icon?: KpiIconName;
   delta?: number;
   deltaLabel?: string;
   suffix?: string;
   subtext?: string;
+}
+
+function KpiIcon({ name }: { name: KpiIconName }) {
+  const props = {
+    width: 13,
+    height: 13,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  const icons: Record<KpiIconName, ReactElement> = {
+    satisfaction: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </svg>
+    ),
+    wallet: (
+      <svg {...props}>
+        <path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" />
+        <path d="M16 11h.01" />
+        <path d="M3 10h18" />
+      </svg>
+    ),
+    briefcase: (
+      <svg {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    ),
+    shield: (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+  };
+
+  return icons[name];
 }
 
 interface KpiCardsProps {
@@ -34,7 +81,14 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
           className="kpi-card"
           style={{ background: KPI_GRADIENTS[i % KPI_GRADIENTS.length] }}
         >
-          <div className="kpi-label">{item.label}</div>
+          <div className="kpi-label">
+            {item.icon && (
+              <span className="kpi-label-icon">
+                <KpiIcon name={item.icon} />
+              </span>
+            )}
+            {item.label}
+          </div>
           <div className="kpi-value">
             {item.value}
             {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
@@ -62,6 +116,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
   const cards: KpiItem[] = [
     {
       label: 'Overall Satisfaction',
+      icon: 'satisfaction',
       value: `${satisfaction.toFixed(1)}`,
       suffix: '%',
       subtext: getOverviewKpiSentence('satisfaction', satisfaction),
@@ -69,6 +124,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
     },
     {
       label: 'Income Comfort',
+      icon: 'wallet',
       value: `${incomeComfort.toFixed(1)}`,
       suffix: '%',
       subtext: getOverviewKpiSentence('income', incomeComfort),
@@ -76,6 +132,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
     },
     {
       label: 'Employment',
+      icon: 'briefcase',
       value: `${employment.toFixed(1)}`,
       suffix: '%',
       subtext: getOverviewKpiSentence('employment', employment),
@@ -83,6 +140,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
     },
     {
       label: 'Safety',
+      icon: 'shield',
       value: `${safety.toFixed(1)}`,
       suffix: '%',
       subtext: getOverviewKpiSentence('safety', safety),
