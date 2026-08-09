@@ -439,7 +439,7 @@ export function PillarScoresChart({ data, mode, year = '2025', title = 'Pillar S
         <div>
           <div className="chart-title">{title}</div>
           <div className="chart-subtitle">
-            {mode === 'current' ? `${year} satisfaction by pillar` : 'Year-over-year change (pp)'}
+            {mode === 'current' ? `${year} satisfaction by pillar` : 'Year-over-year change (%)'}
           </div>
         </div>
       </div>
@@ -449,7 +449,7 @@ export function PillarScoresChart({ data, mode, year = '2025', title = 'Pillar S
           <XAxis dataKey="name" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} />
           <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={mode === 'yoy' ? ['auto', 'auto'] : [0, 100]} />
           <Tooltip
-            formatter={(value: number) => [`${value.toFixed(1)}${mode === 'current' ? '%' : ' pp'}`, mode === 'current' ? 'Score' : 'Change']}
+            formatter={(value: number) => [`${value.toFixed(1)}%`, mode === 'current' ? 'Score' : 'Change']}
             labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
           />
           <Bar dataKey="value" fill={DESIGN.chart.barAlt} radius={[4, 4, 0, 0]} maxBarSize={52}>
@@ -544,6 +544,7 @@ interface PartnerChartProps {
   data: { name: string; value: number; fullName?: string; value2024?: number; value2025?: number }[];
   mode: ViewMode;
   year?: SurveyYear;
+  badgeScore?: number;
 }
 
 function PartnerBarChange({ previous, current }: { previous: number; current: number }) {
@@ -556,12 +557,12 @@ function PartnerBarChange({ previous, current }: { previous: number; current: nu
   return (
     <span className={`partner-bar-change trend-value ${className}`}>
       <span className="trend-arrow" aria-hidden="true">{arrow}</span>
-      {prefix}{change.toFixed(1)} pp
+      {prefix}{change.toFixed(1)}%
     </span>
   );
 }
 
-export function PartnerChart({ data, mode, year = '2025' }: PartnerChartProps) {
+export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerChartProps) {
   const isCurrent = mode === 'current';
   const getScore = (item: PartnerChartProps['data'][number]) =>
     isCurrent ? item.value : (item.value2025 ?? item.value);
@@ -578,6 +579,7 @@ export function PartnerChart({ data, mode, year = '2025' }: PartnerChartProps) {
             {isCurrent ? `Share of total — ${year} scores` : '2024 vs 2025 scores by pillar'}
           </div>
         </div>
+        {badgeScore !== undefined && <ChartScoreBadge score={badgeScore} mode={mode} />}
       </div>
       <div className="partner-chart-body">
         <div className={`partner-bar-list ${!isCurrent ? 'partner-bar-list-yoy' : ''}`}>
@@ -706,7 +708,7 @@ export function LikertChart({ statements, mode, year = '2025', title = 'Key Surv
           <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={mode === 'yoy' ? ['auto', 'auto'] : [0, 100]} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 10, fill: DESIGN.chart.axis }} />
           <Tooltip
-            formatter={(v: number) => [`${v.toFixed(1)}${mode === 'current' ? '%' : ' pp'}`, mode === 'current' ? 'Agreement' : 'Change']}
+            formatter={(v: number) => [`${v.toFixed(1)}%`, mode === 'current' ? 'Agreement' : 'Change']}
             labelFormatter={(_, p) => p?.[0]?.payload?.fullName ?? ''}
           />
           <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20} fill={DESIGN.chart.bar}>

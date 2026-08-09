@@ -87,7 +87,16 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
   return (
     <div className="main-content">
       <div className="chart-grid-overview">
-        <PartnerChart data={partnerData} mode={viewMode} year={selectedYear} />
+        <PartnerChart
+          data={partnerData}
+          mode={viewMode}
+          year={selectedYear}
+          badgeScore={
+            viewMode === 'current'
+              ? pickYearValue(data.overview.overallScore2024, data.overview.overallScore2025, selectedYear)
+              : data.overview.overallYoyChange
+          }
+        />
         {educationData.length > 0 && (
           <EducationDivergingBar
             data={educationData}

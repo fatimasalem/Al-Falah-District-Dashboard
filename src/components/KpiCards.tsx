@@ -9,18 +9,37 @@ import {
   getEmploymentPercent,
   getSafetyPercent,
   getOverviewKpiSentence,
+  getIncomeKpiSentence,
   pickYearValue,
   getAverageMonthlyIncome,
   getTopMultiSelectCategory,
   INCOME_DEBT_EXCLUSIONS,
 } from '../utils';
 
-export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield';
+export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield' | 'receipt' | 'credit-card';
+
+export type CategoryIconName =
+  | 'car'
+  | 'home'
+  | 'food'
+  | 'credit-card'
+  | 'education'
+  | 'school'
+  | 'health'
+  | 'transport'
+  | 'phone'
+  | 'entertainment'
+  | 'children'
+  | 'personal-care'
+  | 'misc'
+  | 'debt'
+  | 'loan';
 
 export interface KpiItem {
   label: string;
   value: string;
   icon?: KpiIconName;
+  valueIcon?: CategoryIconName;
   delta?: number;
   deltaLabel?: string;
   suffix?: string;
@@ -65,9 +84,149 @@ function KpiIcon({ name }: { name: KpiIconName }) {
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
     ),
+    receipt: (
+      <svg {...props}>
+        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z" />
+        <path d="M8 7h8M8 11h8M8 15h5" />
+      </svg>
+    ),
+    'credit-card': (
+      <svg {...props}>
+        <rect x="1" y="4" width="22" height="16" rx="2" />
+        <path d="M1 10h22" />
+      </svg>
+    ),
   };
 
   return icons[name];
+}
+
+function CategoryIcon({ name }: { name: CategoryIconName }) {
+  const props = {
+    width: 22,
+    height: 22,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  const icons: Record<CategoryIconName, ReactElement> = {
+    car: (
+      <svg {...props}>
+        <path d="M5 17h14M5 17a2 2 0 01-2-2V9a2 2 0 012-2h1l2-3h8l2 3h1a2 2 0 012 2v6a2 2 0 01-2 2M5 17a2 2 0 104 0M15 17a2 2 0 104 0" />
+      </svg>
+    ),
+    home: (
+      <svg {...props}>
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+        <path d="M9 21V12h6v9" />
+      </svg>
+    ),
+    food: (
+      <svg {...props}>
+        <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 002-2V2M7 2v20M17 2v7a4 4 0 01-4 4h0a4 4 0 01-4-4V2" />
+      </svg>
+    ),
+    'credit-card': (
+      <svg {...props}>
+        <rect x="1" y="4" width="22" height="16" rx="2" />
+        <path d="M1 10h22" />
+      </svg>
+    ),
+    education: (
+      <svg {...props}>
+        <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+      </svg>
+    ),
+    school: (
+      <svg {...props}>
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+      </svg>
+    ),
+    health: (
+      <svg {...props}>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+    transport: (
+      <svg {...props}>
+        <rect x="1" y="3" width="15" height="13" rx="2" />
+        <path d="M16 8h4l3 5v5h-3M5 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" />
+      </svg>
+    ),
+    phone: (
+      <svg {...props}>
+        <rect x="5" y="2" width="14" height="20" rx="2" />
+        <path d="M12 18h.01" />
+      </svg>
+    ),
+    entertainment: (
+      <svg {...props}>
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="M10 9l6 3-6 3V9z" />
+      </svg>
+    ),
+    children: (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    'personal-care': (
+      <svg {...props}>
+        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" />
+      </svg>
+    ),
+    misc: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+        <circle cx="5" cy="12" r="1" />
+      </svg>
+    ),
+    debt: (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M12 8v4M12 16h.01" />
+      </svg>
+    ),
+    loan: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    ),
+  };
+
+  return icons[name];
+}
+
+function getCategoryIcon(categoryEn: string): CategoryIconName {
+  const normalized = categoryEn.toLowerCase();
+
+  if (normalized.includes('car loan')) return 'car';
+  if (normalized.includes('home loan')) return 'home';
+  if (normalized.includes('credit card')) return 'credit-card';
+  if (normalized.includes('personal loan')) return 'loan';
+  if (normalized.includes('transportation')) return 'transport';
+  if (normalized.includes('housing') || normalized.includes('household')) return 'home';
+  if (normalized.includes('food')) return 'food';
+  if (normalized.includes('school education')) return 'school';
+  if (normalized.includes('university education')) return 'education';
+  if (normalized.includes('health')) return 'health';
+  if (normalized.includes('communication')) return 'phone';
+  if (normalized.includes('entertainment') || normalized.includes('vacation')) return 'entertainment';
+  if (normalized.includes('children')) return 'children';
+  if (normalized.includes('personal care')) return 'personal-care';
+  if (normalized.includes('miscellaneous')) return 'misc';
+  if (normalized.includes('debt obligation')) return 'debt';
+
+  return 'misc';
 }
 
 interface KpiCardsProps {
@@ -93,8 +252,15 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
             {item.label}
           </div>
           <div className="kpi-value">
-            {item.value}
-            {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
+            {item.valueIcon && (
+              <span className="kpi-value-icon">
+                <CategoryIcon name={item.valueIcon} />
+              </span>
+            )}
+            <span className="kpi-value-text">
+              {item.value}
+              {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
+            </span>
           </div>
           {viewMode === 'yoy' && item.delta !== undefined && (
             <div className={`kpi-delta ${item.delta >= 0 ? 'positive' : 'negative'}`}>
@@ -195,10 +361,10 @@ export function buildDemographicsKpis(
   }
 
   return [
-    { label: 'Male Δ', value: formatDelta(catValue('Q902', 'ذكر')), suffix: ' pp' },
-    { label: 'Female Δ', value: formatDelta(catValue('Q902', 'أنثى')), suffix: ' pp' },
-    { label: 'Emirati Δ', value: formatDelta(catValue('Q905', 'إماراتي')), suffix: ' pp' },
-    { label: 'Non-Emirati Δ', value: formatDelta(catValue('Q905', 'غير إماراتي')), suffix: ' pp' },
+    { label: 'Male Δ', value: formatDelta(catValue('Q902', 'ذكر')) },
+    { label: 'Female Δ', value: formatDelta(catValue('Q902', 'أنثى')) },
+    { label: 'Emirati Δ', value: formatDelta(catValue('Q905', 'إماراتي')) },
+    { label: 'Non-Emirati Δ', value: formatDelta(catValue('Q905', 'غير إماراتي')) },
     { label: 'Household Δ', value: formatDelta(meanValue('Q914')), suffix: '' },
   ];
 }
@@ -219,9 +385,9 @@ export function buildPillarKpis(
     ];
   }
   return [
-    { label: 'Score Change', value: formatDelta(score.yoyChange), suffix: ' pp' },
-    { label: 'Positive Δ', value: formatDelta(score.positive2025 - score.positive2024), suffix: ' pp' },
-    { label: 'Negative Δ', value: formatDelta(score.negative2025 - score.negative2024), suffix: ' pp' },
+    { label: 'Score Change', value: formatDelta(score.yoyChange) },
+    { label: 'Positive Δ', value: formatDelta(score.positive2025 - score.positive2024) },
+    { label: 'Negative Δ', value: formatDelta(score.negative2025 - score.negative2024) },
     { label: '2024 Score', value: `${score.score2024}`, suffix: '%' },
     { label: '2025 Score', value: `${score.score2025}`, suffix: '%', delta: score.yoyChange },
   ];
@@ -229,37 +395,6 @@ export function buildPillarKpis(
 
 function formatAverageIncome(value: number): string {
   return `AED ${Math.round(value).toLocaleString('en-US')}`;
-}
-
-function truncateLabel(str: string, max = 32): string {
-  return str.length > max ? `${str.slice(0, max - 1)}…` : str;
-}
-
-function incomeYoySubtext(delta: number, unit: 'pp' | 'pct' = 'pp'): ReactElement {
-  if (Math.abs(delta) < 0.05) {
-    return (
-      <span className="kpi-yoy-subtext">
-        <strong>Unchanged</strong> from <strong>2024</strong>.
-      </span>
-    );
-  }
-
-  const isIncrease = delta > 0;
-  const arrow = isIncrease ? '▲' : '▼';
-  const keyword = isIncrease ? 'increase' : 'decrease';
-  const article = isIncrease ? 'An' : 'A';
-  const amount = unit === 'pp' ? formatDelta(Math.abs(delta)) : `${Math.abs(delta).toFixed(1)}%`;
-
-  return (
-    <span className="kpi-yoy-subtext">
-      {article} <strong>{keyword}</strong> of{' '}
-      <span className={`kpi-yoy-change ${isIncrease ? 'positive' : 'negative'}`}>
-        <strong>{amount}</strong>
-        <span className="kpi-yoy-arrow" aria-hidden="true">{arrow}</span>
-      </span>{' '}
-      from <strong>2024</strong>.
-    </span>
-  );
 }
 
 export function buildIncomeKpis(
@@ -271,6 +406,7 @@ export function buildIncomeKpis(
   const score = section.score;
   if (!score) return [];
 
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
   const avgIncome2024 = getAverageMonthlyIncome(data, '2024');
   const avgIncome2025 = getAverageMonthlyIncome(data, '2025');
   const avgIncome = pickYearValue(avgIncome2024, avgIncome2025, year);
@@ -285,52 +421,41 @@ export function buildIncomeKpis(
   const cards: KpiItem[] = [
     {
       label: 'Income & Living Score',
-      icon: 'wallet',
-      value: `${pickYearValue(score.score2024, score.score2025, year).toFixed(1)}`,
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
       suffix: '%',
-      subtext:
-        mode === 'yoy'
-          ? incomeYoySubtext(score.yoyChange)
-          : 'Overall satisfaction with income and living standards',
+      subtext: getIncomeKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
     },
     {
       label: 'Avg Monthly Income',
       icon: 'wallet',
       value: formatAverageIncome(avgIncome),
-      subtext:
-        mode === 'yoy'
-          ? incomeYoySubtext(incomePctChange, 'pct')
-          : 'Estimated from household income brackets',
+      subtext: getIncomeKpiSentence('income', avgIncome),
+      delta: incomePctChange,
     },
     {
       label: 'Top Living Expense',
-      icon: 'wallet',
+      icon: 'receipt',
       value: topExpense ? `${topExpense.value.toFixed(1)}` : '—',
       suffix: topExpense ? '%' : undefined,
-      subtext:
-        mode === 'yoy'
-          ? topExpense
-            ? incomeYoySubtext(expenseDelta)
-            : 'Living expenses'
-          : topExpense
-            ? truncateLabel(topExpense.name)
-            : 'No expense data available',
+      valueIcon: topExpense ? getCategoryIcon(topExpense.categoryEn) : undefined,
+      subtext: getIncomeKpiSentence('expense', topExpense?.value ?? 0, topExpense?.categoryEn, topExpense?.name),
+      delta: topExpense ? expenseDelta : undefined,
     },
     {
       label: 'Top Debt Obligation',
-      icon: 'wallet',
+      icon: 'credit-card',
       value: topDebt ? `${topDebt.value.toFixed(1)}` : '—',
       suffix: topDebt ? '%' : undefined,
-      subtext:
-        mode === 'yoy'
-          ? topDebt
-            ? incomeYoySubtext(debtDelta)
-            : 'Debt obligations'
-          : topDebt
-            ? truncateLabel(topDebt.name)
-            : 'No debt data available',
+      valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
+      subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn, topDebt?.name),
+      delta: topDebt ? debtDelta : undefined,
     },
   ];
 
-  return cards;
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
 }

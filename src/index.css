@@ -390,12 +390,31 @@ button {
 }
 
 .kpi-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
   position: relative;
   z-index: 1;
+}
+
+.kpi-value-text {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.kpi-value-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .kpi-suffix {
@@ -421,8 +440,9 @@ button {
 }
 
 .kpi-subtext {
-  font-size: 0.75rem;
-  opacity: 0.9;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  opacity: 0.95;
   margin-top: 8px;
   line-height: 1.35;
   position: relative;

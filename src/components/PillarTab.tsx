@@ -101,7 +101,7 @@ function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsPro
       value2025: q.data['2025'] ?? 0,
     }));
 
-  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (pp)';
+  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (%)';
 
   const charts = DEMO_QUESTIONS.map(({ code, title }) => {
     const items = getTopCategories(getCategoryByQuestion(section.questions, code), viewMode, 10, selectedYear);
@@ -167,7 +167,7 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
   }
 
   const { score, questions } = section;
-  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (pp)';
+  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (%)';
 
   const likertStatements = getLikertStatements(questions).map((q) => ({
     name: truncate(translateLabel(q.statementEn ?? q.statementAr)),
@@ -251,7 +251,7 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
         <DistributionChart
           data={categoryData}
           title="Category Breakdown"
-          subtitle={viewMode === 'current' ? `${selectedYear} distribution (%)` : 'YoY change (pp)'}
+          subtitle={viewMode === 'current' ? `${selectedYear} distribution (%)` : 'YoY change (%)'}
         />
       )}
 

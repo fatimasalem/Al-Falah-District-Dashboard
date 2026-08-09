@@ -307,11 +307,12 @@ export function getTopMultiSelectCategory(
   code: string,
   year: import('./types').SurveyYear,
   excludeCategories: Set<string> = new Set(),
-): { name: string; value: number; value2024: number; value2025: number } | null {
+): { name: string; categoryEn: string; value: number; value2024: number; value2025: number } | null {
   const items = getCategoryByQuestion(questions, code)
     .filter((q) => !excludeCategories.has(q.categoryEn ?? '') && !excludeCategories.has(q.categoryAr))
     .map((q) => ({
       name: translateLabel(q.categoryEn ?? q.categoryAr),
+      categoryEn: q.categoryEn ?? q.categoryAr,
       value2024: q.data['2024'] ?? 0,
       value2025: q.data['2025'] ?? 0,
       value: q.data[year] ?? 0,
@@ -597,6 +598,59 @@ export function getSafetyPercent(data: SurveyData, year: '2024' | '2025'): numbe
   return year === '2025' ? score.score2025 : score.score2024;
 }
 
+const KPI_CATEGORY_SHORT_LABELS: Record<string, string> = {
+  'Debt obligations': 'Debt',
+  'Housing/household expenses (including water and electricity bills, maintenance)': 'Housing',
+  'Food expenses': 'Food',
+  'Miscellaneous expenses (other expenses)': 'Miscellaneous',
+  "Children's expenses (excluding education)": 'Children',
+  'Communications expenses': 'Communications',
+  'Entertainment and vacation expenses': 'Entertainment',
+  'University education expenses': 'University',
+  'School education expenses': 'School fees',
+  'Personal care expenses': 'Personal care',
+  'Health care expenses/health insurance': 'Healthcare',
+  'Transportation expenses': 'Transport',
+  'Credit cards': 'Credit cards',
+  'Home loans': 'Home loans',
+  'Car loans': 'Car loans',
+  'Personal loans': 'Personal loans',
+};
+
+function getKpiCategoryShortLabel(categoryEn: string, fallbackName?: string): string {
+  return KPI_CATEGORY_SHORT_LABELS[categoryEn] ?? fallbackName ?? categoryEn;
+}
+
+export function getIncomeKpiSentence(
+  metric: 'score' | 'income' | 'expense' | 'debt',
+  value: number,
+  categoryEn?: string,
+  categoryName?: string,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong income and living satisfaction.'
+        : value >= 50
+          ? 'Moderate living satisfaction overall.'
+          : 'Income and living need improvement.';
+    case 'income':
+      return value >= 15000
+        ? 'Comfortable household income level.'
+        : value >= 8000
+          ? 'Moderate household income level.'
+          : 'Limited household income level.';
+    case 'expense':
+      return categoryEn
+        ? `Top expense: ${getKpiCategoryShortLabel(categoryEn, categoryName)}`
+        : 'No living expense data available.';
+    case 'debt':
+      return categoryEn
+        ? `Top debt: ${getKpiCategoryShortLabel(categoryEn, categoryName)}`
+        : 'No debt obligation data available.';
+  }
+}
+
 export function getOverviewKpiSentence(
   metric: 'satisfaction' | 'income' | 'employment' | 'safety',
   value: number,
@@ -604,26 +658,26 @@ export function getOverviewKpiSentence(
   switch (metric) {
     case 'satisfaction':
       return value >= 70
-        ? 'Residents indicate they are satisfied with life in Al Falah.'
+        ? 'Residents are satisfied in Al Falah.'
         : value >= 50
-          ? 'Residents report a moderate level of overall satisfaction.'
-          : 'Overall satisfaction is below target — improvement is needed.';
+          ? 'Moderate satisfaction overall.'
+          : 'Satisfaction is below target.';
     case 'income':
       return value >= 50
-        ? 'A majority of residents feel comfortable with their household income.'
+        ? 'Most residents feel income comfort.'
         : value >= 30
-          ? 'A notable share of residents feel comfortable with their income.'
-          : 'Many residents do not feel comfortable with their current income.';
+          ? 'Some residents feel income comfort.'
+          : 'Many residents lack income comfort.';
     case 'employment':
       return value >= 20
-        ? 'Employment levels show active workforce participation in the district.'
-        : 'Employment participation remains limited across the resident population.';
+        ? 'Workforce participation is active.'
+        : 'Employment participation is limited.';
     case 'safety':
       return value >= 70
-        ? 'Residents feel secure and safe within their community.'
+        ? 'Residents feel secure at home.'
         : value >= 50
-          ? 'Residents report a moderate sense of safety in the district.'
-          : 'Safety concerns are elevated among residents.';
+          ? 'Safety perception is moderate.'
+          : 'Safety concerns are elevated.';
   }
 }
 
@@ -907,9 +961,9 @@ export function generatePillarTableInsight(
   ];
 }
 
-export function formatDelta(value: number, suffix = 'pp'): string {
+export function formatDelta(value: number): string {
   const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(1)}${suffix === 'pp' ? '' : ''}${suffix === 'pp' ? ' pp' : suffix === '%' ? '%' : ''}`;
+  return `${sign}${value.toFixed(1)}%`;
 }
 
 export function pickYearValue<T>(value2024: T, value2025: T, year: import('./types').SurveyYear): T {
