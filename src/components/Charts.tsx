@@ -14,6 +14,7 @@ import {
   PieChart,
   Pie,
   LabelList,
+  Label,
 } from 'recharts';
 import type { SectionScore, SurveyYear, ViewMode } from '../types';
 import { CHART_COLORS, DESIGN } from '../types';
@@ -29,16 +30,15 @@ import {
   generateIncomeSavingInsight,
   generateIncomeBarrierInsight,
   generateIncomeFeelingInsight,
+  generateWorkJobseekerInsight,
+  generateWorkChallengeInsight,
+  generateWorkBusinessInsight,
+  generateWorkSupportInsight,
   type IncomeChartRow,
   type InsightPart,
 } from '../utils';
 
-const STATEMENT_ROW_HEIGHT = 64;
 const STATEMENT_CHART_CHROME = 64;
-
-function estimateStatementChartHeight(rowCount: number): number {
-  return Math.max(320, rowCount * STATEMENT_ROW_HEIGHT + STATEMENT_CHART_CHROME);
-}
 
 type BarLabelCoordinate = number | string | undefined;
 
@@ -214,6 +214,7 @@ function StatementChartShell({
   renderLabelIcon,
   labelIconClassName,
   className,
+  fillHeight = false,
 }: {
   data: StatementChartRow[];
   chartHeight: number;
@@ -221,11 +222,16 @@ function StatementChartShell({
   renderLabelIcon?: (row: StatementChartRow) => ReactElement;
   labelIconClassName?: (row: StatementChartRow) => string | undefined;
   className?: string;
+  fillHeight?: boolean;
 }) {
   return (
     <div
-      className={`statement-bar-chart ${className ?? ''}`.trim()}
-      style={{ height: chartHeight, ['--statement-rows' as string]: data.length }}
+      className={`statement-bar-chart ${fillHeight ? 'statement-bar-chart-fill' : ''} ${className ?? ''}`.trim()}
+      style={
+        fillHeight
+          ? { ['--statement-rows' as string]: data.length }
+          : { height: chartHeight, ['--statement-rows' as string]: data.length }
+      }
     >
       <div className="statement-bar-labels">
         {data.map((row) => (
@@ -324,19 +330,43 @@ function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
   );
 }
 
-function YearComparisonLegend() {
+/** Matches `.chart-legend-swatch-muted` / `.chart-legend-swatch-current` in index.css */
+const YEAR_COMPARISON_BAR = {
+  previous: DESIGN.chart.yearPrevious,
+  current: DESIGN.chart.yearCurrent,
+} as const;
+
+function YearComparisonLegend({ rounded = false }: { rounded?: boolean }) {
+  const swatchClass = (variant: 'muted' | 'current') =>
+    [
+      'chart-legend-swatch',
+      rounded ? 'chart-legend-swatch-rounded' : '',
+      variant === 'muted' ? 'chart-legend-swatch-muted' : 'chart-legend-swatch-current',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
   return (
     <div className="chart-legend chart-legend-bottom-right">
       <span className="chart-legend-item">
-        <span className="chart-legend-swatch chart-legend-swatch-muted" aria-hidden="true" />
+        <span className={swatchClass('muted')} aria-hidden="true" />
         2024
       </span>
       <span className="chart-legend-item">
-        <span className="chart-legend-swatch chart-legend-swatch-current" aria-hidden="true" />
+        <span className={swatchClass('current')} aria-hidden="true" />
         2025
       </span>
     </div>
   );
+}
+
+function renderYoYBarCells(chartData: { fullName: string }[], year: '2024' | '2025') {
+  const fill = year === '2024' ? YEAR_COMPARISON_BAR.previous : YEAR_COMPARISON_BAR.current;
+  return chartData.map((entry) => <Cell key={`${entry.fullName}-${year}`} fill={fill} />);
+}
+
+function yearBarColor(year: SurveyYear): string {
+  return year === '2024' ? YEAR_COMPARISON_BAR.previous : YEAR_COMPARISON_BAR.current;
 }
 
 interface ChartTooltipEntry {
@@ -1525,7 +1555,7 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
         ticks={[0, 25, 50, 75, 100]}
         tickFormatter={(v) => `${v}%`}
       />
-      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
       <Tooltip
         cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
         content={({ active, payload }) => {
@@ -1546,7 +1576,7 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
         name={SENTIMENT_LABELS.dissatisfied}
         legendType="none"
         radius={[4, 0, 0, 4]}
-        maxBarSize={22}
+        maxBarSize={28}
       >
         <LabelList
           dataKey="dissatisfied"
@@ -1559,7 +1589,7 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
         fill={SENTIMENT_COLORS.neutral}
         name={SENTIMENT_LABELS.neutral}
         legendType="none"
-        maxBarSize={22}
+        maxBarSize={28}
       >
         <LabelList
           dataKey="neutral"
@@ -1573,7 +1603,7 @@ function renderEnvironmentCurrentChart(data: EnvironmentStackedBarProps['data'])
         name={SENTIMENT_LABELS.satisfied}
         legendType="none"
         radius={[0, 4, 4, 0]}
-        maxBarSize={22}
+        maxBarSize={28}
       >
         <LabelList
           dataKey="satisfied"
@@ -1604,7 +1634,7 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
         ticks={[0, 25, 50, 75, 100]}
         tickFormatter={(v) => `${v}%`}
       />
-      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
       <Tooltip
         cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
         content={({ active, payload }) => {
@@ -1634,7 +1664,7 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
               legendType="none"
               fillOpacity={year === '2024' ? 0.82 : 1}
               radius={isFirst ? [4, 0, 0, 4] : isLast ? [0, 4, 4, 0] : [0, 0, 0, 0]}
-              maxBarSize={18}
+              maxBarSize={24}
             >
               <LabelList
                 dataKey={dataKey}
@@ -1656,11 +1686,12 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
 export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', score }: EnvironmentStackedBarProps) {
   const isCurrent = mode === 'current';
   const comparisonData = mergeStatementComparisonData(data2024, data);
-  const chartHeight = estimateStatementChartHeight(data.length);
+  const rowHeight = isCurrent ? 72 : 80;
+  const chartHeight = Math.max(320, data.length * rowHeight + STATEMENT_CHART_CHROME);
   const insight = generateEnvironmentChartInsight(data, mode, data2024);
 
   return (
-    <div className="chart-card chart-card-fill">
+    <div className="chart-card">
       <div className="chart-card-header">
         <div>
           <div className="chart-title">Environment Satisfaction</div>
@@ -1672,7 +1703,7 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
         </div>
         <ChartScoreBadge score={score} mode={mode} />
       </div>
-      <div className="chart-card-body">
+      <div className="chart-card-body chart-card-body-environment">
         <StatementChartShell
           data={data}
           chartHeight={chartHeight}
@@ -1717,8 +1748,8 @@ export function YoYComparisonChart({ items, title = '2024 vs 2025 Comparison' }:
           <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} />
           <Tooltip labelFormatter={(_, p) => p?.[0]?.payload?.fullName ?? ''} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="2024" fill={DESIGN.chart.barMuted} radius={[4, 4, 0, 0]} maxBarSize={32} />
-          <Bar dataKey="2025" fill={DESIGN.chart.barAlt} radius={[4, 4, 0, 0]} maxBarSize={32} />
+          <Bar dataKey="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[4, 4, 0, 0]} maxBarSize={32} />
+          <Bar dataKey="2025" fill={YEAR_COMPARISON_BAR.current} radius={[4, 4, 0, 0]} maxBarSize={32} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -1732,6 +1763,8 @@ interface IncomeChartCardProps {
   mode: ViewMode;
   insight: InsightPart[];
   children: ReactNode;
+  singleLineDescription?: boolean;
+  className?: string;
 }
 
 function IncomeChartCard({
@@ -1741,13 +1774,17 @@ function IncomeChartCard({
   mode,
   insight,
   children,
+  singleLineDescription = false,
+  className,
 }: IncomeChartCardProps) {
   return (
-    <div className="chart-card chart-card-fill">
+    <div className={['chart-card chart-card-fill', className].filter(Boolean).join(' ')}>
       <div className="chart-card-header">
         <div>
           <div className="chart-title">{title}</div>
-          <div className="chart-subtitle">{description}</div>
+          <div className={`chart-subtitle${singleLineDescription ? ' chart-subtitle-single-line' : ''}`.trim()}>
+            {description}
+          </div>
         </div>
         <ChartScoreBadge score={badgeScore} mode={mode} />
       </div>
@@ -1771,6 +1808,7 @@ const INCOME_PIE_COLORS: Record<string, string> = {
 function incomePieColor(name: string, index: number): string {
   return INCOME_PIE_COLORS[name] ?? CHART_COLORS[index % CHART_COLORS.length];
 }
+
 
 function incomeBarLabelIconClass(name: string, metric: 'spending' | 'feeling'): string {
   if (metric === 'spending') {
@@ -1859,8 +1897,8 @@ function IncomeBarLabelIcon({ name, metric }: { name: string; metric: 'spending'
   }
 }
 
-const INCOME_BAR_CHART_MARGIN = { top: 4, right: 44, left: 0, bottom: 0 };
-const INCOME_BAR_CHART_MARGIN_YOY = { top: 4, right: 64, left: 0, bottom: 0 };
+const INCOME_BAR_CHART_MARGIN = { top: 4, right: 44, left: 0, bottom: 28 };
+const INCOME_BAR_CHART_MARGIN_YOY = { top: 4, right: 64, left: 0, bottom: 28 };
 
 function renderIncomePieSliceLabel({
   cx = 0,
@@ -1931,26 +1969,38 @@ export function IncomeBarChartCard({
 }: IncomeBarChartCardProps) {
   const isCurrent = mode === 'current';
   const sorted = [...data].sort((a, b) => b.value - a.value);
-  const chartData = sorted.map((row) => ({
+  const chartData = sorted.map((row, index) => ({
     name: row.name,
     fullName: row.fullName,
     value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
     value2024: row.value2024,
     value2025: row.value2025,
+    categoryColor: incomePieColor(row.name, index),
   }));
   const insight =
     metric === 'spending'
       ? generateIncomeSpendingInsight(data, mode, year)
       : generateIncomeFeelingInsight(data, mode, year);
-  const chartHeight = Math.max(200, chartData.length * (isCurrent ? 48 : 58));
+  const chartHeight = Math.max(220, chartData.length * (isCurrent ? 48 : 58) + 28);
+  const xAxisLabel = 'Response Percentage (%)';
+  const fillHeight = metric === 'feeling';
 
   return (
     <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
-      <div className={`income-bar-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
+      <div
+        className={[
+          'income-bar-chart-wrap',
+          !isCurrent ? 'income-bar-chart-wrap-yoy' : '',
+          fillHeight ? 'income-bar-chart-wrap-fill' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         <StatementChartShell
           className="statement-bar-chart-income"
           data={chartData}
           chartHeight={chartHeight}
+          fillHeight={fillHeight}
           renderLabelIcon={(row) => <IncomeBarLabelIcon name={row.name} metric={metric} />}
           labelIconClassName={(row) => incomeBarLabelIconClass(row.name, metric)}
         >
@@ -1962,15 +2012,22 @@ export function IncomeBarChartCard({
               barCategoryGap="18%"
             >
               <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']} />
-              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                />
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
               <Tooltip
                 formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
                 labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
               />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                {chartData.map((entry, index) => (
-                  <Cell key={entry.fullName} fill={incomePieColor(entry.name, index)} />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22} legendType="none">
+                {chartData.map((entry) => (
+                  <Cell key={entry.fullName} fill={entry.categoryColor} />
                 ))}
                 <LabelList
                   dataKey="value"
@@ -1989,18 +2046,18 @@ export function IncomeBarChartCard({
               barGap={2}
             >
               <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']} />
-              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
-              <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
-              <Bar dataKey="value2024" name="2024" fill={DESIGN.chart.barMuted} radius={[0, 4, 4, 0]} maxBarSize={14}>
-                <LabelList
-                  dataKey="value2024"
-                  position="right"
-                  formatter={(v: number) => `${v.toFixed(1)}%`}
-                  style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
                 />
-              </Bar>
-              <Bar dataKey="value2025" name="2025" fill={DESIGN.chart.barAlt} radius={[0, 4, 4, 0]} maxBarSize={14}>
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+              <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                {renderYoYBarCells(chartData, '2025')}
                 <LabelList
                   dataKey="value2025"
                   position="right"
@@ -2008,10 +2065,19 @@ export function IncomeBarChartCard({
                   style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
                 />
               </Bar>
+              <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                {renderYoYBarCells(chartData, '2024')}
+                <LabelList
+                  dataKey="value2024"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                />
+              </Bar>
             </BarChart>
           )}
         </StatementChartShell>
-        {!isCurrent && <YearComparisonLegend />}
+        {!isCurrent && <YearComparisonLegend rounded />}
       </div>
     </IncomeChartCard>
   );
@@ -2075,7 +2141,14 @@ export function IncomePieChartCard({
   const insight = generateIncomeSavingInsight(data, mode, year);
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      singleLineDescription
+    >
       {isCurrent ? (
         renderIncomePie(data, year)
       ) : (
@@ -2231,6 +2304,479 @@ export function IncomeBarriersHeatmap({
           <span>Low prevalence</span>
           <span className="health-heatmap-scale-bar" aria-hidden="true" />
           <span>High prevalence</span>
+        </div>
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+interface WorkPieChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function WorkPieChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: WorkPieChartCardProps) {
+  const isCurrent = mode === 'current';
+  const insight = generateWorkJobseekerInsight(data, mode, year);
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      {isCurrent ? (
+        renderIncomePie(data, year)
+      ) : (
+        <div className="income-pie-dual">
+          {renderIncomePie(data, '2024', true)}
+          {renderIncomePie(data, '2025', true)}
+        </div>
+      )}
+    </IncomeChartCard>
+  );
+}
+
+const WORK_BAR_CHART_MARGIN = { top: 8, right: 56, left: 4, bottom: 28 };
+const WORK_BAR_CHART_MARGIN_YOY = { top: 8, right: 72, left: 4, bottom: 28 };
+const WORK_COLUMN_CHART_MARGIN = { top: 20, right: 12, left: 4, bottom: 44 };
+const WORK_COLUMN_CHART_MARGIN_YOY = { top: 24, right: 12, left: 4, bottom: 44 };
+
+function WorkChallengeIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  const lower = fullName.toLowerCase();
+  if (/education|university|quality/.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+      </svg>
+    );
+  }
+  if (/field|qualification|match|align/.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+      </svg>
+    );
+  }
+  if (/opportunit|suitable/.test(lower)) {
+    return (
+      <svg {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+        <path d="M9 12h6" />
+      </svg>
+    );
+  }
+  if (/competition/.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    );
+  }
+  if (/social|connection/.test(lower)) {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...props}>
+      <path d="M12 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4l2-4z" />
+    </svg>
+  );
+}
+
+interface WorkHorizontalBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function WorkHorizontalBarChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: WorkHorizontalBarChartCardProps) {
+  const isCurrent = mode === 'current';
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const chartData = sorted.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const insight = generateWorkChallengeInsight(data, mode, year);
+  const rowHeight = isCurrent ? 68 : 76;
+  const chartHeight = Math.max(300, chartData.length * rowHeight + 28);
+  const xAxisLabel = 'Response Percentage (%)';
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      <div className={`income-bar-chart-wrap work-challenge-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
+        <StatementChartShell
+          className="statement-bar-chart-income"
+          data={chartData}
+          chartHeight={chartHeight}
+          renderLabelIcon={(row) => <WorkChallengeIcon fullName={row.fullName} />}
+          labelIconClassName={() => 'work-challenge-label-icon'}
+        >
+          {isCurrent ? (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={WORK_BAR_CHART_MARGIN}
+              barCategoryGap="18%"
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                />
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <Tooltip
+                formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+              />
+              <Bar dataKey="value" fill={yearBarColor(year)} radius={[0, 4, 4, 0]} maxBarSize={26} legendType="none">
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          ) : (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={WORK_BAR_CHART_MARGIN_YOY}
+              barCategoryGap="18%"
+              barGap={2}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                />
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+              <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                {renderYoYBarCells(chartData, '2025')}
+                <LabelList
+                  dataKey="value2025"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+              <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                {renderYoYBarCells(chartData, '2024')}
+                <LabelList
+                  dataKey="value2024"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          )}
+        </StatementChartShell>
+        {!isCurrent && <YearComparisonLegend rounded />}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+interface WorkColumnBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function WorkColumnBarChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: WorkColumnBarChartCardProps) {
+  const isCurrent = mode === 'current';
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const chartData = sorted.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const insight = generateWorkBusinessInsight(data, mode, year);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className={!isCurrent ? 'chart-card-work-business-yoy' : undefined}
+    >
+      <div className={`income-bar-chart-wrap work-column-bar-chart-wrap ${!isCurrent ? 'work-column-bar-chart-wrap-yoy' : ''}`.trim()}>
+        <div className="work-column-bar-chart-plot">
+          <ResponsiveContainer width="100%" height="100%">
+            {isCurrent ? (
+              <BarChart
+                data={chartData}
+                margin={WORK_COLUMN_CHART_MARGIN}
+                barCategoryGap="22%"
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10, fill: DESIGN.chart.axis }}
+                  interval={0}
+                  textAnchor="middle"
+                  height={36}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+                  width={44}
+                  domain={[0, 'auto']}
+                >
+                  <Label
+                    value="Response Percentage (%)"
+                    angle={-90}
+                    position="insideLeft"
+                    offset={12}
+                    style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600, textAnchor: 'middle' }}
+                  />
+                </YAxis>
+                <Tooltip
+                  formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                  labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                />
+                <Bar dataKey="value" fill={yearBarColor(year)} radius={[4, 4, 0, 0]} maxBarSize={56} legendType="none">
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                  />
+                </Bar>
+              </BarChart>
+            ) : (
+              <BarChart
+                data={chartData}
+                margin={WORK_COLUMN_CHART_MARGIN_YOY}
+                barCategoryGap="22%"
+                barGap={4}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10, fill: DESIGN.chart.axis }}
+                  interval={0}
+                  textAnchor="middle"
+                  height={36}
+                />
+                <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} width={44} domain={[0, 'auto']} />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+                <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                  {renderYoYBarCells(chartData, '2025')}
+                  <LabelList
+                    dataKey="value2025"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                  />
+                </Bar>
+                <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                  {renderYoYBarCells(chartData, '2024')}
+                  <LabelList
+                    dataKey="value2024"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                  />
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+        {!isCurrent && (
+          <div className="work-column-bar-chart-legend">
+            <YearComparisonLegend rounded />
+          </div>
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+function WorkSupportIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  const lower = fullName.toLowerCase();
+  if (/financial|promotion/.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+      </svg>
+    );
+  }
+  if (/job opportunit/.test(lower)) {
+    return (
+      <svg {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    );
+  }
+  if (/housing/.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...props}>
+      <path d="M12 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4l2-4z" />
+    </svg>
+  );
+}
+
+interface WorkSupportHeatmapProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function WorkSupportHeatmap({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: WorkSupportHeatmapProps) {
+  const isCurrent = mode === 'current';
+  const insight = generateWorkSupportInsight(data, mode, year);
+  const currentValue = (row: IncomeChartRow) => (year === '2025' ? row.value2025 : row.value2024);
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      <div className="health-heatmap income-barriers-heatmap work-support-heatmap">
+        <div className="work-support-heatmap-scroll">
+          <div className={`health-heatmap-grid ${isCurrent ? 'health-heatmap-grid--single' : ''}`}>
+            <div className="health-heatmap-header">
+              <span className="health-heatmap-corner" />
+              {!isCurrent && <span className="health-heatmap-column">2024</span>}
+              <span className="health-heatmap-column">{isCurrent ? year : '2025'}</span>
+            </div>
+            {data.map((row) => {
+              const agreement = currentValue(row);
+              return (
+                <div className="health-heatmap-row" key={row.fullName}>
+                  <div className="health-heatmap-label" title={row.fullName}>
+                    <span className="health-heatmap-label-icon income-barrier-icon">
+                      <WorkSupportIcon fullName={row.fullName} />
+                    </span>
+                    <span className="health-heatmap-label-text">{row.name}</span>
+                  </div>
+                  {!isCurrent && (
+                    <div
+                      className="health-heatmap-cell"
+                      style={{
+                        background: agreementHeatColor(row.value2024),
+                        color: agreementHeatTextColor(row.value2024),
+                      }}
+                      title={`${row.fullName} (2024): ${row.value2024.toFixed(1)}%`}
+                    >
+                      <HeatmapCellValue value={row.value2024} />
+                    </div>
+                  )}
+                  <div
+                    className="health-heatmap-cell"
+                    style={{
+                      background: agreementHeatColor(isCurrent ? agreement : row.value2025),
+                      color: agreementHeatTextColor(isCurrent ? agreement : row.value2025),
+                    }}
+                    title={
+                      isCurrent
+                        ? `${row.fullName} (${year}): ${agreement.toFixed(1)}%`
+                        : `${row.fullName} (2025): ${row.value2025.toFixed(1)}% (${formatDelta(row.value2025 - row.value2024)})`
+                    }
+                  >
+                    <HeatmapCellValue
+                      value={isCurrent ? agreement : row.value2025}
+                      change={row.value2025 - row.value2024}
+                      showChange={!isCurrent}
+                      invert
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="health-heatmap-scale">
+          <span>Low demand</span>
+          <span className="health-heatmap-scale-bar" aria-hidden="true" />
+          <span>High demand</span>
         </div>
       </div>
     </IncomeChartCard>

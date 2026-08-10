@@ -593,6 +593,357 @@ export function getEmploymentPercent(data: SurveyData, year: '2024' | '2025'): n
   return employed?.data[year] ?? 0;
 }
 
+const WORK_LIFE_BALANCE_STATEMENT =
+  'I feel secure in my ability to balance work and social (family) life.';
+
+const WORK_CHALLENGE_CATEGORIES = new Set([
+  'The labor market does not accept the quality of university education you obtained',
+  'My field of study and qualifications do not match the requirements of the labor market',
+  'The job opportunities available to me are not suitable',
+  'Strong competition for available job opportunities',
+  "I don't have enough social connections to help",
+]);
+
+const WORK_CHALLENGE_LABELS: Record<string, string> = {
+  'The labor market does not accept the quality of university education you obtained':
+    'Labor market rejects education quality',
+  'My field of study and qualifications do not match the requirements of the labor market':
+    'Field/qualifications mismatch',
+  'The job opportunities available to me are not suitable': 'Job opportunities not suitable',
+  'Strong competition for available job opportunities': 'Strong competition',
+  "I don't have enough social connections to help": 'Insufficient social connections',
+};
+
+const WORK_BUSINESS_LABELS: Record<string, string> = {
+  'Outside the UAE': 'Outside UAE',
+  'Within the Emirate of Abu Dhabi': 'Abu Dhabi',
+  'Within Al Falah area': 'Al Falah',
+  'In other emirates': 'Other emirates',
+  'No, there is not': 'None',
+};
+
+const WORK_SUPPORT_LABELS: Record<string, string> = {
+  'Financial support and promotions': 'Financial support',
+  'Providing job opportunities': 'Job opportunities',
+  'Social support': 'Social support',
+  'Home maintenance work': 'Home maintenance',
+  'Flexibility of working hours': 'Flexible hours',
+  'In-kind bonuses (housing, education,...)': 'In-kind benefits',
+  'Housing subsidies': 'Housing assistance',
+  'Government services': 'Government services',
+  'Supporting entrepreneurs and investments': 'Business owner support',
+};
+
+function normalizeYesNoCategory(categoryEn: string | undefined, categoryAr: string): 'Yes' | 'No' {
+  const raw = (categoryEn ?? categoryAr).trim();
+  return /^yes$/i.test(raw) || raw === 'نعم' ? 'Yes' : 'No';
+}
+
+export function getAverageWeeklyHours(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  const q = questions.find(
+    (item): item is import('./types').MeanQuestion =>
+      isMean(item) && item.code === 'Q209' && item.dimensionAr === 'الإجمالي',
+  );
+  return q?.data[year] ?? 0;
+}
+
+export function getWorkLifeBalancePercent(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  const q = questions
+    .filter(isLikert)
+    .find((item) => item.statementEn === WORK_LIFE_BALANCE_STATEMENT);
+  return q?.data[year]?.agreement ?? 0;
+}
+
+export function getGovernmentAssistancePercent(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  const q = questions
+    .filter(isCategory)
+    .find((item) => item.code === 'Q212' && normalizeYesNoCategory(item.categoryEn, item.categoryAr) === 'Yes');
+  return q?.data[year] ?? 0;
+}
+
+export function getWorkJobseekerChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q203')
+    .map((q) => {
+      const name = normalizeYesNoCategory(q.categoryEn, q.categoryAr);
+      return {
+        name,
+        fullName: name === 'Yes' ? 'Yes — actively seeking paid work' : 'No — not seeking paid work',
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getWorkChallengeChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q205')
+    .filter((q) => WORK_CHALLENGE_CATEGORIES.has(q.categoryEn ?? ''))
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = WORK_CHALLENGE_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getWorkBusinessChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q211')
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = WORK_BUSINESS_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getWorkSupportHeatmapData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q213')
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = WORK_SUPPORT_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getWorkJobseekerRate(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  const yesRow = rows.find((row) => row.name === 'Yes');
+  return yesRow ? pickYearValue(yesRow.value2024, yesRow.value2025, year) : 0;
+}
+
+export function getWorkBusinessOwnershipRate(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  const noneRow = rows.find((row) => row.name === 'None');
+  const noneRate = noneRow ? pickYearValue(noneRow.value2024, noneRow.value2025, year) : 0;
+  return Math.max(0, 100 - noneRate);
+}
+
+export function getWorkTopChallengeScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return Math.max(...rows.map((row) => pickYearValue(row.value2024, row.value2025, year)));
+}
+
+export function getWorkTopSupportScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return Math.max(...rows.map((row) => pickYearValue(row.value2024, row.value2025, year)));
+}
+
+export function getWorkChartBadgeScore(
+  rows: IncomeChartRow[],
+  year: import('./types').SurveyYear,
+  metric: 'jobseekers' | 'challenges' | 'business' | 'support',
+  mode: ViewMode,
+): number {
+  const score2024 =
+    metric === 'jobseekers'
+      ? getWorkJobseekerRate(rows, '2024')
+      : metric === 'challenges'
+        ? getWorkTopChallengeScore(rows, '2024')
+        : metric === 'business'
+          ? getWorkBusinessOwnershipRate(rows, '2024')
+          : getWorkTopSupportScore(rows, '2024');
+  const score2025 =
+    metric === 'jobseekers'
+      ? getWorkJobseekerRate(rows, '2025')
+      : metric === 'challenges'
+        ? getWorkTopChallengeScore(rows, '2025')
+        : metric === 'business'
+          ? getWorkBusinessOwnershipRate(rows, '2025')
+          : getWorkTopSupportScore(rows, '2025');
+
+  if (mode === 'yoy') return score2025 - score2024;
+  return year === '2025' ? score2025 : score2024;
+}
+
+export function generateWorkJobseekerInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const activeRate = getWorkJobseekerRate(rows, year);
+  const inactive = rows.find((row) => row.name === 'No');
+
+  if (mode === 'yoy') {
+    const change = getWorkJobseekerRate(rows, '2025') - getWorkJobseekerRate(rows, '2024');
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: 'Active jobseekers' },
+      ` ${direction} `,
+      { bold: formatDelta(change) },
+      ' with ',
+      { bold: `${getWorkJobseekerRate(rows, '2025').toFixed(1)}%` },
+      ' now seeking paid work.',
+    ];
+  }
+
+  return [
+    { bold: `${activeRate.toFixed(1)}%` },
+    ' actively sought paid work in the past four weeks',
+    inactive
+      ? `; ${pickYearValue(inactive.value2024, inactive.value2025, year).toFixed(1)}% did not.`
+      : '.',
+  ];
+}
+
+export function generateWorkChallengeInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const top = [...rows].sort((a, b) => b.value - a.value)[0];
+  if (!top) return ['Employment challenges highlight barriers residents face when seeking work.'];
+
+  if (mode === 'yoy') {
+    const biggestShift = [...rows].sort(
+      (a, b) => Math.abs(b.value2025 - b.value2024) - Math.abs(a.value2025 - a.value2024),
+    )[0];
+    const change = biggestShift.value2025 - biggestShift.value2024;
+    return [
+      { bold: biggestShift.name },
+      ' shifted most at ',
+      { bold: formatDelta(change) },
+      ' while ',
+      { bold: top.name },
+      ' remains the top cited challenge.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' is the most cited challenge at ',
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' of responses.',
+  ];
+}
+
+export function generateWorkBusinessInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const top = [...rows].filter((row) => row.name !== 'None').sort((a, b) => b.value - a.value)[0];
+  const ownershipRate = getWorkBusinessOwnershipRate(rows, year);
+
+  if (mode === 'yoy') {
+    const change = getWorkBusinessOwnershipRate(rows, '2025') - getWorkBusinessOwnershipRate(rows, '2024');
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: 'Business ownership' },
+      ` ${direction} `,
+      { bold: formatDelta(change) },
+      ' with ',
+      { bold: `${getWorkBusinessOwnershipRate(rows, '2025').toFixed(1)}%` },
+      ' reporting a project or investment.',
+    ];
+  }
+
+  return [
+    { bold: `${ownershipRate.toFixed(1)}%` },
+    ' report a private business or investment',
+    top ? `; ${top.name} is the most common location at ${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%.` : '.',
+  ];
+}
+
+export function generateWorkSupportInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  const top = [...rows].sort((a, b) => b.value - a.value)[0];
+  if (!top) return ['Expected government support reflects resident priorities in employment.'];
+
+  if (mode === 'yoy') {
+    const rising = [...rows].sort((a, b) => (b.value2025 - b.value2024) - (a.value2025 - a.value2024))[0];
+    const change = rising.value2025 - rising.value2024;
+    return [
+      { bold: rising.name },
+      ' demand rose most at ',
+      { bold: formatDelta(change) },
+      ' while ',
+      { bold: top.name },
+      ' remains the most expected support.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' is the most expected support at ',
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' of responses.',
+  ];
+}
+
+export function getWorkKpiSentence(
+  metric: 'score' | 'hours' | 'balance' | 'assistance',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong employment satisfaction overall.'
+        : value >= 50
+          ? 'Moderate employment satisfaction.'
+          : 'Employment satisfaction needs improvement.';
+    case 'hours':
+      return value >= 40
+        ? 'Residents work full-time hours on average.'
+        : value >= 20
+          ? 'Moderate weekly working hours.'
+          : 'Limited weekly working hours reported.';
+    case 'balance':
+      return value >= 70
+        ? 'Most residents feel secure balancing work and family.'
+        : value >= 50
+          ? 'Work-life balance perception is moderate.'
+          : 'Many residents struggle with work-life balance.';
+    case 'assistance':
+      return value >= 30
+        ? 'A notable share receive government assistance.'
+        : value >= 15
+          ? 'Some residents receive government assistance.'
+          : 'Few residents report government assistance.';
+  }
+}
+
 export function getSafetyPercent(data: SurveyData, year: '2024' | '2025'): number {
   const score = data.sectionScores.security;
   return year === '2025' ? score.score2025 : score.score2024;

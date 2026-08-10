@@ -14,6 +14,10 @@ import {
   getAverageMonthlyIncome,
   getTopMultiSelectCategory,
   INCOME_DEBT_EXCLUSIONS,
+  getAverageWeeklyHours,
+  getWorkLifeBalancePercent,
+  getGovernmentAssistancePercent,
+  getWorkKpiSentence,
 } from '../utils';
 
 export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield' | 'receipt' | 'credit-card';
@@ -101,14 +105,17 @@ function KpiIcon({ name }: { name: KpiIconName }) {
   return icons[name];
 }
 
-function CategoryIcon({ name }: { name: CategoryIconName }) {
+function CategoryIcon({ name, size = 'default' }: { name: CategoryIconName; size?: 'default' | 'value' }) {
+  const isValue = size === 'value';
   const props = {
-    width: 22,
-    height: 22,
+    width: isValue ? undefined : 22,
+    height: isValue ? undefined : 22,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 2,
+    strokeWidth: isValue ? 2.25 : 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
     'aria-hidden': true as const,
   };
 
@@ -254,7 +261,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
           <div className="kpi-value">
             {item.valueIcon && (
               <span className="kpi-value-icon">
-                <CategoryIcon name={item.valueIcon} />
+                <CategoryIcon name={item.valueIcon} size="value" />
               </span>
             )}
             <span className="kpi-value-text">
@@ -420,7 +427,7 @@ export function buildIncomeKpis(
 
   const cards: KpiItem[] = [
     {
-      label: 'Income & Living Score',
+      label: 'Income & Living Overall Satisfaction Score',
       icon: 'satisfaction',
       value: `${sectionScore.toFixed(1)}`,
       suffix: '%',
@@ -451,6 +458,67 @@ export function buildIncomeKpis(
       valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
       subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn, topDebt?.name),
       delta: topDebt ? debtDelta : undefined,
+    },
+  ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+}
+
+export function buildWorkKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const avgHours2024 = getAverageWeeklyHours(questions, '2024');
+  const avgHours2025 = getAverageWeeklyHours(questions, '2025');
+  const avgHours = pickYearValue(avgHours2024, avgHours2025, year);
+  const balance2024 = getWorkLifeBalancePercent(questions, '2024');
+  const balance2025 = getWorkLifeBalancePercent(questions, '2025');
+  const balance = pickYearValue(balance2024, balance2025, year);
+  const assistance2024 = getGovernmentAssistancePercent(questions, '2024');
+  const assistance2025 = getGovernmentAssistancePercent(questions, '2025');
+  const assistance = pickYearValue(assistance2024, assistance2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Employment Overall Satisfaction Score',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      subtext: getWorkKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Avg Weekly Working Hours',
+      icon: 'briefcase',
+      value: `${avgHours.toFixed(1)}`,
+      suffix: ' hrs',
+      subtext: getWorkKpiSentence('hours', avgHours),
+      delta: avgHours2025 - avgHours2024,
+    },
+    {
+      label: 'Work-Life Balance Security',
+      icon: 'shield',
+      value: `${balance.toFixed(1)}`,
+      suffix: '%',
+      subtext: getWorkKpiSentence('balance', balance),
+      delta: balance2025 - balance2024,
+    },
+    {
+      label: 'Government Assistance Recipients',
+      icon: 'wallet',
+      value: `${assistance.toFixed(1)}`,
+      suffix: '%',
+      subtext: getWorkKpiSentence('assistance', assistance),
+      delta: assistance2025 - assistance2024,
     },
   ];
 

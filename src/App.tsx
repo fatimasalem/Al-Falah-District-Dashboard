@@ -5,12 +5,14 @@ import { Header } from './components/Header';
 import { InsightsPanel } from './components/InsightsPanel';
 import { OverviewCharts } from './components/OverviewTab';
 import { PillarCharts } from './components/PillarTab';
-import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis } from './components/KpiCards';
+import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis, buildWorkKpis } from './components/KpiCards';
 
 const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
 const SELECTED_YEAR_STORAGE_KEY = 'alfalah-selected-year';
+const TAB_STORAGE_KEY = 'alfalah-active-tab';
 const VIEW_MODE_PARAM = 'view';
 const YEAR_PARAM = 'year';
+const TAB_PARAM = 'tab';
 
 function isViewMode(value: string | null): value is ViewMode {
   return value === 'current' || value === 'yoy';
@@ -18,6 +20,10 @@ function isViewMode(value: string | null): value is ViewMode {
 
 function isSurveyYear(value: string | null): value is SurveyYear {
   return value === '2024' || value === '2025';
+}
+
+function isTabId(value: string | null): value is TabId {
+  return PILLAR_TABS.some((tab) => tab.id === value);
 }
 
 function readViewModeFromUrl(): ViewMode | null {
@@ -120,10 +126,56 @@ function persistFilters(mode: ViewMode, year: SurveyYear) {
   persistSelectedYear(year);
 }
 
+function readActiveTabFromUrl(): TabId | null {
+  const value = new URLSearchParams(window.location.search).get(TAB_PARAM);
+  return isTabId(value) ? value : null;
+}
+
+function readActiveTabFromSession(): TabId | null {
+  try {
+    const stored = sessionStorage.getItem(TAB_STORAGE_KEY);
+    return isTabId(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeActiveTabToSession(tab: TabId) {
+  try {
+    sessionStorage.setItem(TAB_STORAGE_KEY, tab);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeActiveTabToStorage(tab: TabId) {
+  try {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  } catch {
+    // ignore storage access errors
+  }
+}
+
+function writeActiveTabToUrl(tab: TabId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set(TAB_PARAM, tab);
+  window.history.replaceState(window.history.state, '', url);
+}
+
+function getInitialActiveTab(): TabId {
+  return readActiveTabFromUrl() ?? readActiveTabFromSession() ?? 'overview';
+}
+
+function persistActiveTab(tab: TabId) {
+  writeActiveTabToUrl(tab);
+  writeActiveTabToSession(tab);
+  writeActiveTabToStorage(tab);
+}
+
 export default function App() {
   const [data, setData] = useState<SurveyData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>(() => getInitialActiveTab());
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInitialViewMode());
   const [selectedYear, setSelectedYear] = useState<SurveyYear>(() => getInitialSelectedYear());
 
@@ -139,14 +191,17 @@ export default function App() {
 
   useEffect(() => {
     persistFilters(viewMode, selectedYear);
+    persistActiveTab(activeTab);
   }, []);
 
   useEffect(() => {
     const onPopState = () => {
       const mode = readViewModeFromUrl() ?? readViewModeFromSession();
       const year = readSelectedYearFromUrl() ?? readSelectedYearFromSession();
+      const tab = readActiveTabFromUrl() ?? readActiveTabFromSession();
       if (mode) setViewMode(mode);
       if (year) setSelectedYear(year);
+      if (tab) setActiveTab(tab);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -162,6 +217,11 @@ export default function App() {
     persistFilters('current', year);
     setSelectedYear(year);
     setViewMode('current');
+  };
+
+  const handleTabChange = (tab: TabId) => {
+    persistActiveTab(tab);
+    setActiveTab(tab);
   };
 
   if (error) {
@@ -180,7 +240,9 @@ export default function App() {
         ? buildDemographicsKpis(activeSection, viewMode, selectedYear)
         : activeTab === 'income' && activeSection
           ? buildIncomeKpis(data, activeSection, viewMode, selectedYear)
-          : activeSection?.score
+          : activeTab === 'work' && activeSection
+            ? buildWorkKpis(activeSection, viewMode, selectedYear)
+            : activeSection?.score
             ? buildPillarKpis(activeSection.score, viewMode, selectedYear)
             : [];
 
@@ -199,7 +261,7 @@ export default function App() {
         availableYears={SURVEY_YEARS}
         updatedAt={data.updatedAt}
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as TabId)}
+        onTabChange={(tab) => handleTabChange(tab as TabId)}
         tabs={PILLAR_TABS}
       />
       <div className="dashboard-content">

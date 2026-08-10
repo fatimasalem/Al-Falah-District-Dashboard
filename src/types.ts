@@ -106,6 +106,8 @@ export const DESIGN = {
     bar: '#14B8A6',
     barAlt: '#10B981',
     barMuted: '#94a3b8',
+    yearPrevious: '#cbd5e1',
+    yearCurrent: '#3b82f6',
     grid: '#E5E7EB',
     axis: '#9CA3AF',
   },

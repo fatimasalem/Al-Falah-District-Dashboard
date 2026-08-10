@@ -106,14 +106,6 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
             score={getScoreValue(educationScore, viewMode, selectedYear)}
           />
         )}
-        {healthHeatmapData.length > 0 && healthScore && (
-          <HealthHeatmapChart
-            heatmapData={healthHeatmapData}
-            sectionScore={healthScore}
-            mode={viewMode}
-            year={selectedYear}
-          />
-        )}
         {environmentData.length > 0 && (
           <EnvironmentStackedBar
             data={environmentData}
@@ -121,6 +113,14 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
             mode={viewMode}
             year={selectedYear}
             score={getScoreValue(environmentScore, viewMode, selectedYear)}
+          />
+        )}
+        {healthHeatmapData.length > 0 && healthScore && (
+          <HealthHeatmapChart
+            heatmapData={healthHeatmapData}
+            sectionScore={healthScore}
+            mode={viewMode}
+            year={selectedYear}
           />
         )}
       </div>

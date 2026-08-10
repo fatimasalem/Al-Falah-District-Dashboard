@@ -9,6 +9,10 @@ import {
   IncomeBarChartCard,
   IncomePieChartCard,
   IncomeBarriersHeatmap,
+  WorkPieChartCard,
+  WorkHorizontalBarChartCard,
+  WorkColumnBarChartCard,
+  WorkSupportHeatmap,
 } from './Charts';
 import {
   getLikertStatements,
@@ -18,6 +22,11 @@ import {
   getIncomeDistributionData,
   getIncomeBarrierHeatmapData,
   getIncomeChartBadgeScore,
+  getWorkJobseekerChartData,
+  getWorkChallengeChartData,
+  getWorkBusinessChartData,
+  getWorkSupportHeatmapData,
+  getWorkChartBadgeScore,
   isCategory,
   isMean,
   pickYearValue,
@@ -85,6 +94,54 @@ function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           mode={viewMode}
           year={selectedYear}
           metric="feeling"
+        />
+      </div>
+    </div>
+  );
+}
+
+function WorkCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const jobseekers = getWorkJobseekerChartData(section.questions, selectedYear);
+  const challenges = getWorkChallengeChartData(section.questions, selectedYear);
+  const business = getWorkBusinessChartData(section.questions, selectedYear);
+  const support = getWorkSupportHeatmapData(section.questions, selectedYear);
+
+  return (
+    <div className="main-content main-content-work">
+      <div className="chart-grid-top chart-grid-work-top">
+        <WorkPieChartCard
+          data={jobseekers}
+          title="Active Jobseekers"
+          description="Share of residents who looked for a paid job in the past four weeks."
+          badgeScore={getWorkChartBadgeScore(jobseekers, selectedYear, 'jobseekers', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+        <WorkHorizontalBarChartCard
+          data={challenges}
+          title="Challenges to Finding Employment"
+          description="Most common barriers preventing residents from obtaining a job opportunity."
+          badgeScore={getWorkChartBadgeScore(challenges, selectedYear, 'challenges', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-work-bottom">
+        <WorkColumnBarChartCard
+          data={business}
+          title="Private Business or Investment"
+          description="Where residents hold a private project or investment, inside or outside the UAE."
+          badgeScore={getWorkChartBadgeScore(business, selectedYear, 'business', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+        <WorkSupportHeatmap
+          data={support}
+          title="Expected Government Employment Support"
+          description="Types of support residents expect from government entities in the field of employment."
+          badgeScore={getWorkChartBadgeScore(support, selectedYear, 'support', viewMode)}
+          mode={viewMode}
+          year={selectedYear}
         />
       </div>
     </div>
@@ -164,6 +221,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'income') {
     return <IncomeCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'work') {
+    return <WorkCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;

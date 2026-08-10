@@ -24,6 +24,8 @@
   --radius-sm: 6px;
   --sidebar-width: 320px;
   --content-padding: 28px 32px;
+  --chart-bar-muted: #cbd5e1;
+  --chart-bar-alt: #3b82f6;
 }
 
 html,
@@ -392,7 +394,7 @@ button {
 .kpi-value {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -404,6 +406,7 @@ button {
 .kpi-value-text {
   display: inline-flex;
   align-items: baseline;
+  min-width: 0;
 }
 
 .kpi-value-icon {
@@ -415,6 +418,14 @@ button {
   flex-shrink: 0;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.kpi-value-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .kpi-suffix {
@@ -440,13 +451,35 @@ button {
 }
 
 .kpi-subtext {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  opacity: 0.95;
+  font-size: 0.75rem;
+  opacity: 0.9;
   margin-top: 8px;
   line-height: 1.35;
   position: relative;
   z-index: 1;
+}
+
+.kpi-subtext-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kpi-subtext-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.kpi-subtext-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .kpi-yoy-subtext strong {
@@ -486,6 +519,86 @@ button {
   grid-template-columns: 1.45fr 1fr;
   gap: 20px;
   align-items: stretch;
+}
+
+.chart-grid-work-top {
+  grid-template-columns: 1fr 1.55fr;
+}
+
+.chart-grid-work-bottom {
+  align-items: stretch;
+}
+
+.chart-grid-work-bottom > .chart-card-fill {
+  max-height: 400px;
+  min-height: 320px;
+}
+
+.chart-grid-work-bottom .chart-card-body:has(.income-bar-chart-wrap),
+.chart-grid-work-bottom .chart-card-body:has(.work-column-bar-chart-wrap),
+.chart-grid-work-bottom .chart-card-body:has(.work-support-heatmap) {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-grid-work-bottom .income-bar-chart-wrap,
+.chart-grid-work-bottom .work-column-bar-chart-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.work-support-heatmap-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.work-support-heatmap-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.work-support-heatmap-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.work-support-heatmap-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+}
+
+.work-support-heatmap-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.75);
+}
+
+.work-support-heatmap .health-heatmap-grid {
+  flex: none;
+}
+
+.work-support-heatmap .health-heatmap-row {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+
+.work-support-heatmap .health-heatmap-scale {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.chart-card-body:has(.work-support-heatmap),
+.chart-card-fill > .chart-card-body:has(.work-support-heatmap) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.statement-bar-label-icon.work-challenge-label-icon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
 }
 
 .chart-grid {
@@ -586,7 +699,41 @@ button {
 .statement-bar-chart-income .statement-bar-label-text {
   overflow-wrap: normal;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
+}
+
+.statement-bar-chart-fill {
+  height: 100%;
+  min-height: 0;
+}
+
+.statement-bar-chart-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.statement-bar-chart-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.statement-bar-chart-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.statement-bar-chart-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+}
+
+.statement-bar-chart-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.75);
 }
 
 .income-bar-chart-wrap {
@@ -609,6 +756,36 @@ button {
 
 .income-bar-chart-wrap-yoy .statement-bar-chart-income .statement-bar-labels {
   padding-bottom: 0;
+}
+
+.income-bar-chart-wrap-fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.income-bar-chart-wrap-fill .statement-bar-chart-income {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.work-challenge-chart-wrap {
+  min-height: 300px;
+}
+
+.chart-card-body-environment {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-grid-bottom > .chart-card-fill {
+  min-height: 320px;
+}
+
+.chart-grid-bottom .chart-card-body:has(.income-bar-chart-wrap-fill) {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-card-body:has(.income-bar-chart-wrap),
@@ -640,6 +817,15 @@ button {
 .income-barriers-heatmap .health-heatmap-scale {
   flex-shrink: 0;
   margin-top: auto;
+}
+
+.income-barriers-heatmap.work-support-heatmap .health-heatmap-grid {
+  flex: none;
+  justify-content: flex-start;
+}
+
+.income-barriers-heatmap.work-support-heatmap .health-heatmap-row {
+  flex: 0 0 auto;
 }
 
 .chart-card-body:has(.statement-bar-chart) {
@@ -766,10 +952,80 @@ button {
 }
 
 .chart-legend-swatch {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 3px;
   flex-shrink: 0;
+}
+
+.chart-legend-swatch-rounded {
+  border-radius: 4px;
+}
+
+.work-column-bar-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.work-column-bar-chart-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 220px;
+  min-width: 0;
+  width: 100%;
+}
+
+.work-column-bar-chart-wrap .recharts-responsive-container,
+.work-column-bar-chart-wrap-yoy .recharts-responsive-container {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.work-column-bar-chart-wrap-yoy {
+  flex: 1;
+  min-height: 0;
+}
+
+.work-column-bar-chart-wrap-yoy .work-column-bar-chart-plot {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+.work-column-bar-chart-legend {
+  flex-shrink: 0;
+  padding: 8px 0 24px;
+  width: 100%;
+}
+
+.work-column-bar-chart-legend .chart-legend-bottom-right {
+  padding-top: 0;
+}
+
+.chart-card-work-business-yoy > .chart-card-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card-work-business-yoy > .chart-insight-footer {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.chart-card-work-business-yoy .chart-insight-separator {
+  margin-top: 0;
+}
+
+.chart-card-body:has(.work-column-bar-chart-wrap) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .chart-legend-swatch-muted {
@@ -1219,6 +1475,12 @@ button {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 3px;
+}
+
+.chart-subtitle-single-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chart-header-actions {
@@ -1762,7 +2024,8 @@ button {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .chart-grid-top {
+  .chart-grid-top,
+  .chart-grid-work-top {
     grid-template-columns: 1fr;
   }
 }
@@ -1794,6 +2057,7 @@ button {
 
   .chart-grid,
   .chart-grid-bottom,
+  .chart-grid-work-bottom,
   .chart-grid-overview {
     grid-template-columns: 1fr;
   }
