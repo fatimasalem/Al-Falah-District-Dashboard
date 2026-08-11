@@ -1048,7 +1048,11 @@ export function isLikert(q: { type: string }): q is import('./types').LikertQues
   return q.type === 'likert' || q.type === 'rating';
 }
 
-function getTopLikertStatements(section: import('./types').Section, limit = 5) {
+function getTopLikertStatements(
+  section: import('./types').Section,
+  sortYear: '2024' | '2025',
+  limit = 5,
+) {
   const seen = new Set<string>();
   return section.questions
     .filter(isLikert)
@@ -1057,41 +1061,57 @@ function getTopLikertStatements(section: import('./types').Section, limit = 5) {
       seen.add(q.statementAr);
       return true;
     })
+    .sort(
+      (a, b) =>
+        (b.data[sortYear]?.agreement ?? 0) - (a.data[sortYear]?.agreement ?? 0),
+    )
     .slice(0, limit);
 }
 
-export function getEducationChartData(section: import('./types').Section, year: '2024' | '2025') {
-  return getTopLikertStatements(section).map((q) => {
-    const breakdown = q.data[year]?.breakdown ?? {};
-    const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
-    const total = dissatisfied + neutral + satisfied;
-    const scale = total > 0 ? 100 / total : 0;
-    const fullName = q.statementEn ?? q.statementAr;
-    return {
-      name: formatStatementAxisLabel(fullName),
-      fullName,
-      dissatisfied: dissatisfied * scale,
-      neutral: neutral * scale,
-      satisfied: satisfied * scale,
-    };
-  });
+export function getEducationChartData(
+  section: import('./types').Section,
+  year: '2024' | '2025',
+  sortYear: '2024' | '2025' = year,
+) {
+  return getTopLikertStatements(section, sortYear)
+    .map((q) => {
+      const breakdown = q.data[year]?.breakdown ?? {};
+      const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+      const total = dissatisfied + neutral + satisfied;
+      const scale = total > 0 ? 100 / total : 0;
+      const fullName = q.statementEn ?? q.statementAr;
+      return {
+        name: formatStatementAxisLabel(fullName),
+        fullName,
+        dissatisfied: dissatisfied * scale,
+        neutral: neutral * scale,
+        satisfied: satisfied * scale,
+      };
+    })
+    .sort((a, b) => b.satisfied - a.satisfied);
 }
 
-export function getEnvironmentChartData(section: import('./types').Section, year: '2024' | '2025') {
-  return getTopLikertStatements(section).map((q) => {
-    const breakdown = q.data[year]?.breakdown ?? {};
-    const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
-    const total = dissatisfied + neutral + satisfied;
-    const scale = total > 0 ? 100 / total : 0;
-    const fullName = q.statementEn ?? q.statementAr;
-    return {
-      name: formatStatementAxisLabel(fullName),
-      fullName,
-      dissatisfied: dissatisfied * scale,
-      neutral: neutral * scale,
-      satisfied: satisfied * scale,
-    };
-  });
+export function getEnvironmentChartData(
+  section: import('./types').Section,
+  year: '2024' | '2025',
+  sortYear: '2024' | '2025' = year,
+) {
+  return getTopLikertStatements(section, sortYear)
+    .map((q) => {
+      const breakdown = q.data[year]?.breakdown ?? {};
+      const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+      const total = dissatisfied + neutral + satisfied;
+      const scale = total > 0 ? 100 / total : 0;
+      const fullName = q.statementEn ?? q.statementAr;
+      return {
+        name: formatStatementAxisLabel(fullName),
+        fullName,
+        dissatisfied: dissatisfied * scale,
+        neutral: neutral * scale,
+        satisfied: satisfied * scale,
+      };
+    })
+    .sort((a, b) => b.satisfied - a.satisfied);
 }
 
 export function mergeStatementComparisonData(
@@ -1110,8 +1130,8 @@ export function mergeStatementComparisonData(
     satisfied: number;
   }[],
 ) {
-  return data2025.map((row2025, index) => {
-    const row2024 = data2024[index] ?? row2025;
+  return data2025.map((row2025) => {
+    const row2024 = data2024.find((row) => row.fullName === row2025.fullName) ?? row2025;
     return {
       name: row2025.name,
       fullName: row2025.fullName,
@@ -1126,30 +1146,34 @@ export function mergeStatementComparisonData(
 }
 
 export function getHealthHeatmapData(section: import('./types').Section) {
-  return getTopLikertStatements(section).map((q) => {
-    const fullName = q.statementEn ?? q.statementAr;
-    return {
-      name: formatHealthHeatmapLabel(fullName),
-      fullName,
-      agreement2024: q.data['2024']?.agreement ?? 0,
-      agreement2025: q.data['2025']?.agreement ?? 0,
-    };
-  });
+  return getTopLikertStatements(section, '2025')
+    .map((q) => {
+      const fullName = q.statementEn ?? q.statementAr;
+      return {
+        name: formatHealthHeatmapLabel(fullName),
+        fullName,
+        agreement2024: q.data['2024']?.agreement ?? 0,
+        agreement2025: q.data['2025']?.agreement ?? 0,
+      };
+    })
+    .sort((a, b) => b.agreement2025 - a.agreement2025);
 }
 
 export function getStatementYoYChartData(section: import('./types').Section) {
-  return getTopLikertStatements(section).map((q) => {
-    const fullName = q.statementEn ?? q.statementAr;
-    const value2024 = q.data['2024']?.agreement ?? 0;
-    const value2025 = q.data['2025']?.agreement ?? 0;
-    return {
-      name: formatStatementAxisLabel(fullName),
-      fullName,
-      change: value2025 - value2024,
-      value2024,
-      value2025,
-    };
-  });
+  return getTopLikertStatements(section, '2025')
+    .map((q) => {
+      const fullName = q.statementEn ?? q.statementAr;
+      const value2024 = q.data['2024']?.agreement ?? 0;
+      const value2025 = q.data['2025']?.agreement ?? 0;
+      return {
+        name: formatStatementAxisLabel(fullName),
+        fullName,
+        change: value2025 - value2024,
+        value2024,
+        value2025,
+      };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
 }
 
 export type InsightPart = string | { bold: string };
@@ -1207,6 +1231,444 @@ export function generateEducationChartInsight(
     ' at ',
     { bold: `${Math.abs(best.satisfied).toFixed(1)}%` },
     ' on the top-rated education statement.',
+  ];
+}
+
+export type EducationSentimentRow = {
+  name: string;
+  fullName: string;
+  dissatisfied: number;
+  neutral: number;
+  satisfied: number;
+};
+
+export type EducationLikertScaleKey =
+  | 'stronglyDisagree'
+  | 'disagree'
+  | 'neutral'
+  | 'agree'
+  | 'stronglyAgree';
+
+export type EducationLikertScaleRow = {
+  name: string;
+  fullName: string;
+  stronglyDisagree: number;
+  disagree: number;
+  neutral: number;
+  agree: number;
+  stronglyAgree: number;
+};
+
+export const EDUCATION_LIKERT_SCALE_LABELS: Record<EducationLikertScaleKey, string> = {
+  stronglyAgree: 'Strongly agree',
+  agree: 'Agree',
+  neutral: 'Neutral',
+  disagree: 'Disagree',
+  stronglyDisagree: 'Strongly disagree',
+};
+
+export const EDUCATION_LIKERT_SCALE_ORDER: EducationLikertScaleKey[] = [
+  'stronglyDisagree',
+  'disagree',
+  'neutral',
+  'agree',
+  'stronglyAgree',
+];
+
+export function getLikertFivePointValues(
+  breakdown: Record<string, number>,
+): Record<EducationLikertScaleKey, number> {
+  return {
+    stronglyDisagree: breakdown['غير موافق إطلاقاً'] ?? 0,
+    disagree: breakdown['غير موافق'] ?? 0,
+    neutral: breakdown['محايد'] ?? 0,
+    agree: breakdown['موافق'] ?? 0,
+    stronglyAgree: breakdown['موافق بشدة'] ?? 0,
+  };
+}
+
+export function getLikertScaleAgreeTotal(row: EducationLikertScaleRow): number {
+  return row.agree + row.stronglyAgree;
+}
+
+const EDUCATION_KPI_STATEMENT = {
+  childSafety: /feel physically safe for my son throughout the school building/i,
+  lifeSkills: /promote life skills, innovation and sports/i,
+  university: /university education system in the emirate/i,
+} as const;
+
+const EDUCATION_CHART_STATEMENTS = {
+  sportsFacilities: {
+    match: /provide sports facilities to students and community/i,
+    short: 'Sports facilities for students & community',
+  },
+  discipline: {
+    match: /balanced and fair system to maintain student discipline/i,
+    short: 'Fair & balanced student discipline',
+  },
+  verbalAbuse: {
+    match: /frequent verbal abuse by other students/i,
+    short: 'Repeated verbal abuse at school',
+  },
+  physicalAbuse: {
+    match: /frequently subjected to physical abuse by other students/i,
+    short: 'Repeated physical harm at school',
+  },
+  harassment: {
+    match: /harassed, ridiculed, and called bad names more than once/i,
+    short: 'Repeated harassment & name-calling',
+  },
+  awarenessHarassment: {
+    match: /saw\/heard more than once about other students being harassed/i,
+    short: 'Heard/seen harassment & name-calling',
+  },
+  awarenessPhysical: {
+    match: /saw\/heard about other students being physically harmed/i,
+    short: 'Heard/seen physical harm at school',
+  },
+} as const;
+
+function findEducationLikert(
+  questions: import('./types').Question[],
+  matcher: RegExp,
+): import('./types').LikertQuestion | undefined {
+  return getLikertStatements(questions).find((q) => matcher.test(q.statementEn ?? q.statementAr));
+}
+
+function toEducationSentimentRow(
+  question: import('./types').LikertQuestion,
+  year: '2024' | '2025',
+  shortName: string,
+): EducationSentimentRow {
+  const breakdown = question.data[year]?.breakdown ?? {};
+  const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+  const total = dissatisfied + neutral + satisfied;
+  const scale = total > 0 ? 100 / total : 0;
+  const fullName = question.statementEn ?? question.statementAr;
+  return {
+    name: shortName,
+    fullName,
+    dissatisfied: dissatisfied * scale,
+    neutral: neutral * scale,
+    satisfied: satisfied * scale,
+  };
+}
+
+function getEducationSentimentRows(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+  defs: ReadonlyArray<{ match: RegExp; short: string }>,
+): EducationSentimentRow[] {
+  return defs
+    .map((def) => {
+      const question = findEducationLikert(questions, def.match);
+      return question ? toEducationSentimentRow(question, year, def.short) : null;
+    })
+    .filter((row): row is EducationSentimentRow => row != null);
+}
+
+export function getEducationLikertAgreement(
+  questions: import('./types').Question[],
+  matcher: RegExp,
+  year: '2024' | '2025',
+): number {
+  const question = findEducationLikert(questions, matcher);
+  return question?.data[year]?.agreement ?? 0;
+}
+
+export function getEducationChildSafetyPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, EDUCATION_KPI_STATEMENT.childSafety, year);
+}
+
+export function getEducationLifeSkillsPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, EDUCATION_KPI_STATEMENT.lifeSkills, year);
+}
+
+export function getEducationUniversitySatisfactionPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, EDUCATION_KPI_STATEMENT.university, year);
+}
+
+function toEducationLikertScaleRow(
+  question: import('./types').LikertQuestion,
+  year: '2024' | '2025',
+  shortName: string,
+): EducationLikertScaleRow {
+  const breakdown = question.data[year]?.breakdown ?? {};
+  const raw = getLikertFivePointValues(breakdown);
+  const total = EDUCATION_LIKERT_SCALE_ORDER.reduce((sum, key) => sum + raw[key], 0);
+  const scale = total > 0 ? 100 / total : 0;
+  const fullName = question.statementEn ?? question.statementAr;
+  return {
+    name: shortName,
+    fullName,
+    stronglyDisagree: raw.stronglyDisagree * scale,
+    disagree: raw.disagree * scale,
+    neutral: raw.neutral * scale,
+    agree: raw.agree * scale,
+    stronglyAgree: raw.stronglyAgree * scale,
+  };
+}
+
+function getEducationLikertScaleRows(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+  defs: ReadonlyArray<{ match: RegExp; short: string }>,
+): EducationLikertScaleRow[] {
+  return defs
+    .map((def) => {
+      const question = findEducationLikert(questions, def.match);
+      return question ? toEducationLikertScaleRow(question, year, def.short) : null;
+    })
+    .filter((row): row is EducationLikertScaleRow => row != null);
+}
+
+export function getEducationSportsFacilitiesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationLikertScaleRow[] {
+  return getEducationLikertScaleRows(questions, year, [EDUCATION_CHART_STATEMENTS.sportsFacilities]);
+}
+
+export function getEducationBullyingExperienceData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [
+    EDUCATION_CHART_STATEMENTS.verbalAbuse,
+    EDUCATION_CHART_STATEMENTS.physicalAbuse,
+    EDUCATION_CHART_STATEMENTS.harassment,
+  ]);
+}
+
+export function getEducationBullyingAwarenessData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [
+    EDUCATION_CHART_STATEMENTS.awarenessHarassment,
+    EDUCATION_CHART_STATEMENTS.awarenessPhysical,
+  ]);
+}
+
+export function getEducationDisciplineFairnessData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [EDUCATION_CHART_STATEMENTS.discipline]);
+}
+
+const LIKERT_GAUGE_WEIGHTS: Record<EducationLikertScaleKey, number> = {
+  stronglyDisagree: 1,
+  disagree: 2,
+  neutral: 3,
+  agree: 4,
+  stronglyAgree: 5,
+};
+
+export function getLikertDominantSegmentIndex(row: EducationLikertScaleRow): number {
+  let bestIndex = 0;
+  let bestValue = -1;
+  EDUCATION_LIKERT_SCALE_ORDER.forEach((key, index) => {
+    if (row[key] > bestValue) {
+      bestValue = row[key];
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+}
+
+export function getLikertWeightedScore(row: EducationLikertScaleRow): number {
+  const total = EDUCATION_LIKERT_SCALE_ORDER.reduce((sum, key) => sum + row[key], 0);
+  if (total <= 0) return 3;
+  return (
+    EDUCATION_LIKERT_SCALE_ORDER.reduce(
+      (sum, key) => sum + row[key] * LIKERT_GAUGE_WEIGHTS[key],
+      0,
+    ) / total
+  );
+}
+
+export function mergeLikertScaleComparisonData(
+  data2024: EducationLikertScaleRow[],
+  data2025: EducationLikertScaleRow[],
+) {
+  return data2025.map((row2025) => {
+    const row2024 = data2024.find((row) => row.fullName === row2025.fullName) ?? row2025;
+    return {
+      name: row2025.name,
+      fullName: row2025.fullName,
+      stronglyDisagree2024: row2024.stronglyDisagree,
+      disagree2024: row2024.disagree,
+      neutral2024: row2024.neutral,
+      agree2024: row2024.agree,
+      stronglyAgree2024: row2024.stronglyAgree,
+      stronglyDisagree2025: row2025.stronglyDisagree,
+      disagree2025: row2025.disagree,
+      neutral2025: row2025.neutral,
+      agree2025: row2025.agree,
+      stronglyAgree2025: row2025.stronglyAgree,
+    };
+  });
+}
+
+function averageEducationLikertAgree(rows: EducationLikertScaleRow[]): number {
+  if (rows.length === 0) return 0;
+  return rows.reduce((sum, row) => sum + getLikertScaleAgreeTotal(row), 0) / rows.length;
+}
+
+export function getEducationLikertScaleBadgeScore(
+  rows: EducationLikertScaleRow[],
+  rows2024: EducationLikertScaleRow[],
+  mode: ViewMode,
+): number {
+  const current = averageEducationLikertAgree(rows);
+  if (mode === 'current') return current;
+  return current - averageEducationLikertAgree(rows2024);
+}
+
+export function generateEducationLikertScaleInsight(
+  data: EducationLikertScaleRow[],
+  mode: ViewMode,
+  data2024: EducationLikertScaleRow[] = [],
+  topic: 'sports' | 'discipline' = 'sports',
+): InsightPart[] {
+  if (data.length === 0) {
+    return ['Resident views on this education topic vary across survey responses.'];
+  }
+
+  const topicLabel = topic === 'sports' ? 'sports facilities' : 'discipline fairness';
+
+  if (mode === 'yoy' && data2024.length > 0) {
+    const bestIndex = data.reduce((best, row, index) => {
+      const change =
+        getLikertScaleAgreeTotal(row) -
+        getLikertScaleAgreeTotal(data2024.find((r) => r.fullName === row.fullName) ?? row);
+      const bestRow = data[best];
+      const bestChange =
+        getLikertScaleAgreeTotal(bestRow) -
+        getLikertScaleAgreeTotal(data2024.find((r) => r.fullName === bestRow.fullName) ?? bestRow);
+      return change > bestChange ? index : best;
+    }, 0);
+    const best = data[bestIndex];
+    const prev = getLikertScaleAgreeTotal(
+      data2024.find((r) => r.fullName === best.fullName) ?? best,
+    );
+    return [
+      { bold: 'Strongest Agree shift' },
+      ' at ',
+      { bold: formatDelta(getLikertScaleAgreeTotal(best) - prev) },
+      ` for ${topicLabel}.`,
+    ];
+  }
+
+  const best = [...data].sort((a, b) => getLikertScaleAgreeTotal(b) - getLikertScaleAgreeTotal(a))[0];
+  return [
+    { bold: 'Highest Agree' },
+    ' at ',
+    { bold: `${getLikertScaleAgreeTotal(best).toFixed(1)}%` },
+    ` on ${best.name.toLowerCase()}.`,
+  ];
+}
+
+function averageEducationAgree(rows: EducationSentimentRow[]): number {
+  if (rows.length === 0) return 0;
+  return rows.reduce((sum, row) => sum + row.satisfied, 0) / rows.length;
+}
+
+export function getEducationTabChartBadgeScore(
+  rows: EducationSentimentRow[],
+  rows2024: EducationSentimentRow[],
+  mode: ViewMode,
+): number {
+  const current = averageEducationAgree(rows);
+  if (mode === 'current') return current;
+  return current - averageEducationAgree(rows2024);
+}
+
+export function getEducationKpiSentence(
+  metric: 'score' | 'safety' | 'lifeSkills' | 'university',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong education satisfaction overall.'
+        : value >= 50
+          ? 'Moderate education satisfaction.'
+          : 'Education satisfaction needs improvement.';
+    case 'safety':
+      return value >= 70
+        ? 'Most residents feel schools keep kids physically safe.'
+        : value >= 50
+          ? 'School physical safety perception is moderate.'
+          : 'Concerns remain about kids\' physical safety at school.';
+    case 'lifeSkills':
+      return value >= 70
+        ? 'Schools are seen as boosting life skills and creativity.'
+        : value >= 50
+          ? 'Views on life skills and creativity are mixed.'
+          : 'Few residents see strong life-skills support in schools.';
+    case 'university':
+      return value >= 70
+        ? 'Strong satisfaction with university education.'
+        : value >= 50
+          ? 'Moderate satisfaction with university education.'
+          : 'University education satisfaction needs attention.';
+  }
+}
+
+export function generateEducationTabChartInsight(
+  data: EducationSentimentRow[],
+  mode: ViewMode,
+  data2024: EducationSentimentRow[] = [],
+  topic: 'sports' | 'bullying' | 'awareness' | 'discipline' = 'sports',
+): InsightPart[] {
+  if (data.length === 0) {
+    return ['Resident views on this education topic vary across survey responses.'];
+  }
+
+  const topicLabel =
+    topic === 'sports'
+      ? 'sports facilities'
+      : topic === 'bullying'
+        ? 'bullying experience'
+        : topic === 'awareness'
+          ? 'bullying awareness'
+          : 'discipline fairness';
+
+  if (mode === 'yoy' && data2024.length > 0) {
+    const bestIndex = data.reduce((best, row, index) => {
+      const change = row.satisfied - (data2024.find((r) => r.fullName === row.fullName)?.satisfied ?? 0);
+      const bestRow = data[best];
+      const bestChange =
+        bestRow.satisfied - (data2024.find((r) => r.fullName === bestRow.fullName)?.satisfied ?? 0);
+      return change > bestChange ? index : best;
+    }, 0);
+    const best = data[bestIndex];
+    const prev = data2024.find((r) => r.fullName === best.fullName)?.satisfied ?? 0;
+    return [
+      { bold: 'Strongest Agree shift' },
+      ' at ',
+      { bold: formatDelta(best.satisfied - prev) },
+      ` for ${topicLabel}.`,
+    ];
+  }
+
+  const best = [...data].sort((a, b) => b.satisfied - a.satisfied)[0];
+  return [
+    { bold: 'Highest Agree' },
+    ' at ',
+    { bold: `${best.satisfied.toFixed(1)}%` },
+    ` on ${best.name.toLowerCase()}.`,
   ];
 }
 
@@ -1385,7 +1847,7 @@ export function getTopCategories(
           ? (q.data[year] ?? 0)
           : (q.data['2025'] ?? 0) - (q.data['2024'] ?? 0),
     }))
-    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    .sort((a, b) => b.value - a.value)
     .slice(0, limit);
 }
 

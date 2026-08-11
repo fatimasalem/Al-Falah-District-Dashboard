@@ -18,9 +18,21 @@ import {
   getWorkLifeBalancePercent,
   getGovernmentAssistancePercent,
   getWorkKpiSentence,
+  getEducationChildSafetyPercent,
+  getEducationLifeSkillsPercent,
+  getEducationUniversitySatisfactionPercent,
+  getEducationKpiSentence,
 } from '../utils';
 
-export type KpiIconName = 'satisfaction' | 'wallet' | 'briefcase' | 'shield' | 'receipt' | 'credit-card';
+export type KpiIconName =
+  | 'satisfaction'
+  | 'wallet'
+  | 'briefcase'
+  | 'shield'
+  | 'receipt'
+  | 'credit-card'
+  | 'education'
+  | 'spark';
 
 export type CategoryIconName =
   | 'car'
@@ -47,6 +59,7 @@ export interface KpiItem {
   delta?: number;
   deltaLabel?: string;
   suffix?: string;
+  valueCaption?: string;
   subtext?: ReactNode;
 }
 
@@ -98,6 +111,18 @@ function KpiIcon({ name }: { name: KpiIconName }) {
       <svg {...props}>
         <rect x="1" y="4" width="22" height="16" rx="2" />
         <path d="M1 10h22" />
+      </svg>
+    ),
+    education: (
+      <svg {...props}>
+        <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+      </svg>
+    ),
+    spark: (
+      <svg {...props}>
+        <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
+        <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" />
       </svg>
     ),
   };
@@ -267,6 +292,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
             <span className="kpi-value-text">
               {item.value}
               {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
+              {item.valueCaption && <span className="kpi-value-caption">{item.valueCaption}</span>}
             </span>
           </div>
           {viewMode === 'yoy' && item.delta !== undefined && (
@@ -295,6 +321,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       icon: 'satisfaction',
       value: `${satisfaction.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'are satisfied',
       subtext: getOverviewKpiSentence('satisfaction', satisfaction),
       delta: overview.overallYoyChange,
     },
@@ -303,6 +330,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       icon: 'wallet',
       value: `${incomeComfort.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'are comfortable',
       subtext: getOverviewKpiSentence('income', incomeComfort),
       delta: incomeComfort - getIncomeComfortPercent(data, '2024'),
     },
@@ -311,6 +339,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       icon: 'briefcase',
       value: `${employment.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'are employed',
       subtext: getOverviewKpiSentence('employment', employment),
       delta: employment - getEmploymentPercent(data, '2024'),
     },
@@ -319,6 +348,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       icon: 'shield',
       value: `${safety.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'feel safe',
       subtext: getOverviewKpiSentence('safety', safety),
       delta: safety - getSafetyPercent(data, '2024'),
     },
@@ -427,10 +457,11 @@ export function buildIncomeKpis(
 
   const cards: KpiItem[] = [
     {
-      label: 'Income & Living Overall Satisfaction Score',
+      label: 'Income & Living Overall Satisfaction',
       icon: 'satisfaction',
       value: `${sectionScore.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'are satisfied',
       subtext: getIncomeKpiSentence('score', sectionScore),
       delta: score.yoyChange,
     },
@@ -438,6 +469,7 @@ export function buildIncomeKpis(
       label: 'Avg Monthly Income',
       icon: 'wallet',
       value: formatAverageIncome(avgIncome),
+      valueCaption: 'per month',
       subtext: getIncomeKpiSentence('income', avgIncome),
       delta: incomePctChange,
     },
@@ -446,6 +478,7 @@ export function buildIncomeKpis(
       icon: 'receipt',
       value: topExpense ? `${topExpense.value.toFixed(1)}` : '—',
       suffix: topExpense ? '%' : undefined,
+      valueCaption: topExpense ? 'report spending on' : undefined,
       valueIcon: topExpense ? getCategoryIcon(topExpense.categoryEn) : undefined,
       subtext: getIncomeKpiSentence('expense', topExpense?.value ?? 0, topExpense?.categoryEn, topExpense?.name),
       delta: topExpense ? expenseDelta : undefined,
@@ -455,6 +488,7 @@ export function buildIncomeKpis(
       icon: 'credit-card',
       value: topDebt ? `${topDebt.value.toFixed(1)}` : '—',
       suffix: topDebt ? '%' : undefined,
+      valueCaption: topDebt ? 'report this debt' : undefined,
       valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
       subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn, topDebt?.name),
       delta: topDebt ? debtDelta : undefined,
@@ -489,10 +523,11 @@ export function buildWorkKpis(
 
   const cards: KpiItem[] = [
     {
-      label: 'Employment Overall Satisfaction Score',
+      label: 'Employment Overall Satisfaction',
       icon: 'satisfaction',
       value: `${sectionScore.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'are satisfied',
       subtext: getWorkKpiSentence('score', sectionScore),
       delta: score.yoyChange,
     },
@@ -501,6 +536,7 @@ export function buildWorkKpis(
       icon: 'briefcase',
       value: `${avgHours.toFixed(1)}`,
       suffix: ' hrs',
+      valueCaption: 'per week',
       subtext: getWorkKpiSentence('hours', avgHours),
       delta: avgHours2025 - avgHours2024,
     },
@@ -509,6 +545,7 @@ export function buildWorkKpis(
       icon: 'shield',
       value: `${balance.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'feel secure',
       subtext: getWorkKpiSentence('balance', balance),
       delta: balance2025 - balance2024,
     },
@@ -517,8 +554,74 @@ export function buildWorkKpis(
       icon: 'wallet',
       value: `${assistance.toFixed(1)}`,
       suffix: '%',
+      valueCaption: 'receive assistance',
       subtext: getWorkKpiSentence('assistance', assistance),
       delta: assistance2025 - assistance2024,
+    },
+  ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+}
+
+export function buildEducationKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const safety2024 = getEducationChildSafetyPercent(questions, '2024');
+  const safety2025 = getEducationChildSafetyPercent(questions, '2025');
+  const safety = pickYearValue(safety2024, safety2025, year);
+  const lifeSkills2024 = getEducationLifeSkillsPercent(questions, '2024');
+  const lifeSkills2025 = getEducationLifeSkillsPercent(questions, '2025');
+  const lifeSkills = pickYearValue(lifeSkills2024, lifeSkills2025, year);
+  const university2024 = getEducationUniversitySatisfactionPercent(questions, '2024');
+  const university2025 = getEducationUniversitySatisfactionPercent(questions, '2025');
+  const university = pickYearValue(university2024, university2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Education Overall Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEducationKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Kids\' Physical Safety at School',
+      icon: 'shield',
+      value: `${safety.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'feel kids are safe',
+      subtext: getEducationKpiSentence('safety', safety),
+      delta: safety2025 - safety2024,
+    },
+    {
+      label: 'Life Skills & Creativity',
+      icon: 'spark',
+      value: `${lifeSkills.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'value life skills',
+      subtext: getEducationKpiSentence('lifeSkills', lifeSkills),
+      delta: lifeSkills2025 - lifeSkills2024,
+    },
+    {
+      label: 'University Education Satisfaction',
+      icon: 'education',
+      value: `${university.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEducationKpiSentence('university', university),
+      delta: university2025 - university2024,
     },
   ];
 

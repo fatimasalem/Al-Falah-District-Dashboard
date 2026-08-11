@@ -34,11 +34,41 @@ import {
   generateWorkChallengeInsight,
   generateWorkBusinessInsight,
   generateWorkSupportInsight,
+  generateEducationTabChartInsight,
+  generateEducationLikertScaleInsight,
+  getLikertDominantSegmentIndex,
+  EDUCATION_LIKERT_SCALE_LABELS,
+  EDUCATION_LIKERT_SCALE_ORDER,
   type IncomeChartRow,
+  type EducationSentimentRow,
+  type EducationLikertScaleKey,
+  type EducationLikertScaleRow,
   type InsightPart,
 } from '../utils';
 
 const STATEMENT_CHART_CHROME = 64;
+
+type SentimentRow = { satisfied: number; fullName: string; name: string };
+
+function sortSentimentRowsDescending<T extends SentimentRow>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => b.satisfied - a.satisfied);
+}
+
+function sortComparisonRowsDescending(rows: StatementComparisonRow[]): StatementComparisonRow[] {
+  return [...rows].sort((a, b) => b.satisfied2025 - a.satisfied2025);
+}
+
+function sortIncomeChartRowsDescending(
+  rows: IncomeChartRow[],
+  isCurrent: boolean,
+  year: SurveyYear,
+): IncomeChartRow[] {
+  return [...rows].sort((a, b) => {
+    const aScore = isCurrent ? (year === '2025' ? a.value2025 : a.value2024) : a.value2025;
+    const bScore = isCurrent ? (year === '2025' ? b.value2025 : b.value2024) : b.value2025;
+    return bScore - aScore;
+  });
+}
 
 type BarLabelCoordinate = number | string | undefined;
 
@@ -215,6 +245,7 @@ function StatementChartShell({
   labelIconClassName,
   className,
   fillHeight = false,
+  reverseLabelOrder = false,
 }: {
   data: StatementChartRow[];
   chartHeight: number;
@@ -223,7 +254,10 @@ function StatementChartShell({
   labelIconClassName?: (row: StatementChartRow) => string | undefined;
   className?: string;
   fillHeight?: boolean;
+  reverseLabelOrder?: boolean;
 }) {
+  const labelRows = reverseLabelOrder ? [...data].reverse() : data;
+
   return (
     <div
       className={`statement-bar-chart ${fillHeight ? 'statement-bar-chart-fill' : ''} ${className ?? ''}`.trim()}
@@ -234,7 +268,7 @@ function StatementChartShell({
       }
     >
       <div className="statement-bar-labels">
-        {data.map((row) => (
+        {labelRows.map((row) => (
           <div key={row.fullName} className="statement-bar-label" title={row.fullName}>
             {renderLabelIcon && (
               <span
@@ -456,7 +490,13 @@ interface PillarScoresChartProps {
 }
 
 export function PillarScoresChart({ data, mode, year = '2025', title = 'Pillar Satisfaction — Annual (%)' }: PillarScoresChartProps) {
-  const chartData = data.map((d) => ({
+  const chartData = [...data]
+    .sort((a, b) => {
+      const aValue = mode === 'current' ? (year === '2025' ? a.value2025 : a.value2024) : a.value;
+      const bValue = mode === 'current' ? (year === '2025' ? b.value2025 : b.value2024) : b.value;
+      return bValue - aValue;
+    })
+    .map((d) => ({
     name: d.name.length > 12 ? d.name.slice(0, 10) + '…' : d.name,
     fullName: d.name,
     value: mode === 'current' ? (year === '2025' ? d.value2025 : d.value2024) : d.value,
@@ -645,24 +685,24 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
                 ) : (
                   <div className="partner-bar-dual">
                     <div className="partner-bar-dual-row">
-                      <span className="partner-bar-year">2024</span>
-                      <div className="partner-bar-track">
-                        <div
-                          className="partner-bar-fill partner-bar-fill-muted"
-                          style={{
-                            width: `${Math.min(100, (score2024 / maxScore) * 100)}%`,
-                            background: barColor,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="partner-bar-dual-row">
                       <span className="partner-bar-year">2025</span>
                       <div className="partner-bar-track">
                         <div
                           className="partner-bar-fill"
                           style={{
                             width: `${Math.min(100, (score2025 / maxScore) * 100)}%`,
+                            background: barColor,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="partner-bar-dual-row">
+                      <span className="partner-bar-year">2024</span>
+                      <div className="partner-bar-track">
+                        <div
+                          className="partner-bar-fill partner-bar-fill-muted"
+                          style={{
+                            width: `${Math.min(100, (score2024 / maxScore) * 100)}%`,
                             background: barColor,
                           }}
                         />
@@ -720,7 +760,9 @@ interface LikertChartProps {
 }
 
 export function LikertChart({ statements, mode, year = '2025', title = 'Key Survey Statements' }: LikertChartProps) {
-  const top = statements.slice(0, 6);
+  const top = [...statements]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
 
   return (
     <div className="chart-card full-width">
@@ -994,11 +1036,12 @@ const EDUCATION_COMPARISON_MARGIN = { top: 32, right: 12, left: 4, bottom: 48 };
 function buildSentimentTooltipPayload(
   row: Record<string, number | string> | undefined,
   year?: '2024' | '2025',
+  labels: Record<SentimentKey, string> = SENTIMENT_LABELS,
 ): ChartTooltipEntry[] {
   if (!row) return [];
-  return (Object.keys(SENTIMENT_LABELS) as SentimentKey[])
+  return (Object.keys(labels) as SentimentKey[])
     .map((key) => ({
-      name: SENTIMENT_LABELS[key],
+      name: labels[key],
       value: Number(row[sentimentDataKey(key, year)] ?? 0),
       color: SENTIMENT_COLORS[key],
     }))
@@ -1008,9 +1051,11 @@ function buildSentimentTooltipPayload(
 function SentimentLegend({
   showYears = false,
   align = 'default',
+  labels = SENTIMENT_LABELS,
 }: {
   showYears?: boolean;
   align?: 'default' | 'bottom-right';
+  labels?: Record<SentimentKey, string>;
 }) {
   return (
     <div
@@ -1028,7 +1073,7 @@ function SentimentLegend({
         {SENTIMENT_LEGEND_ORDER.map((key) => (
           <span key={key} className="sentiment-legend-item">
             <span className="sentiment-legend-swatch" style={{ background: SENTIMENT_COLORS[key] }} />
-            {SENTIMENT_LABELS[key]}
+            {labels[key]}
           </span>
         ))}
       </div>
@@ -1199,8 +1244,10 @@ function renderEducationComparisonChart(data: StatementComparisonRow[], rows: Ed
 
 export function EducationDivergingBar({ data, data2024, mode, year = '2025', score }: EducationDivergingBarProps) {
   const isCurrent = mode === 'current';
+  const sortedData = sortSentimentRowsDescending(data);
   const comparisonData = mergeStatementComparisonData(data2024, data);
-  const insight = generateEducationChartInsight(data, mode, data2024);
+  const sortedComparison = sortComparisonRowsDescending(comparisonData);
+  const insight = generateEducationChartInsight(sortedData, mode, data2024);
 
   return (
     <div className="chart-card chart-card-fill">
@@ -1218,8 +1265,8 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
       <div className="chart-card-body">
         <ResponsiveContainer width="100%" height={isCurrent ? 340 : 368}>
           {isCurrent
-            ? renderEducationCurrentChart(data, data)
-            : renderEducationComparisonChart(comparisonData, data)}
+            ? renderEducationCurrentChart(sortedData, sortedData)
+            : renderEducationComparisonChart(sortedComparison, sortedData)}
         </ResponsiveContainer>
         <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
@@ -1685,10 +1732,12 @@ function renderEnvironmentComparisonChart(data: StatementComparisonRow[]) {
 
 export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', score }: EnvironmentStackedBarProps) {
   const isCurrent = mode === 'current';
+  const sortedData = sortSentimentRowsDescending(data);
   const comparisonData = mergeStatementComparisonData(data2024, data);
+  const sortedComparison = sortComparisonRowsDescending(comparisonData);
   const rowHeight = isCurrent ? 72 : 80;
-  const chartHeight = Math.max(320, data.length * rowHeight + STATEMENT_CHART_CHROME);
-  const insight = generateEnvironmentChartInsight(data, mode, data2024);
+  const chartHeight = Math.max(320, sortedData.length * rowHeight + STATEMENT_CHART_CHROME);
+  const insight = generateEnvironmentChartInsight(sortedData, mode, data2024);
 
   return (
     <div className="chart-card">
@@ -1705,18 +1754,585 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
       </div>
       <div className="chart-card-body chart-card-body-environment">
         <StatementChartShell
-          data={data}
+          data={sortedData}
           chartHeight={chartHeight}
           renderLabelIcon={(row) => <EnvironmentStatementIcon fullName={row.fullName} />}
         >
           {isCurrent
-            ? renderEnvironmentCurrentChart(data)
-            : renderEnvironmentComparisonChart(comparisonData)}
+            ? renderEnvironmentCurrentChart(sortedData)
+            : renderEnvironmentComparisonChart(sortedComparison)}
         </StatementChartShell>
         <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
       <ChartInsightFooter insight={insight} />
     </div>
+  );
+}
+
+const EDUCATION_AGREEMENT_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'Disagree',
+  neutral: 'Neutral',
+  satisfied: 'Agree',
+};
+
+const LIKERT_SCALE_COLORS: Record<EducationLikertScaleKey, string> = {
+  stronglyDisagree: '#991B1B',
+  disagree: DESIGN.negative,
+  neutral: '#94a3b8',
+  agree: '#34D399',
+  stronglyAgree: DESIGN.chart.export,
+};
+
+function likertGaugePolar(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return {
+    x: cx + r * Math.cos(rad),
+    y: cy - r * Math.sin(rad),
+  };
+}
+
+function describeLikertGaugeArc(
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  startAngle: number,
+  endAngle: number,
+) {
+  const startOuter = likertGaugePolar(cx, cy, outerR, startAngle);
+  const endOuter = likertGaugePolar(cx, cy, outerR, endAngle);
+  const startInner = likertGaugePolar(cx, cy, innerR, endAngle);
+  const endInner = likertGaugePolar(cx, cy, innerR, startAngle);
+  const largeArc = startAngle - endAngle > 180 ? 1 : 0;
+  return [
+    `M ${startOuter.x} ${startOuter.y}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${endOuter.x} ${endOuter.y}`,
+    `L ${startInner.x} ${startInner.y}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${endInner.x} ${endInner.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function LikertGauge({
+  row,
+  yearLabel,
+  compact = false,
+}: {
+  row: EducationLikertScaleRow;
+  yearLabel?: string;
+  compact?: boolean;
+}) {
+  const cx = 180;
+  const cy = compact ? 178 : 188;
+  const outerR = compact ? 108 : 128;
+  const innerR = compact ? 64 : 76;
+  const segmentSpan = 36;
+  const dominantIndex = getLikertDominantSegmentIndex(row);
+  const dominantStart = 180 - dominantIndex * segmentSpan;
+  const dominantEnd = dominantStart - segmentSpan;
+  const needleAngle = (dominantStart + dominantEnd) / 2;
+  const needleTip = likertGaugePolar(cx, cy, innerR - 8, needleAngle);
+  const needleBaseL = likertGaugePolar(cx, cy, 12, needleAngle + 90);
+  const needleBaseR = likertGaugePolar(cx, cy, 12, needleAngle - 90);
+
+  return (
+    <div className={`likert-gauge-panel ${compact ? 'likert-gauge-panel-compact' : ''}`.trim()}>
+      {yearLabel && <div className="income-pie-year-label">{yearLabel}</div>}
+      <svg
+        viewBox="0 0 360 240"
+        className="likert-gauge-svg"
+        role="img"
+        aria-label={`Likert scale gauge for ${row.name}`}
+      >
+        <defs>
+          <linearGradient id="likertGaugeBg" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#fef2f2" />
+            <stop offset="50%" stopColor="#fffbeb" />
+            <stop offset="100%" stopColor="#ecfdf5" />
+          </linearGradient>
+        </defs>
+        <path
+          d={`M ${cx - outerR - 10} ${cy + 2} A ${outerR + 10} ${outerR + 10} 0 0 1 ${cx + outerR + 10} ${cy + 2} L ${cx + innerR - 4} ${cy} A ${innerR - 4} ${innerR - 4} 0 0 0 ${cx - innerR + 4} ${cy} Z`}
+          fill="url(#likertGaugeBg)"
+          opacity={0.55}
+        />
+        {EDUCATION_LIKERT_SCALE_ORDER.map((key, index) => {
+          const startAngle = 180 - index * segmentSpan;
+          const endAngle = startAngle - segmentSpan;
+          const midAngle = (startAngle + endAngle) / 2;
+          const labelPos = likertGaugePolar(cx, cy, outerR + (compact ? 20 : 26), midAngle);
+          const value = row[key];
+          const valuePos = likertGaugePolar(cx, cy, (outerR + innerR) / 2, midAngle);
+          const isEdge = index === 0 || index === EDUCATION_LIKERT_SCALE_ORDER.length - 1;
+          const valueFontSize = compact ? (value >= 10 ? 11 : 9) : value >= 10 ? 13 : 10;
+          return (
+            <g key={key}>
+              <path
+                d={describeLikertGaugeArc(cx, cy, outerR, innerR, startAngle, endAngle)}
+                fill={LIKERT_SCALE_COLORS[key]}
+                stroke="#ffffff"
+                strokeWidth={2}
+              />
+              <text
+                x={valuePos.x}
+                y={valuePos.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={valueFontSize}
+                fontWeight={700}
+                fill={value >= 8 ? '#ffffff' : '#1e293b'}
+              >
+                {`${value.toFixed(1)}%`}
+              </text>
+              <text
+                x={labelPos.x}
+                y={labelPos.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={isEdge ? (compact ? 8 : 9) : compact ? 9 : 10}
+                fontWeight={600}
+                fill="#475569"
+                transform={
+                  isEdge
+                    ? `rotate(${index === 0 ? -68 : 68}, ${labelPos.x}, ${labelPos.y})`
+                    : undefined
+                }
+              >
+                {EDUCATION_LIKERT_SCALE_LABELS[key]}
+              </text>
+            </g>
+          );
+        })}
+        <circle cx={cx} cy={cy} r={16} fill="#ffffff" stroke="#cbd5e1" strokeWidth={2} />
+        <polygon
+          points={`${needleTip.x},${needleTip.y} ${needleBaseL.x},${needleBaseL.y} ${needleBaseR.x},${needleBaseR.y}`}
+          fill="#1e293b"
+        />
+        <circle cx={cx} cy={cy} r={6} fill="#1e293b" />
+      </svg>
+    </div>
+  );
+}
+
+interface EducationSportsLikertGaugeCardProps {
+  data: EducationLikertScaleRow[];
+  data2024: EducationLikertScaleRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function EducationSportsLikertGaugeCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year: _year = '2025',
+}: EducationSportsLikertGaugeCardProps) {
+  const isCurrent = mode === 'current';
+  const row = data[0];
+  const row2024 = data2024[0];
+  const insight = generateEducationLikertScaleInsight(data, mode, data2024, 'sports');
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab chart-card-body-education-gauge">
+        {!row ? (
+          <div className="likert-gauge-empty">No sports facilities data available.</div>
+        ) : isCurrent ? (
+          <LikertGauge row={row} />
+        ) : row2024 ? (
+          <div className="income-pie-dual">
+            <LikertGauge row={row2024} yearLabel="2024" compact />
+            <LikertGauge row={row} yearLabel="2025" compact />
+          </div>
+        ) : (
+          <LikertGauge row={row} yearLabel="2025" />
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+function renderEducationDisciplineDonut(
+  row: EducationSentimentRow,
+  yearLabel: string,
+  compact = false,
+  showLegend = true,
+) {
+  const pieData = (
+    [
+      { key: 'dissatisfied' as const, value: row.dissatisfied },
+      { key: 'neutral' as const, value: row.neutral },
+      { key: 'satisfied' as const, value: row.satisfied },
+    ] as const
+  )
+    .map(({ key, value }) => ({
+      name: EDUCATION_AGREEMENT_LABELS[key],
+      value,
+      fill: SENTIMENT_COLORS[key],
+    }))
+    .filter((entry) => entry.value > 0);
+
+  return (
+    <div
+      className={`income-pie-panel discipline-donut-panel ${compact ? 'income-pie-panel-compact discipline-donut-panel-compact' : ''}`.trim()}
+    >
+      {compact && <div className="income-pie-year-label">{yearLabel}</div>}
+      <ResponsiveContainer width="100%" height={compact ? 210 : 240}>
+        <PieChart margin={{ top: 16, right: 28, bottom: compact ? 12 : 36, left: 28 }}>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy={compact ? '44%' : '46%'}
+            innerRadius={compact ? 38 : 46}
+            outerRadius={compact ? 58 : 72}
+            paddingAngle={2}
+            dataKey="value"
+            label={renderIncomePieSliceLabel}
+            labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+          >
+            {pieData.map((entry) => (
+              <Cell key={`${yearLabel}-${entry.name}`} fill={entry.fill} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']} />
+        </PieChart>
+      </ResponsiveContainer>
+      {showLegend && (
+        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+      )}
+    </div>
+  );
+}
+
+interface EducationDisciplineDonutCardProps {
+  data: EducationSentimentRow[];
+  data2024: EducationSentimentRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function EducationDisciplineDonutCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: EducationDisciplineDonutCardProps) {
+  const isCurrent = mode === 'current';
+  const row = data[0];
+  const row2024 = data2024[0];
+  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline');
+
+  if (!row) {
+    return (
+      <IncomeChartCard
+        title={title}
+        description={description}
+        badgeScore={badgeScore}
+        mode={mode}
+        insight={['No discipline fairness data available.']}
+        className="chart-card-education-tab"
+      >
+        <div className="chart-card-body-education-tab" />
+      </IncomeChartCard>
+    );
+  }
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab chart-card-body-education-donut">
+        {isCurrent ? (
+          renderEducationDisciplineDonut(row, year)
+        ) : row2024 ? (
+          <div className="discipline-donut-yoy">
+            <div className="income-pie-dual">
+              {renderEducationDisciplineDonut(row2024, '2024', true, false)}
+              {renderEducationDisciplineDonut(row, '2025', true, false)}
+            </div>
+            <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+          </div>
+        ) : (
+          renderEducationDisciplineDonut(row, '2025')
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+function EducationTabStatementIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+  const lower = fullName.toLowerCase();
+
+  if (/sports facilities|sports competitions/i.test(lower)) {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20" />
+        <path d="M2 12h20" />
+      </svg>
+    );
+  }
+  if (/discipline/i.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    );
+  }
+  if (/physical|hitting|kicking|harmed|hurt/i.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M12 8v4M12 16h.01" />
+      </svg>
+    );
+  }
+  if (/verbal|harass|ridicul|mock|rumor|name/i.test(lower)) {
+    return (
+      <svg {...props}>
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+        <path d="M8 9h8M8 13h5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...props}>
+      <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+      <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+    </svg>
+  );
+}
+
+function renderEducationTabCurrentChart(data: EducationSentimentRow[]) {
+  return (
+    <BarChart data={data} layout="vertical" margin={ENVIRONMENT_CHART_MARGIN} barCategoryGap="12%">
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+      <XAxis
+        type="number"
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        allowDataOverflow
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => {
+          const row = payload?.[0]?.payload as Record<string, number | string> | undefined;
+          return (
+            <ChartTooltip
+              active={active}
+              label={String(row?.fullName ?? '') || undefined}
+              payload={buildSentimentTooltipPayload(row, undefined, EDUCATION_AGREEMENT_LABELS)}
+            />
+          );
+        }}
+      />
+      <Bar
+        dataKey="dissatisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.dissatisfied}
+        name={EDUCATION_AGREEMENT_LABELS.dissatisfied}
+        legendType="none"
+        radius={[4, 0, 0, 4]}
+        maxBarSize={28}
+      >
+        <LabelList
+          dataKey="dissatisfied"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="dissatisfied" />}
+        />
+      </Bar>
+      <Bar
+        dataKey="neutral"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.neutral}
+        name={EDUCATION_AGREEMENT_LABELS.neutral}
+        legendType="none"
+        maxBarSize={28}
+      >
+        <LabelList
+          dataKey="neutral"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="neutral" />}
+        />
+      </Bar>
+      <Bar
+        dataKey="satisfied"
+        stackId="sentiment"
+        fill={SENTIMENT_COLORS.satisfied}
+        name={EDUCATION_AGREEMENT_LABELS.satisfied}
+        legendType="none"
+        radius={[0, 4, 4, 0]}
+        maxBarSize={28}
+      >
+        <LabelList
+          dataKey="satisfied"
+          content={(props) => <BarSegmentScoreLabelHorizontal {...props} segment="satisfied" />}
+        />
+      </Bar>
+    </BarChart>
+  );
+}
+
+function renderEducationTabComparisonChart(data: StatementComparisonRow[]) {
+  const comparisonBars: Array<'2024' | '2025'> = ['2024', '2025'];
+
+  return (
+    <BarChart
+      data={data}
+      layout="vertical"
+      margin={ENVIRONMENT_COMPARISON_MARGIN}
+      barCategoryGap="10%"
+      barGap={3}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+      <XAxis
+        type="number"
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[0, 100]}
+        allowDataOverflow
+        ticks={[0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${v}%`}
+      />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => {
+          if (!active || !payload?.length) return null;
+          const row = payload[0]?.payload as StatementComparisonRow;
+          const year = String(payload[0]?.dataKey ?? '').includes('2024') ? '2024' : '2025';
+          return (
+            <ChartTooltip
+              active={active}
+              label={`${row.fullName} (${year})`}
+              payload={buildSentimentTooltipPayload(row, year, EDUCATION_AGREEMENT_LABELS)}
+            />
+          );
+        }}
+      />
+      {comparisonBars.flatMap((year) =>
+        (['dissatisfied', 'neutral', 'satisfied'] as SentimentKey[]).map((segment, segmentIndex) => {
+          const dataKey = sentimentDataKey(segment, year);
+          const isFirst = segmentIndex === 0;
+          const isLast = segmentIndex === 2;
+          return (
+            <Bar
+              key={dataKey}
+              dataKey={dataKey}
+              stackId={year}
+              fill={SENTIMENT_COLORS[segment]}
+              legendType="none"
+              fillOpacity={year === '2024' ? 0.82 : 1}
+              radius={isFirst ? [4, 0, 0, 4] : isLast ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+              maxBarSize={24}
+            >
+              <LabelList
+                dataKey={dataKey}
+                content={(props) => (
+                  <>
+                    <BarSegmentScoreLabelHorizontal {...props} segment={segment} />
+                    {isLast && <BarYearBarSideLabel {...props} year={year} />}
+                  </>
+                )}
+              />
+            </Bar>
+          );
+        }),
+      )}
+    </BarChart>
+  );
+}
+
+interface EducationLikertStackedCardProps {
+  data: EducationSentimentRow[];
+  data2024: EducationSentimentRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  topic: 'sports' | 'bullying' | 'awareness' | 'discipline';
+}
+
+export function EducationLikertStackedCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year: _year = '2025',
+  topic,
+}: EducationLikertStackedCardProps) {
+  const isCurrent = mode === 'current';
+  const sortedData = sortSentimentRowsDescending(data);
+  const comparisonData = mergeStatementComparisonData(data2024, data);
+  const sortedComparison = sortComparisonRowsDescending(comparisonData);
+  const rowHeight = isCurrent ? 72 : 80;
+  const chartHeight = Math.max(280, sortedData.length * rowHeight + STATEMENT_CHART_CHROME);
+  const insight = generateEducationTabChartInsight(sortedData, mode, data2024, topic);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab">
+        <StatementChartShell
+          data={sortedData}
+          chartHeight={chartHeight}
+          fillHeight
+          renderLabelIcon={(row) => <EducationTabStatementIcon fullName={row.fullName} />}
+        >
+          {isCurrent
+            ? renderEducationTabCurrentChart(sortedData)
+            : renderEducationTabComparisonChart(sortedComparison)}
+        </StatementChartShell>
+        <SentimentLegend
+          showYears={!isCurrent}
+          align={isCurrent ? 'bottom-right' : 'default'}
+          labels={EDUCATION_AGREEMENT_LABELS}
+        />
+      </div>
+    </IncomeChartCard>
   );
 }
 
@@ -1726,7 +2342,10 @@ interface YoYComparisonChartProps {
 }
 
 export function YoYComparisonChart({ items, title = '2024 vs 2025 Comparison' }: YoYComparisonChartProps) {
-  const data = items.slice(0, 8).map((d) => ({
+  const data = [...items]
+    .sort((a, b) => b.value2025 - a.value2025)
+    .slice(0, 8)
+    .map((d) => ({
     name: d.name.length > 14 ? d.name.slice(0, 12) + '…' : d.name,
     fullName: d.name,
     '2024': d.value2024,
@@ -1968,7 +2587,7 @@ export function IncomeBarChartCard({
   metric,
 }: IncomeBarChartCardProps) {
   const isCurrent = mode === 'current';
-  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const sorted = sortIncomeChartRowsDescending(data, isCurrent, year);
   const chartData = sorted.map((row, index) => ({
     name: row.name,
     fullName: row.fullName,
@@ -2092,7 +2711,12 @@ interface IncomePieChartCardProps {
   year?: SurveyYear;
 }
 
-function renderIncomePie(rows: IncomeChartRow[], yearLabel: string, compact = false) {
+function renderIncomePie(
+  rows: IncomeChartRow[],
+  yearLabel: string,
+  compact = false,
+  showLegend = true,
+) {
   const pieData = rows
     .map((row, index) => ({
       name: row.name,
@@ -2124,7 +2748,7 @@ function renderIncomePie(rows: IncomeChartRow[], yearLabel: string, compact = fa
           <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']} />
         </PieChart>
       </ResponsiveContainer>
-      <IncomePieLegend compact={compact} />
+      {showLegend && <IncomePieLegend compact={compact} />}
     </div>
   );
 }
@@ -2152,9 +2776,12 @@ export function IncomePieChartCard({
       {isCurrent ? (
         renderIncomePie(data, year)
       ) : (
-        <div className="income-pie-dual">
-          {renderIncomePie(data, '2024', true)}
-          {renderIncomePie(data, '2025', true)}
+        <div className="income-pie-yoy">
+          <div className="income-pie-dual">
+            {renderIncomePie(data, '2024', true, false)}
+            {renderIncomePie(data, '2025', true, false)}
+          </div>
+          <IncomePieLegend compact />
         </div>
       )}
     </IncomeChartCard>
@@ -2335,9 +2962,12 @@ export function WorkPieChartCard({
       {isCurrent ? (
         renderIncomePie(data, year)
       ) : (
-        <div className="income-pie-dual">
-          {renderIncomePie(data, '2024', true)}
-          {renderIncomePie(data, '2025', true)}
+        <div className="income-pie-yoy">
+          <div className="income-pie-dual">
+            {renderIncomePie(data, '2024', true, false)}
+            {renderIncomePie(data, '2025', true, false)}
+          </div>
+          <IncomePieLegend compact />
         </div>
       )}
     </IncomeChartCard>
@@ -2427,14 +3057,15 @@ export function WorkHorizontalBarChartCard({
   year = '2025',
 }: WorkHorizontalBarChartCardProps) {
   const isCurrent = mode === 'current';
-  const sorted = [...data].sort((a, b) => b.value - a.value);
-  const chartData = sorted.map((row) => ({
-    name: row.name,
-    fullName: row.fullName,
-    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
-    value2024: row.value2024,
-    value2025: row.value2025,
-  }));
+  const chartData = [...data]
+    .map((row) => ({
+      name: row.name,
+      fullName: row.fullName,
+      value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+      value2024: row.value2024,
+      value2025: row.value2025,
+    }))
+    .sort((a, b) => a.value - b.value);
   const insight = generateWorkChallengeInsight(data, mode, year);
   const rowHeight = isCurrent ? 68 : 76;
   const chartHeight = Math.max(300, chartData.length * rowHeight + 28);
@@ -2447,6 +3078,7 @@ export function WorkHorizontalBarChartCard({
           className="statement-bar-chart-income"
           data={chartData}
           chartHeight={chartHeight}
+          reverseLabelOrder
           renderLabelIcon={(row) => <WorkChallengeIcon fullName={row.fullName} />}
           labelIconClassName={() => 'work-challenge-label-icon'}
         >
@@ -2466,7 +3098,7 @@ export function WorkHorizontalBarChartCard({
                   style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
                 />
               </XAxis>
-              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
               <Tooltip
                 formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
                 labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
@@ -2497,7 +3129,7 @@ export function WorkHorizontalBarChartCard({
                   style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
                 />
               </XAxis>
-              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
               <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
               <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
                 {renderYoYBarCells(chartData, '2025')}
@@ -2544,7 +3176,7 @@ export function WorkColumnBarChartCard({
   year = '2025',
 }: WorkColumnBarChartCardProps) {
   const isCurrent = mode === 'current';
-  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const sorted = sortIncomeChartRowsDescending(data, isCurrent, year);
   const chartData = sorted.map((row) => ({
     name: row.name,
     fullName: row.fullName,

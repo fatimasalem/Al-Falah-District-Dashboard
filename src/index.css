@@ -406,6 +406,8 @@ button {
 .kpi-value-text {
   display: inline-flex;
   align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 8px;
   min-width: 0;
 }
 
@@ -432,6 +434,14 @@ button {
   font-size: 1rem;
   font-weight: 600;
   margin-left: 2px;
+}
+
+.kpi-value-caption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .kpi-delta {
@@ -527,6 +537,83 @@ button {
 
 .chart-grid-work-bottom {
   align-items: stretch;
+}
+
+.main-content-education {
+  gap: 20px;
+}
+
+.chart-grid-education > .chart-card-fill {
+  min-height: 320px;
+}
+
+.chart-card-education-tab > .chart-card-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card-body-education-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chart-card-body-education-tab .statement-bar-chart-fill {
+  flex: 1;
+  min-height: 180px;
+}
+
+.chart-card-body-education-donut {
+  justify-content: center;
+}
+
+.chart-card-body-education-gauge {
+  justify-content: center;
+}
+
+.likert-gauge-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+}
+
+.likert-gauge-panel-compact {
+  align-items: center;
+}
+
+.likert-gauge-svg {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  display: block;
+}
+
+.likert-gauge-panel-compact .likert-gauge-svg {
+  max-width: 340px;
+}
+
+.likert-gauge-empty {
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.discipline-donut-yoy,
+.income-pie-yoy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.discipline-donut-panel-compact .recharts-wrapper {
+  margin-bottom: 4px;
 }
 
 .chart-grid-work-bottom > .chart-card-fill {

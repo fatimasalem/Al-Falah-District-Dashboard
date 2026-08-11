@@ -13,6 +13,9 @@ import {
   WorkHorizontalBarChartCard,
   WorkColumnBarChartCard,
   WorkSupportHeatmap,
+  EducationLikertStackedCard,
+  EducationSportsLikertGaugeCard,
+  EducationDisciplineDonutCard,
 } from './Charts';
 import {
   getLikertStatements,
@@ -27,6 +30,12 @@ import {
   getWorkBusinessChartData,
   getWorkSupportHeatmapData,
   getWorkChartBadgeScore,
+  getEducationSportsFacilitiesData,
+  getEducationBullyingExperienceData,
+  getEducationBullyingAwarenessData,
+  getEducationDisciplineFairnessData,
+  getEducationTabChartBadgeScore,
+  getEducationLikertScaleBadgeScore,
   isCategory,
   isMean,
   pickYearValue,
@@ -148,6 +157,65 @@ function WorkCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   );
 }
 
+function EducationCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const sports = getEducationSportsFacilitiesData(section.questions, chartYear);
+  const sports2024 = getEducationSportsFacilitiesData(section.questions, '2024');
+  const bullying = getEducationBullyingExperienceData(section.questions, chartYear);
+  const bullying2024 = getEducationBullyingExperienceData(section.questions, '2024');
+  const awareness = getEducationBullyingAwarenessData(section.questions, chartYear);
+  const awareness2024 = getEducationBullyingAwarenessData(section.questions, '2024');
+  const discipline = getEducationDisciplineFairnessData(section.questions, chartYear);
+  const discipline2024 = getEducationDisciplineFairnessData(section.questions, '2024');
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationSportsLikertGaugeCard
+          data={sports}
+          data2024={sports2024}
+          title="Sports Facilities Availability"
+          description="Residents' perception of sports facilities for students and the community."
+          badgeScore={getEducationLikertScaleBadgeScore(sports, sports2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+        <EducationLikertStackedCard
+          data={bullying}
+          data2024={bullying2024}
+          title="Children's Reported Experience of Bullying"
+          description="Parents' responses on repeated bullying experienced by their children at neighborhood schools."
+          badgeScore={getEducationTabChartBadgeScore(bullying, bullying2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topic="bullying"
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationLikertStackedCard
+          data={awareness}
+          data2024={awareness2024}
+          title="Awareness of Bullying Incidents"
+          description="Whether residents have heard or seen bullying involving students in their neighborhood."
+          badgeScore={getEducationTabChartBadgeScore(awareness, awareness2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topic="awareness"
+        />
+        <EducationDisciplineDonutCard
+          data={discipline}
+          data2024={discipline2024}
+          title="Fairness of Student Discipline"
+          description="Residents' perception of school disciplinary practices on a Likert scale."
+          badgeScore={getEducationTabChartBadgeScore(discipline, discipline2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+      </div>
+    </div>
+  );
+}
+
 function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
     .filter(isMean)
@@ -225,6 +293,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'work') {
     return <WorkCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'education') {
+    return <EducationCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;

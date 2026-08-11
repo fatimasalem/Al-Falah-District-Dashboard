@@ -9,4 +9,15 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     preserveSymlinks: true,
   },
+  // Network/mapped drives (e.g. G:) don't support native fs.watch on Windows.
+  watch: {
+    usePolling: true,
+    interval: 1000,
+  },
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
+  },
 }))
