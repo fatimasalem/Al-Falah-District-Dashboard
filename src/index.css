@@ -616,6 +616,44 @@ button {
   margin-bottom: 4px;
 }
 
+.chart-card-body-diverging-likert {
+  justify-content: center;
+  gap: 4px;
+}
+
+.chart-card-body-diverging-likert .recharts-wrapper,
+.chart-card-body-diverging-likert .recharts-surface {
+  overflow: visible;
+}
+
+.diverging-likert-label-layer text {
+  user-select: none;
+}
+
+.chart-card-body-sentiment-treemap {
+  justify-content: center;
+}
+
+.sentiment-treemap-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sentiment-treemap-panel-compact {
+  flex: 1;
+  min-width: 0;
+}
+
+.sentiment-treemap-yoy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
 .chart-grid-work-bottom > .chart-card-fill {
   max-height: 400px;
   min-height: 320px;

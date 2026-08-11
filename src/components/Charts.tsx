@@ -15,6 +15,8 @@ import {
   Pie,
   LabelList,
   Label,
+  ReferenceLine,
+  Treemap,
 } from 'recharts';
 import type { SectionScore, SurveyYear, ViewMode } from '../types';
 import { CHART_COLORS, DESIGN } from '../types';
@@ -1922,6 +1924,8 @@ interface EducationSportsLikertGaugeCardProps {
   badgeScore: number;
   mode: ViewMode;
   year?: SurveyYear;
+  topicLabel?: string;
+  emptyMessage?: string;
 }
 
 export function EducationSportsLikertGaugeCard({
@@ -1932,11 +1936,13 @@ export function EducationSportsLikertGaugeCard({
   badgeScore,
   mode,
   year: _year = '2025',
+  topicLabel,
+  emptyMessage = 'No data available.',
 }: EducationSportsLikertGaugeCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
   const row2024 = data2024[0];
-  const insight = generateEducationLikertScaleInsight(data, mode, data2024, 'sports');
+  const insight = generateEducationLikertScaleInsight(data, mode, data2024, 'sports', topicLabel);
 
   return (
     <IncomeChartCard
@@ -1949,7 +1955,7 @@ export function EducationSportsLikertGaugeCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-education-gauge">
         {!row ? (
-          <div className="likert-gauge-empty">No sports facilities data available.</div>
+          <div className="likert-gauge-empty">{emptyMessage}</div>
         ) : isCurrent ? (
           <LikertGauge row={row} />
         ) : row2024 ? (
@@ -2025,6 +2031,8 @@ interface EducationDisciplineDonutCardProps {
   badgeScore: number;
   mode: ViewMode;
   year?: SurveyYear;
+  topicLabel?: string;
+  emptyMessage?: string;
 }
 
 export function EducationDisciplineDonutCard({
@@ -2035,11 +2043,13 @@ export function EducationDisciplineDonutCard({
   badgeScore,
   mode,
   year = '2025',
+  topicLabel,
+  emptyMessage = 'No data available.',
 }: EducationDisciplineDonutCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
   const row2024 = data2024[0];
-  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline');
+  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
 
   if (!row) {
     return (
@@ -2048,7 +2058,7 @@ export function EducationDisciplineDonutCard({
         description={description}
         badgeScore={badgeScore}
         mode={mode}
-        insight={['No discipline fairness data available.']}
+        insight={[emptyMessage]}
         className="chart-card-education-tab"
       >
         <div className="chart-card-body-education-tab" />
@@ -2078,6 +2088,437 @@ export function EducationDisciplineDonutCard({
           </div>
         ) : (
           renderEducationDisciplineDonut(row, '2025')
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+type DivergingLikertRow = {
+  name: string;
+  fullName: string;
+  disagree: number;
+  neutralLeft: number;
+  neutralRight: number;
+  agree: number;
+  dissatisfied: number;
+  neutral: number;
+  satisfied: number;
+};
+
+function toDivergingLikertRow(row: EducationSentimentRow, name = row.name): DivergingLikertRow {
+  return {
+    name,
+    fullName: row.fullName,
+    disagree: -row.dissatisfied,
+    neutralLeft: -row.neutral / 2,
+    neutralRight: row.neutral / 2,
+    agree: row.satisfied,
+    dissatisfied: row.dissatisfied,
+    neutral: row.neutral,
+    satisfied: row.satisfied,
+  };
+}
+
+function DivergingBarValueLabel({
+  x,
+  y,
+  width,
+  height,
+  index = 0,
+  rows,
+  segment,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  index?: number;
+  rows: DivergingLikertRow[];
+  segment: SentimentKey;
+}) {
+  const row = rows[index];
+  if (!row) return null;
+
+  const displayValue =
+    segment === 'dissatisfied' ? row.dissatisfied : segment === 'neutral' ? row.neutral : row.satisfied;
+  if (displayValue <= 0) return null;
+
+  const rawWidth = Number(width ?? 0);
+  const barHeight = Number(height ?? 0);
+  const barX = Number(x ?? 0);
+  const barY = Number(y ?? 0);
+  if (!Number.isFinite(rawWidth) || !Number.isFinite(barHeight) || barHeight < 8) return null;
+
+  const segmentWidth = Math.abs(rawWidth);
+  const centerX = rawWidth < 0 ? barX + rawWidth / 2 : barX + segmentWidth / 2;
+  const centerY = barY + barHeight / 2;
+
+  return (
+    <text
+      x={centerX}
+      y={centerY}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize={10}
+      fontWeight={700}
+      fill={getSegmentLabelFill(segment, displayValue)}
+      stroke={segment !== 'neutral' && displayValue >= 16 ? 'rgba(15, 23, 42, 0.2)' : 'none'}
+      strokeWidth={0.5}
+      paintOrder="stroke fill"
+      pointerEvents="none"
+    >
+      {`${displayValue.toFixed(1)}%`}
+    </text>
+  );
+}
+
+function makeDivergingBarLabel(rows: DivergingLikertRow[], segment: SentimentKey) {
+  return (props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => (
+    <DivergingBarValueLabel {...props} rows={rows} segment={segment} />
+  );
+}
+
+function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
+  return (
+    <BarChart
+      data={data}
+      layout="vertical"
+      margin={{ top: compact ? 12 : 16, right: compact ? 40 : 48, left: compact ? 40 : 48, bottom: compact ? 8 : 12 }}
+      barCategoryGap={compact ? '22%' : '28%'}
+      barGap={compact ? 6 : 8}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+      <XAxis
+        type="number"
+        tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+        domain={[-100, 100]}
+        ticks={[-100, -75, -50, -25, 0, 25, 50, 75, 100]}
+        tickFormatter={(v) => `${Math.abs(v)}%`}
+      />
+      <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+      <ReferenceLine x={0} stroke="#64748b" strokeWidth={1.5} />
+      <Tooltip
+        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        content={({ active, payload }) => {
+          const row = payload?.[0]?.payload as DivergingLikertRow | undefined;
+          if (!active || !row) return null;
+          return (
+            <ChartTooltip
+              active={active}
+              label={row.fullName}
+              payload={buildSentimentTooltipPayload(row, undefined, EDUCATION_AGREEMENT_LABELS)}
+            />
+          );
+        }}
+      />
+      <Bar
+        dataKey="neutralLeft"
+        stackId="left"
+        fill={SENTIMENT_COLORS.neutral}
+        name={EDUCATION_AGREEMENT_LABELS.neutral}
+        legendType="none"
+        radius={[0, 0, 0, 4]}
+        maxBarSize={compact ? 40 : 52}
+        isAnimationActive={false}
+      />
+      <Bar
+        dataKey="disagree"
+        stackId="left"
+        fill={SENTIMENT_COLORS.dissatisfied}
+        name={EDUCATION_AGREEMENT_LABELS.dissatisfied}
+        legendType="none"
+        radius={[4, 0, 0, 0]}
+        maxBarSize={compact ? 40 : 52}
+        isAnimationActive={false}
+        label={makeDivergingBarLabel(data, 'dissatisfied')}
+      />
+      <Bar
+        dataKey="neutralRight"
+        stackId="right"
+        fill={SENTIMENT_COLORS.neutral}
+        name={EDUCATION_AGREEMENT_LABELS.neutral}
+        legendType="none"
+        maxBarSize={compact ? 40 : 52}
+        isAnimationActive={false}
+        label={makeDivergingBarLabel(data, 'neutral')}
+      />
+      <Bar
+        dataKey="agree"
+        stackId="right"
+        fill={SENTIMENT_COLORS.satisfied}
+        name={EDUCATION_AGREEMENT_LABELS.satisfied}
+        legendType="none"
+        radius={[0, 4, 4, 0]}
+        maxBarSize={compact ? 40 : 52}
+        isAnimationActive={false}
+        label={makeDivergingBarLabel(data, 'satisfied')}
+      />
+    </BarChart>
+  );
+}
+
+interface SecurityDivergingLikertBarCardProps {
+  data: EducationSentimentRow[];
+  data2024: EducationSentimentRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  topicLabel?: string;
+  emptyMessage?: string;
+}
+
+export function SecurityDivergingLikertBarCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+  topicLabel,
+  emptyMessage = 'No data available.',
+}: SecurityDivergingLikertBarCardProps) {
+  const isCurrent = mode === 'current';
+  const row = data[0];
+  const row2024 = data2024[0];
+  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
+
+  if (!row) {
+    return (
+      <IncomeChartCard
+        title={title}
+        description={description}
+        badgeScore={badgeScore}
+        mode={mode}
+        insight={[emptyMessage]}
+        className="chart-card-education-tab"
+      >
+        <div className="chart-card-body-education-tab" />
+      </IncomeChartCard>
+    );
+  }
+
+  const chartData = isCurrent
+    ? [toDivergingLikertRow(row, year)]
+    : row2024
+      ? [toDivergingLikertRow(row2024, '2024'), toDivergingLikertRow(row, '2025')]
+      : [toDivergingLikertRow(row, '2025')];
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab chart-card-body-diverging-likert">
+        <ResponsiveContainer width="100%" height={isCurrent ? 180 : 220}>
+          {renderDivergingLikertBar(chartData, !isCurrent)}
+        </ResponsiveContainer>
+        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+type SentimentTreemapNode = {
+  name: string;
+  value: number;
+  fill: string;
+  textFill: string;
+};
+
+function toSentimentTreemapNodes(row: EducationSentimentRow): SentimentTreemapNode[] {
+  return (
+    [
+      { key: 'satisfied' as const, value: row.satisfied },
+      { key: 'neutral' as const, value: row.neutral },
+      { key: 'dissatisfied' as const, value: row.dissatisfied },
+    ] as const
+  )
+    .map(({ key, value }) => ({
+      name: EDUCATION_AGREEMENT_LABELS[key],
+      value,
+      fill: SENTIMENT_COLORS[key],
+      textFill: key === 'neutral' ? '#1f2937' : '#ffffff',
+    }))
+    .filter((entry) => entry.value > 0);
+}
+
+function getTreemapLabelColor(name?: string, fill?: string): string {
+  if (name === EDUCATION_AGREEMENT_LABELS.neutral || fill === SENTIMENT_COLORS.neutral) return '#0f172a';
+  return '#ffffff';
+}
+
+function SentimentTreemapContent(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  name?: string;
+  value?: number;
+  fill?: string;
+  textFill?: string;
+  payload?: SentimentTreemapNode;
+}) {
+  const {
+    x = 0,
+    y = 0,
+    width = 0,
+    height = 0,
+    name,
+    value,
+    fill,
+    textFill,
+    payload,
+  } = props;
+
+  if (width < 2 || height < 2) return null;
+
+  const nodeName = name ?? payload?.name;
+  const nodeValue = value ?? payload?.value ?? 0;
+  const nodeFill = fill ?? payload?.fill;
+  const labelColor = textFill ?? payload?.textFill ?? getTreemapLabelColor(nodeName, nodeFill);
+  const showName = width > 44 && height > 34;
+  const showValue = width > 28 && height > 22;
+
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={nodeFill} stroke="#ffffff" strokeWidth={2} rx={6} />
+      {showName && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - (showValue ? 8 : 0)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={labelColor}
+          fontSize={12}
+          fontWeight={700}
+          stroke="rgba(15, 23, 42, 0.22)"
+          strokeWidth={labelColor === '#ffffff' ? 0.6 : 0}
+          paintOrder="stroke fill"
+        >
+          {nodeName}
+        </text>
+      )}
+      {showValue && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + (showName ? 11 : 0)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={labelColor}
+          fontSize={11}
+          fontWeight={700}
+          stroke="rgba(15, 23, 42, 0.22)"
+          strokeWidth={labelColor === '#ffffff' ? 0.6 : 0}
+          paintOrder="stroke fill"
+        >
+          {`${Number(nodeValue).toFixed(1)}%`}
+        </text>
+      )}
+    </g>
+  );
+}
+
+function renderSentimentTreemapPanel(
+  row: EducationSentimentRow,
+  yearLabel: string,
+  compact = false,
+  showLegend = true,
+) {
+  const nodes = toSentimentTreemapNodes(row);
+
+  return (
+    <div className={`sentiment-treemap-panel ${compact ? 'sentiment-treemap-panel-compact' : ''}`.trim()}>
+      {compact && <div className="income-pie-year-label">{yearLabel}</div>}
+      <ResponsiveContainer width="100%" height={compact ? 210 : 240}>
+        <Treemap
+          data={nodes}
+          dataKey="value"
+          stroke="#ffffff"
+          fill="#8884d8"
+          content={<SentimentTreemapContent />}
+          isAnimationActive={false}
+        />
+      </ResponsiveContainer>
+      {showLegend && (
+        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+      )}
+    </div>
+  );
+}
+
+interface SecuritySentimentTreemapCardProps {
+  data: EducationSentimentRow[];
+  data2024: EducationSentimentRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  topicLabel?: string;
+  emptyMessage?: string;
+}
+
+export function SecuritySentimentTreemapCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+  topicLabel,
+  emptyMessage = 'No data available.',
+}: SecuritySentimentTreemapCardProps) {
+  const isCurrent = mode === 'current';
+  const row = data[0];
+  const row2024 = data2024[0];
+  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
+
+  if (!row) {
+    return (
+      <IncomeChartCard
+        title={title}
+        description={description}
+        badgeScore={badgeScore}
+        mode={mode}
+        insight={[emptyMessage]}
+        className="chart-card-education-tab"
+      >
+        <div className="chart-card-body-education-tab" />
+      </IncomeChartCard>
+    );
+  }
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab chart-card-body-sentiment-treemap">
+        {isCurrent ? (
+          renderSentimentTreemapPanel(row, year)
+        ) : row2024 ? (
+          <div className="sentiment-treemap-yoy">
+            <div className="income-pie-dual">
+              {renderSentimentTreemapPanel(row2024, '2024', true, false)}
+              {renderSentimentTreemapPanel(row, '2025', true, false)}
+            </div>
+            <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+          </div>
+        ) : (
+          renderSentimentTreemapPanel(row, '2025')
         )}
       </div>
     </IncomeChartCard>
@@ -2564,6 +3005,102 @@ function IncomePieLegend({ compact = false }: { compact?: boolean }) {
         No
       </span>
     </div>
+  );
+}
+
+const INCOME_FEELING_LEGEND_ORDER = ['Live comfortably', 'Try to manage', 'Find it difficult'] as const;
+
+function toIncomeFeelingTreemapNodes(rows: IncomeChartRow[], year: SurveyYear): SentimentTreemapNode[] {
+  return rows
+    .map((row, index) => {
+      const value = year === '2025' ? row.value2025 : row.value2024;
+      const fill = incomePieColor(row.name, index);
+      const textFill = row.name === 'Try to manage' ? '#0f172a' : '#ffffff';
+      return {
+        name: row.name,
+        value,
+        fill,
+        textFill,
+      };
+    })
+    .filter((entry) => entry.value > 0);
+}
+
+function IncomeFeelingLegend({ align = 'bottom-right' }: { align?: 'default' | 'bottom-right' }) {
+  return (
+    <div className={`sentiment-legend ${align === 'bottom-right' ? 'sentiment-legend-bottom-right' : ''}`.trim()}>
+      {INCOME_FEELING_LEGEND_ORDER.map((name, index) => (
+        <span key={name} className="sentiment-legend-item">
+          <span className="sentiment-legend-swatch" style={{ background: incomePieColor(name, index) }} />
+          {name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function renderIncomeFeelingTreemapPanel(
+  rows: IncomeChartRow[],
+  year: SurveyYear,
+  compact = false,
+  showLegend = true,
+) {
+  const nodes = toIncomeFeelingTreemapNodes(rows, year);
+
+  return (
+    <div className={`sentiment-treemap-panel ${compact ? 'sentiment-treemap-panel-compact' : ''}`.trim()}>
+      {compact && <div className="income-pie-year-label">{year}</div>}
+      <ResponsiveContainer width="100%" height={compact ? 210 : 240}>
+        <Treemap
+          data={nodes}
+          dataKey="value"
+          stroke="#ffffff"
+          fill="#8884d8"
+          content={<SentimentTreemapContent />}
+          isAnimationActive={false}
+        />
+      </ResponsiveContainer>
+      {showLegend && <IncomeFeelingLegend align="bottom-right" />}
+    </div>
+  );
+}
+
+interface IncomeFeelingTreemapCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function IncomeFeelingTreemapCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: IncomeFeelingTreemapCardProps) {
+  const isCurrent = mode === 'current';
+  const insight = generateIncomeFeelingInsight(data, mode, year);
+
+  return (
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+      <div className="chart-card-body-sentiment-treemap">
+        {isCurrent ? (
+          renderIncomeFeelingTreemapPanel(data, year)
+        ) : (
+          <div className="sentiment-treemap-yoy">
+            <div className="income-pie-dual">
+              {renderIncomeFeelingTreemapPanel(data, '2024', true, false)}
+              {renderIncomeFeelingTreemapPanel(data, '2025', true, false)}
+            </div>
+            <IncomeFeelingLegend align="bottom-right" />
+          </div>
+        )}
+      </div>
+    </IncomeChartCard>
   );
 }
 

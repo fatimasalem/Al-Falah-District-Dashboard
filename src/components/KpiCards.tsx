@@ -22,6 +22,10 @@ import {
   getEducationLifeSkillsPercent,
   getEducationUniversitySatisfactionPercent,
   getEducationKpiSentence,
+  getSecurityMovingSafePercent,
+  getSecurityPoliceTrustPercent,
+  getSecurityJobSecurityPercent,
+  getSecurityKpiSentence,
 } from '../utils';
 
 export type KpiIconName =
@@ -622,6 +626,71 @@ export function buildEducationKpis(
       valueCaption: 'are satisfied',
       subtext: getEducationKpiSentence('university', university),
       delta: university2025 - university2024,
+    },
+  ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+}
+
+export function buildSecurityKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const movingSafe2024 = getSecurityMovingSafePercent(questions, '2024');
+  const movingSafe2025 = getSecurityMovingSafePercent(questions, '2025');
+  const movingSafe = pickYearValue(movingSafe2024, movingSafe2025, year);
+  const policeTrust2024 = getSecurityPoliceTrustPercent(questions, '2024');
+  const policeTrust2025 = getSecurityPoliceTrustPercent(questions, '2025');
+  const policeTrust = pickYearValue(policeTrust2024, policeTrust2025, year);
+  const jobSecurity2024 = getSecurityJobSecurityPercent(questions, '2024');
+  const jobSecurity2025 = getSecurityJobSecurityPercent(questions, '2025');
+  const jobSecurity = pickYearValue(jobSecurity2024, jobSecurity2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Security & Safety Overall Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getSecurityKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Safe Moving Around Day & Night',
+      icon: 'shield',
+      value: `${movingSafe.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'feel safe',
+      subtext: getSecurityKpiSentence('movingSafe', movingSafe),
+      delta: movingSafe2025 - movingSafe2024,
+    },
+    {
+      label: 'Trust in Abu Dhabi Police',
+      icon: 'shield',
+      value: `${policeTrust.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'trust police ability',
+      subtext: getSecurityKpiSentence('policeTrust', policeTrust),
+      delta: policeTrust2025 - policeTrust2024,
+    },
+    {
+      label: 'Job Security in Abu Dhabi',
+      icon: 'briefcase',
+      value: `${jobSecurity.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'feel job security',
+      subtext: getSecurityKpiSentence('jobSecurity', jobSecurity),
+      delta: jobSecurity2025 - jobSecurity2024,
     },
   ];
 

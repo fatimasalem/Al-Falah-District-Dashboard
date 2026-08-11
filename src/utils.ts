@@ -1540,12 +1540,14 @@ export function generateEducationLikertScaleInsight(
   mode: ViewMode,
   data2024: EducationLikertScaleRow[] = [],
   topic: 'sports' | 'discipline' = 'sports',
+  topicLabelOverride?: string,
 ): InsightPart[] {
   if (data.length === 0) {
-    return ['Resident views on this education topic vary across survey responses.'];
+    return ['Resident views on this topic vary across survey responses.'];
   }
 
-  const topicLabel = topic === 'sports' ? 'sports facilities' : 'discipline fairness';
+  const topicLabel =
+    topicLabelOverride ?? (topic === 'sports' ? 'sports facilities' : 'discipline fairness');
 
   if (mode === 'yoy' && data2024.length > 0) {
     const bestIndex = data.reduce((best, row, index) => {
@@ -1631,19 +1633,21 @@ export function generateEducationTabChartInsight(
   mode: ViewMode,
   data2024: EducationSentimentRow[] = [],
   topic: 'sports' | 'bullying' | 'awareness' | 'discipline' = 'sports',
+  topicLabelOverride?: string,
 ): InsightPart[] {
   if (data.length === 0) {
-    return ['Resident views on this education topic vary across survey responses.'];
+    return ['Resident views on this topic vary across survey responses.'];
   }
 
   const topicLabel =
-    topic === 'sports'
+    topicLabelOverride ??
+    (topic === 'sports'
       ? 'sports facilities'
       : topic === 'bullying'
         ? 'bullying experience'
         : topic === 'awareness'
           ? 'bullying awareness'
-          : 'discipline fairness';
+          : 'discipline fairness');
 
   if (mode === 'yoy' && data2024.length > 0) {
     const bestIndex = data.reduce((best, row, index) => {
@@ -1670,6 +1674,113 @@ export function generateEducationTabChartInsight(
     { bold: `${best.satisfied.toFixed(1)}%` },
     ` on ${best.name.toLowerCase()}.`,
   ];
+}
+
+const SECURITY_KPI_STATEMENT = {
+  movingSafe: /feel safe while moving around during the day and night/i,
+  policeTrust:
+    /trust the ability of the Abu Dhabi Police General Command to deal with accidents and problems in my residential area/i,
+  jobSecurity: /feel job security in the Emirate of Abu Dhabi/i,
+} as const;
+
+const SECURITY_CHART_STATEMENTS = {
+  freedomExpression: {
+    match: /feel safe through freedom of expression/i,
+    short: 'Freedom of expression safety',
+  },
+  peerInfluence: {
+    match: /fear for my children from bad company/i,
+    short: 'Concern about negative peer influence',
+  },
+  powerOutages: {
+    match: /feel safe from uninterrupted power services/i,
+    short: 'Safety from power outages',
+  },
+  drugPrevention: {
+    match: /combat drugs in a residential area/i,
+    short: 'Confidence in drug prevention',
+  },
+} as const;
+
+export function getSecurityMovingSafePercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, SECURITY_KPI_STATEMENT.movingSafe, year);
+}
+
+export function getSecurityPoliceTrustPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, SECURITY_KPI_STATEMENT.policeTrust, year);
+}
+
+export function getSecurityJobSecurityPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, SECURITY_KPI_STATEMENT.jobSecurity, year);
+}
+
+export function getSecurityFreedomExpressionData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationLikertScaleRow[] {
+  return getEducationLikertScaleRows(questions, year, [SECURITY_CHART_STATEMENTS.freedomExpression]);
+}
+
+export function getSecurityPeerInfluenceData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [SECURITY_CHART_STATEMENTS.peerInfluence]);
+}
+
+export function getSecurityPowerOutagesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [SECURITY_CHART_STATEMENTS.powerOutages]);
+}
+
+export function getSecurityDrugPreventionData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [SECURITY_CHART_STATEMENTS.drugPrevention]);
+}
+
+export function getSecurityKpiSentence(
+  metric: 'score' | 'movingSafe' | 'policeTrust' | 'jobSecurity',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong security and safety satisfaction overall.'
+        : value >= 50
+          ? 'Moderate security and safety satisfaction.'
+          : 'Security and safety satisfaction needs improvement.';
+    case 'movingSafe':
+      return value >= 70
+        ? 'Most residents feel safe moving around day and night.'
+        : value >= 50
+          ? 'Day and night mobility safety perception is moderate.'
+          : 'Many residents do not feel safe moving around.';
+    case 'policeTrust':
+      return value >= 70
+        ? 'Strong trust in Abu Dhabi Police handling local incidents.'
+        : value >= 50
+          ? 'Moderate trust in police response capabilities.'
+          : 'Trust in police incident handling needs strengthening.';
+    case 'jobSecurity':
+      return value >= 70
+        ? 'Most residents feel job security in Abu Dhabi.'
+        : value >= 50
+          ? 'Job security perception is moderate.'
+          : 'Job security concerns are elevated among residents.';
+  }
 }
 
 export function generateHealthChartInsight(

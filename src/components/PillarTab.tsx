@@ -9,6 +9,7 @@ import {
   IncomeBarChartCard,
   IncomePieChartCard,
   IncomeBarriersHeatmap,
+  IncomeFeelingTreemapCard,
   WorkPieChartCard,
   WorkHorizontalBarChartCard,
   WorkColumnBarChartCard,
@@ -16,6 +17,8 @@ import {
   EducationLikertStackedCard,
   EducationSportsLikertGaugeCard,
   EducationDisciplineDonutCard,
+  SecurityDivergingLikertBarCard,
+  SecuritySentimentTreemapCard,
 } from './Charts';
 import {
   getLikertStatements,
@@ -36,6 +39,10 @@ import {
   getEducationDisciplineFairnessData,
   getEducationTabChartBadgeScore,
   getEducationLikertScaleBadgeScore,
+  getSecurityFreedomExpressionData,
+  getSecurityPeerInfluenceData,
+  getSecurityPowerOutagesData,
+  getSecurityDrugPreventionData,
   isCategory,
   isMean,
   pickYearValue,
@@ -95,14 +102,13 @@ function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           mode={viewMode}
           year={selectedYear}
         />
-        <IncomeBarChartCard
+        <IncomeFeelingTreemapCard
           data={incomeFeelings}
           title="How Residents Feel About Income"
           description="How residents describe their household's ability to live on current income."
           badgeScore={getIncomeChartBadgeScore(incomeFeelings, selectedYear, 'feeling', viewMode)}
           mode={viewMode}
           year={selectedYear}
-          metric="feeling"
         />
       </div>
     </div>
@@ -216,6 +222,71 @@ function EducationCharts({ section, viewMode, selectedYear }: PillarChartsProps)
   );
 }
 
+function SecurityCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const freedom = getSecurityFreedomExpressionData(section.questions, chartYear);
+  const freedom2024 = getSecurityFreedomExpressionData(section.questions, '2024');
+  const peerInfluence = getSecurityPeerInfluenceData(section.questions, chartYear);
+  const peerInfluence2024 = getSecurityPeerInfluenceData(section.questions, '2024');
+  const powerOutages = getSecurityPowerOutagesData(section.questions, chartYear);
+  const powerOutages2024 = getSecurityPowerOutagesData(section.questions, '2024');
+  const drugPrevention = getSecurityDrugPreventionData(section.questions, chartYear);
+  const drugPrevention2024 = getSecurityDrugPreventionData(section.questions, '2024');
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationSportsLikertGaugeCard
+          data={freedom}
+          data2024={freedom2024}
+          title="Safety Through Freedom of Expression"
+          description="Residents' perceptions of whether they feel safe expressing their views in their community."
+          badgeScore={getEducationLikertScaleBadgeScore(freedom, freedom2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="freedom of expression safety"
+          emptyMessage="No freedom of expression data available."
+        />
+        <EducationDisciplineDonutCard
+          data={peerInfluence}
+          data2024={peerInfluence2024}
+          title="Concern About Negative Peer Influence"
+          description="Residents worried about their children's exposure to negative peer groups."
+          badgeScore={getEducationTabChartBadgeScore(peerInfluence, peerInfluence2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="negative peer influence concern"
+          emptyMessage="No peer influence data available."
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <SecurityDivergingLikertBarCard
+          data={powerOutages}
+          data2024={powerOutages2024}
+          title="Safety from Power Outages"
+          description="Residents' perception of electricity reliability and security."
+          badgeScore={getEducationTabChartBadgeScore(powerOutages, powerOutages2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="power outage safety"
+          emptyMessage="No power outage safety data available."
+        />
+        <SecuritySentimentTreemapCard
+          data={drugPrevention}
+          data2024={drugPrevention2024}
+          title="Confidence in Drug Prevention"
+          description="Residents' confidence in Abu Dhabi Police's ability to combat drugs in their residential area."
+          badgeScore={getEducationTabChartBadgeScore(drugPrevention, drugPrevention2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="drug prevention confidence"
+          emptyMessage="No drug prevention confidence data available."
+        />
+      </div>
+    </div>
+  );
+}
+
 function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
     .filter(isMean)
@@ -297,6 +368,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'education') {
     return <EducationCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'security') {
+    return <SecurityCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;
