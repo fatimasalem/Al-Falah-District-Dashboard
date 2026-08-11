@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import {
   BarChart,
   Bar,
@@ -26,6 +26,9 @@ import {
   generateHealthChartInsight,
   generateEnvironmentChartInsight,
   generatePillarTableInsight,
+  generateHealthAssessmentInsight,
+  classifyHealthAssessmentTier,
+  getHealthAssessmentBadgeScore,
   formatDelta,
   mergeStatementComparisonData,
   generateIncomeSpendingInsight,
@@ -470,15 +473,15 @@ function renderInsight(parts: InsightPart[]) {
   );
 }
 
-function ChartInsightFooter({ insight }: { insight: InsightPart[] }) {
+function ChartInsightFooter({ insight, singleLine = false }: { insight: InsightPart[]; singleLine?: boolean }) {
   return (
     <div className="chart-insight-footer">
       <hr className="chart-insight-separator" />
-      <p className="chart-insight-text">
+      <p className={`chart-insight-text${singleLine ? ' chart-insight-text-single-line' : ''}`.trim()}>
         <span className="chart-insight-icon" aria-hidden="true">
           <span className="insights-badge">Bayaan AI</span>
         </span>
-        <span>{renderInsight(insight)}</span>
+        <span className="chart-insight-copy">{renderInsight(insight)}</span>
       </p>
     </div>
   );
@@ -1054,11 +1057,15 @@ function SentimentLegend({
   showYears = false,
   align = 'default',
   labels = SENTIMENT_LABELS,
+  legendKeys = SENTIMENT_LEGEND_ORDER,
 }: {
   showYears?: boolean;
   align?: 'default' | 'bottom-right';
   labels?: Record<SentimentKey, string>;
+  legendKeys?: SentimentKey[];
 }) {
+  const visibleKeys = legendKeys.filter((key) => labels[key]);
+
   return (
     <div
       className={`stacked-comparison-legend ${
@@ -1072,7 +1079,7 @@ function SentimentLegend({
         </div>
       )}
       <div className={`sentiment-legend ${align === 'bottom-right' ? 'sentiment-legend-bottom-right' : ''}`.trim()}>
-        {SENTIMENT_LEGEND_ORDER.map((key) => (
+        {visibleKeys.map((key) => (
           <span key={key} className="sentiment-legend-item">
             <span className="sentiment-legend-swatch" style={{ background: SENTIMENT_COLORS[key] }} />
             {labels[key]}
@@ -1777,6 +1784,24 @@ const EDUCATION_AGREEMENT_LABELS: Record<SentimentKey, string> = {
   satisfied: 'Agree',
 };
 
+export const HEALTH_STRESS_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'High',
+  neutral: 'Moderate',
+  satisfied: 'Low',
+};
+
+export const HEALTH_EATING_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'Never',
+  neutral: 'Sometimes',
+  satisfied: 'All the time',
+};
+
+export const HEALTH_BINARY_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'No',
+  neutral: 'Neutral',
+  satisfied: 'Yes',
+};
+
 const LIKERT_SCALE_COLORS: Record<EducationLikertScaleKey, string> = {
   stronglyDisagree: '#991B1B',
   disagree: DESIGN.negative,
@@ -1976,6 +2001,8 @@ function renderEducationDisciplineDonut(
   yearLabel: string,
   compact = false,
   showLegend = true,
+  labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
+  legendKeys: SentimentKey[] = SENTIMENT_LEGEND_ORDER,
 ) {
   const pieData = (
     [
@@ -1985,11 +2012,11 @@ function renderEducationDisciplineDonut(
     ] as const
   )
     .map(({ key, value }) => ({
-      name: EDUCATION_AGREEMENT_LABELS[key],
+      name: labels[key],
       value,
       fill: SENTIMENT_COLORS[key],
     }))
-    .filter((entry) => entry.value > 0);
+    .filter((entry) => entry.value > 0 && entry.name);
 
   return (
     <div
@@ -2017,7 +2044,7 @@ function renderEducationDisciplineDonut(
         </PieChart>
       </ResponsiveContainer>
       {showLegend && (
-        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+        <SentimentLegend align="bottom-right" labels={labels} legendKeys={legendKeys} />
       )}
     </div>
   );
@@ -2033,6 +2060,8 @@ interface EducationDisciplineDonutCardProps {
   year?: SurveyYear;
   topicLabel?: string;
   emptyMessage?: string;
+  sentimentLabels?: Record<SentimentKey, string>;
+  legendKeys?: SentimentKey[];
 }
 
 export function EducationDisciplineDonutCard({
@@ -2045,6 +2074,8 @@ export function EducationDisciplineDonutCard({
   year = '2025',
   topicLabel,
   emptyMessage = 'No data available.',
+  sentimentLabels = EDUCATION_AGREEMENT_LABELS,
+  legendKeys = SENTIMENT_LEGEND_ORDER,
 }: EducationDisciplineDonutCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2077,17 +2108,17 @@ export function EducationDisciplineDonutCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-education-donut">
         {isCurrent ? (
-          renderEducationDisciplineDonut(row, year)
+          renderEducationDisciplineDonut(row, year, false, true, sentimentLabels, legendKeys)
         ) : row2024 ? (
           <div className="discipline-donut-yoy">
             <div className="income-pie-dual">
-              {renderEducationDisciplineDonut(row2024, '2024', true, false)}
-              {renderEducationDisciplineDonut(row, '2025', true, false)}
+              {renderEducationDisciplineDonut(row2024, '2024', true, false, sentimentLabels, legendKeys)}
+              {renderEducationDisciplineDonut(row, '2025', true, false, sentimentLabels, legendKeys)}
             </div>
-            <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+            <SentimentLegend align="bottom-right" labels={sentimentLabels} legendKeys={legendKeys} />
           </div>
         ) : (
-          renderEducationDisciplineDonut(row, '2025')
+          renderEducationDisciplineDonut(row, '2025', false, true, sentimentLabels, legendKeys)
         )}
       </div>
     </IncomeChartCard>
@@ -2179,7 +2210,11 @@ function makeDivergingBarLabel(rows: DivergingLikertRow[], segment: SentimentKey
   );
 }
 
-function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
+function renderDivergingLikertBar(
+  data: DivergingLikertRow[],
+  compact = false,
+  labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
+) {
   return (
     <BarChart
       data={data}
@@ -2207,7 +2242,7 @@ function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
             <ChartTooltip
               active={active}
               label={row.fullName}
-              payload={buildSentimentTooltipPayload(row, undefined, EDUCATION_AGREEMENT_LABELS)}
+              payload={buildSentimentTooltipPayload(row, undefined, labels)}
             />
           );
         }}
@@ -2216,7 +2251,7 @@ function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
         dataKey="neutralLeft"
         stackId="left"
         fill={SENTIMENT_COLORS.neutral}
-        name={EDUCATION_AGREEMENT_LABELS.neutral}
+        name={labels.neutral}
         legendType="none"
         radius={[0, 0, 0, 4]}
         maxBarSize={compact ? 40 : 52}
@@ -2226,7 +2261,7 @@ function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
         dataKey="disagree"
         stackId="left"
         fill={SENTIMENT_COLORS.dissatisfied}
-        name={EDUCATION_AGREEMENT_LABELS.dissatisfied}
+        name={labels.dissatisfied}
         legendType="none"
         radius={[4, 0, 0, 0]}
         maxBarSize={compact ? 40 : 52}
@@ -2237,7 +2272,7 @@ function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
         dataKey="neutralRight"
         stackId="right"
         fill={SENTIMENT_COLORS.neutral}
-        name={EDUCATION_AGREEMENT_LABELS.neutral}
+        name={labels.neutral}
         legendType="none"
         maxBarSize={compact ? 40 : 52}
         isAnimationActive={false}
@@ -2247,7 +2282,7 @@ function renderDivergingLikertBar(data: DivergingLikertRow[], compact = false) {
         dataKey="agree"
         stackId="right"
         fill={SENTIMENT_COLORS.satisfied}
-        name={EDUCATION_AGREEMENT_LABELS.satisfied}
+        name={labels.satisfied}
         legendType="none"
         radius={[0, 4, 4, 0]}
         maxBarSize={compact ? 40 : 52}
@@ -2268,6 +2303,7 @@ interface SecurityDivergingLikertBarCardProps {
   year?: SurveyYear;
   topicLabel?: string;
   emptyMessage?: string;
+  sentimentLabels?: Record<SentimentKey, string>;
 }
 
 export function SecurityDivergingLikertBarCard({
@@ -2280,6 +2316,7 @@ export function SecurityDivergingLikertBarCard({
   year = '2025',
   topicLabel,
   emptyMessage = 'No data available.',
+  sentimentLabels = EDUCATION_AGREEMENT_LABELS,
 }: SecurityDivergingLikertBarCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2318,9 +2355,9 @@ export function SecurityDivergingLikertBarCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-diverging-likert">
         <ResponsiveContainer width="100%" height={isCurrent ? 180 : 220}>
-          {renderDivergingLikertBar(chartData, !isCurrent)}
+          {renderDivergingLikertBar(chartData, !isCurrent, sentimentLabels)}
         </ResponsiveContainer>
-        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+        <SentimentLegend align="bottom-right" labels={sentimentLabels} />
       </div>
     </IncomeChartCard>
   );
@@ -2333,7 +2370,10 @@ type SentimentTreemapNode = {
   textFill: string;
 };
 
-function toSentimentTreemapNodes(row: EducationSentimentRow): SentimentTreemapNode[] {
+function toSentimentTreemapNodes(
+  row: EducationSentimentRow,
+  labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
+): SentimentTreemapNode[] {
   return (
     [
       { key: 'satisfied' as const, value: row.satisfied },
@@ -2342,16 +2382,20 @@ function toSentimentTreemapNodes(row: EducationSentimentRow): SentimentTreemapNo
     ] as const
   )
     .map(({ key, value }) => ({
-      name: EDUCATION_AGREEMENT_LABELS[key],
+      name: labels[key],
       value,
       fill: SENTIMENT_COLORS[key],
       textFill: key === 'neutral' ? '#1f2937' : '#ffffff',
     }))
-    .filter((entry) => entry.value > 0);
+    .filter((entry) => entry.value > 0 && entry.name);
 }
 
-function getTreemapLabelColor(name?: string, fill?: string): string {
-  if (name === EDUCATION_AGREEMENT_LABELS.neutral || fill === SENTIMENT_COLORS.neutral) return '#0f172a';
+function getTreemapLabelColor(
+  name?: string,
+  fill?: string,
+  labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
+): string {
+  if (name === labels.neutral || fill === SENTIMENT_COLORS.neutral) return '#0f172a';
   return '#ffffff';
 }
 
@@ -2431,8 +2475,9 @@ function renderSentimentTreemapPanel(
   yearLabel: string,
   compact = false,
   showLegend = true,
+  labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
 ) {
-  const nodes = toSentimentTreemapNodes(row);
+  const nodes = toSentimentTreemapNodes(row, labels);
 
   return (
     <div className={`sentiment-treemap-panel ${compact ? 'sentiment-treemap-panel-compact' : ''}`.trim()}>
@@ -2448,7 +2493,7 @@ function renderSentimentTreemapPanel(
         />
       </ResponsiveContainer>
       {showLegend && (
-        <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+        <SentimentLegend align="bottom-right" labels={labels} />
       )}
     </div>
   );
@@ -2464,6 +2509,7 @@ interface SecuritySentimentTreemapCardProps {
   year?: SurveyYear;
   topicLabel?: string;
   emptyMessage?: string;
+  sentimentLabels?: Record<SentimentKey, string>;
 }
 
 export function SecuritySentimentTreemapCard({
@@ -2476,6 +2522,7 @@ export function SecuritySentimentTreemapCard({
   year = '2025',
   topicLabel,
   emptyMessage = 'No data available.',
+  sentimentLabels = EDUCATION_AGREEMENT_LABELS,
 }: SecuritySentimentTreemapCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2508,17 +2555,17 @@ export function SecuritySentimentTreemapCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-sentiment-treemap">
         {isCurrent ? (
-          renderSentimentTreemapPanel(row, year)
+          renderSentimentTreemapPanel(row, year, false, true, sentimentLabels)
         ) : row2024 ? (
           <div className="sentiment-treemap-yoy">
             <div className="income-pie-dual">
-              {renderSentimentTreemapPanel(row2024, '2024', true, false)}
-              {renderSentimentTreemapPanel(row, '2025', true, false)}
+              {renderSentimentTreemapPanel(row2024, '2024', true, false, sentimentLabels)}
+              {renderSentimentTreemapPanel(row, '2025', true, false, sentimentLabels)}
             </div>
-            <SentimentLegend align="bottom-right" labels={EDUCATION_AGREEMENT_LABELS} />
+            <SentimentLegend align="bottom-right" labels={sentimentLabels} />
           </div>
         ) : (
-          renderSentimentTreemapPanel(row, '2025')
+          renderSentimentTreemapPanel(row, '2025', false, true, sentimentLabels)
         )}
       </div>
     </IncomeChartCard>
@@ -2824,6 +2871,7 @@ interface IncomeChartCardProps {
   insight: InsightPart[];
   children: ReactNode;
   singleLineDescription?: boolean;
+  singleLineInsight?: boolean;
   className?: string;
 }
 
@@ -2835,21 +2883,24 @@ function IncomeChartCard({
   insight,
   children,
   singleLineDescription = false,
+  singleLineInsight = false,
   className,
 }: IncomeChartCardProps) {
   return (
     <div className={['chart-card chart-card-fill', className].filter(Boolean).join(' ')}>
       <div className="chart-card-header">
-        <div>
+        <div className="chart-card-header-copy">
           <div className="chart-title">{title}</div>
           <div className={`chart-subtitle${singleLineDescription ? ' chart-subtitle-single-line' : ''}`.trim()}>
             {description}
           </div>
         </div>
-        <ChartScoreBadge score={badgeScore} mode={mode} />
+        <div className="chart-header-actions">
+          <ChartScoreBadge score={badgeScore} mode={mode} />
+        </div>
       </div>
       <div className="chart-card-body">{children}</div>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter insight={insight} singleLine={singleLineInsight} />
     </div>
   );
 }
@@ -3946,6 +3997,227 @@ export function WorkSupportHeatmap({
           <span>Low demand</span>
           <span className="health-heatmap-scale-bar" aria-hidden="true" />
           <span>High demand</span>
+        </div>
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+function healthAssessmentBarColor(value: number): string {
+  const tier = classifyHealthAssessmentTier(value);
+  if (tier === 'good') return DESIGN.chart.export;
+  if (tier === 'acceptable') return '#94a3b8';
+  return DESIGN.negative;
+}
+
+const HEALTH_ASSESSMENT_SCROLL_MARGIN = { top: 8, right: 56, left: 4, bottom: 0 };
+const HEALTH_ASSESSMENT_SCROLL_MARGIN_YOY = { top: 8, right: 72, left: 4, bottom: 0 };
+const HEALTH_ASSESSMENT_AXIS_MARGIN = { top: 16, right: 56, left: 4, bottom: 24 };
+const HEALTH_ASSESSMENT_AXIS_MARGIN_YOY = { top: 16, right: 72, left: 4, bottom: 24 };
+const HEALTH_ASSESSMENT_AXIS_HEIGHT = 64;
+
+type HealthAssessmentFilter = 'service' | 'system';
+
+interface HealthAssessmentBarChartCardProps {
+  serviceData: IncomeChartRow[];
+  systemData: IncomeChartRow[];
+  title: string;
+  description: string;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function HealthAssessmentBarChartCard({
+  serviceData,
+  systemData,
+  title,
+  description,
+  mode,
+  year = '2025',
+}: HealthAssessmentBarChartCardProps) {
+  const [filter, setFilter] = useState<HealthAssessmentFilter>('service');
+  const labelsRef = useRef<HTMLDivElement>(null);
+  const [labelColumnWidth, setLabelColumnWidth] = useState(0);
+  const isCurrent = mode === 'current';
+  const data = filter === 'service' ? serviceData : systemData;
+  const badgeScore = getHealthAssessmentBadgeScore(data, data, mode, year);
+  const chartData = [...data]
+    .map((row) => ({
+      name: row.name,
+      fullName: row.fullName,
+      value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+      value2024: row.value2024,
+      value2025: row.value2025,
+    }))
+    .sort((a, b) => b.value - a.value);
+  const insight = generateHealthAssessmentInsight(data, mode, year);
+  const rowHeight = isCurrent ? 68 : 76;
+  const chartHeight = Math.max(300, chartData.length * rowHeight + 8);
+  const xAxisLabel = 'Assessment Rating (%)';
+  const scrollMargin = isCurrent ? HEALTH_ASSESSMENT_SCROLL_MARGIN : HEALTH_ASSESSMENT_SCROLL_MARGIN_YOY;
+  const axisMargin = isCurrent ? HEALTH_ASSESSMENT_AXIS_MARGIN : HEALTH_ASSESSMENT_AXIS_MARGIN_YOY;
+  const axisProbe = [{ name: '_axis', value: 100 }];
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (labelsRef.current) {
+        setLabelColumnWidth(labelsRef.current.offsetWidth);
+      }
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [chartData, filter, isCurrent]);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      singleLineDescription
+      className="chart-card-education-tab chart-card-health-assessment"
+    >
+      <div className="health-assessment-chart">
+        <div className={`health-assessment-controls${isCurrent ? '' : ' health-assessment-controls-yoy'}`.trim()}>
+          <label className="health-assessment-filter">
+            <span className="health-assessment-filter-label">Assessment type</span>
+            <select
+              className="health-assessment-select"
+              value={filter}
+              aria-label="Healthcare assessment type"
+              onChange={(event) => setFilter(event.target.value as HealthAssessmentFilter)}
+            >
+              <option value="service">Healthcare service assessment</option>
+              <option value="system">Healthcare system service assessment</option>
+            </select>
+          </label>
+        </div>
+        <div className={`income-bar-chart-wrap health-assessment-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
+          <div className="health-assessment-chart-panel">
+            <div className="statement-bar-chart-scroll health-assessment-chart-scroll">
+              <div
+                className="statement-bar-chart statement-bar-chart-income health-assessment-bar-chart"
+                style={{ height: chartHeight, ['--statement-rows' as string]: chartData.length }}
+              >
+                <div className="statement-bar-labels" ref={labelsRef}>
+                  {chartData.map((row) => (
+                    <div key={row.fullName} className="statement-bar-label" title={row.fullName}>
+                      <span className="statement-bar-label-icon work-challenge-label-icon">
+                        <HealthStatementIcon fullName={row.fullName} />
+                      </span>
+                      <span className="statement-bar-label-text">{row.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="statement-bar-plot">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {isCurrent ? (
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={scrollMargin}
+                        barCategoryGap="18%"
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+                        <Tooltip
+                          formatter={(v: number) => [`${v.toFixed(1)}%`, classifyHealthAssessmentTier(v)]}
+                          labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={26} legendType="none">
+                          {chartData.map((entry) => (
+                            <Cell key={entry.fullName} fill={healthAssessmentBarColor(entry.value)} />
+                          ))}
+                          <LabelList
+                            dataKey="value"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={scrollMargin}
+                        barCategoryGap="18%"
+                        barGap={2}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+                        <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+                        <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                          {renderYoYBarCells(chartData, '2025')}
+                          <LabelList
+                            dataKey="value2025"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                          />
+                        </Bar>
+                        <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                          {renderYoYBarCells(chartData, '2024')}
+                          <LabelList
+                            dataKey="value2024"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+            <div className="health-assessment-x-axis-rail">
+              <div
+                className="health-assessment-x-axis-gutter"
+                style={labelColumnWidth > 0 ? { width: labelColumnWidth } : undefined}
+                aria-hidden="true"
+              />
+              <div className="health-assessment-x-axis-plot">
+                <ResponsiveContainer width="100%" height={HEALTH_ASSESSMENT_AXIS_HEIGHT}>
+                  <BarChart data={axisProbe} layout="vertical" margin={axisMargin}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} vertical={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+                      domain={[0, 100]}
+                      height={30}
+                      tickMargin={8}
+                    >
+                      <Label
+                        value={xAxisLabel}
+                        position="bottom"
+                        offset={4}
+                        style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                      />
+                    </XAxis>
+                    <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} hide />
+                    <Bar dataKey="value" fill="transparent" stroke="none" isAnimationActive={false} legendType="none" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+          <div className="health-assessment-chart-meta">
+            {isCurrent ? (
+              <div className="health-assessment-tier-legend health-assessment-tier-legend-bottom">
+                <span className="health-assessment-tier health-assessment-tier--good">Good (60%+)</span>
+                <span className="health-assessment-tier health-assessment-tier--acceptable">Acceptable (50–59%)</span>
+                <span className="health-assessment-tier health-assessment-tier--bad">Bad (&lt;50%)</span>
+              </div>
+            ) : (
+              <YearComparisonLegend rounded />
+            )}
+          </div>
         </div>
       </div>
     </IncomeChartCard>

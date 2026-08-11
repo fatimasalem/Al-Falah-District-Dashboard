@@ -26,6 +26,10 @@ import {
   getSecurityPoliceTrustPercent,
   getSecurityJobSecurityPercent,
   getSecurityKpiSentence,
+  getHealthCurrentHealthGoodPercent,
+  getHealthPhysicalActivityHours,
+  getHealthSleepQualityGoodPercent,
+  getHealthKpiSentence,
 } from '../utils';
 
 export type KpiIconName =
@@ -691,6 +695,71 @@ export function buildSecurityKpis(
       valueCaption: 'feel job security',
       subtext: getSecurityKpiSentence('jobSecurity', jobSecurity),
       delta: jobSecurity2025 - jobSecurity2024,
+    },
+  ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+}
+
+export function buildHealthKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const currentHealth2024 = getHealthCurrentHealthGoodPercent(questions, '2024');
+  const currentHealth2025 = getHealthCurrentHealthGoodPercent(questions, '2025');
+  const currentHealth = pickYearValue(currentHealth2024, currentHealth2025, year);
+  const activity2024 = getHealthPhysicalActivityHours(questions, '2024');
+  const activity2025 = getHealthPhysicalActivityHours(questions, '2025');
+  const activity = pickYearValue(activity2024, activity2025, year);
+  const sleep2024 = getHealthSleepQualityGoodPercent(questions, '2024');
+  const sleep2025 = getHealthSleepQualityGoodPercent(questions, '2025');
+  const sleep = pickYearValue(sleep2024, sleep2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Overall Health Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getHealthKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Current Health Rated Good',
+      icon: 'shield',
+      value: `${currentHealth.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'rate health as good',
+      subtext: getHealthKpiSentence('currentHealth', currentHealth),
+      delta: currentHealth2025 - currentHealth2024,
+    },
+    {
+      label: 'Avg Daily Physical Activity',
+      icon: 'spark',
+      value: `${activity.toFixed(1)}`,
+      suffix: ' hrs',
+      valueCaption: 'per day',
+      subtext: getHealthKpiSentence('activity', activity),
+      delta: activity2025 - activity2024,
+    },
+    {
+      label: 'Sleep Quality Rated Good',
+      icon: 'shield',
+      value: `${sleep.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'rate sleep as good',
+      subtext: getHealthKpiSentence('sleep', sleep),
+      delta: sleep2025 - sleep2024,
     },
   ];
 

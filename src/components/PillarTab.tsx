@@ -19,6 +19,10 @@ import {
   EducationDisciplineDonutCard,
   SecurityDivergingLikertBarCard,
   SecuritySentimentTreemapCard,
+  HealthAssessmentBarChartCard,
+  HEALTH_STRESS_LABELS,
+  HEALTH_EATING_LABELS,
+  HEALTH_BINARY_LABELS,
 } from './Charts';
 import {
   getLikertStatements,
@@ -43,6 +47,12 @@ import {
   getSecurityPeerInfluenceData,
   getSecurityPowerOutagesData,
   getSecurityDrugPreventionData,
+  getHealthServiceAssessmentData,
+  getHealthSystemAssessmentData,
+  getHealthEmotionalStressData,
+  getHealthHealthyEatingData,
+  getHealthChronicDiseaseData,
+  getHealthTabChartBadgeScore,
   isCategory,
   isMean,
   pickYearValue,
@@ -287,6 +297,72 @@ function SecurityCharts({ section, viewMode, selectedYear }: PillarChartsProps) 
   );
 }
 
+function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const serviceAssessment = getHealthServiceAssessmentData(section.questions, chartYear);
+  const systemAssessment = getHealthSystemAssessmentData(section.questions, chartYear);
+  const emotionalStress = getHealthEmotionalStressData(section.questions, chartYear);
+  const emotionalStress2024 = getHealthEmotionalStressData(section.questions, '2024');
+  const healthyEating = getHealthHealthyEatingData(section.questions, chartYear);
+  const healthyEating2024 = getHealthHealthyEatingData(section.questions, '2024');
+  const chronicDisease = getHealthChronicDiseaseData(section.questions, chartYear);
+  const chronicDisease2024 = getHealthChronicDiseaseData(section.questions, '2024');
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <HealthAssessmentBarChartCard
+          serviceData={serviceAssessment}
+          systemData={systemAssessment}
+          title="Healthcare Assessment"
+          description="Resident healthcare ratings by service and system quality (good 60%+, acceptable 50–59%, bad below 50%)."
+          mode={viewMode}
+          year={selectedYear}
+        />
+        <SecuritySentimentTreemapCard
+          data={emotionalStress}
+          data2024={emotionalStress2024}
+          title="Residents Emotional Stress Levels"
+          description="Distribution of resident emotional stress on a 0–10 scale grouped as low, moderate, or high."
+          badgeScore={getHealthTabChartBadgeScore(emotionalStress, emotionalStress2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="emotional stress"
+          emptyMessage="No emotional stress data available."
+          sentimentLabels={HEALTH_STRESS_LABELS}
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <SecurityDivergingLikertBarCard
+          data={healthyEating}
+          data2024={healthyEating2024}
+          title="Residents Healthy Eating Frequency"
+          description="How often residents believe they eat healthy meals."
+          badgeScore={getHealthTabChartBadgeScore(healthyEating, healthyEating2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="healthy eating frequency"
+          emptyMessage="No healthy eating data available."
+          sentimentLabels={HEALTH_EATING_LABELS}
+        />
+        <EducationDisciplineDonutCard
+          data={chronicDisease}
+          data2024={chronicDisease2024}
+          title="Chronic Diseases or Health Problems"
+          description="Share of residents who report chronic diseases or ongoing health problems."
+          badgeScore={getHealthTabChartBadgeScore(chronicDisease, chronicDisease2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="chronic health conditions"
+          emptyMessage="No chronic disease data available."
+          sentimentLabels={HEALTH_BINARY_LABELS}
+          legendKeys={['dissatisfied', 'satisfied']}
+        />
+      </div>
+    </div>
+  );
+}
+
 function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
     .filter(isMean)
@@ -372,6 +448,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'security') {
     return <SecurityCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'health') {
+    return <HealthCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;

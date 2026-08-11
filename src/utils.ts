@@ -1783,6 +1783,294 @@ export function getSecurityKpiSentence(
   }
 }
 
+type HealthAssessmentDef = { match: RegExp; short: string };
+
+const HEALTH_SERVICE_ASSESSMENT: HealthAssessmentDef[] = [
+  { match: /how close the health facility/i, short: 'Facility proximity to home' },
+  { match: /health system in general in government health facilities/i, short: 'Govt. health system' },
+  { match: /health system in general in private health facilities/i, short: 'Private health system' },
+  { match: /treatment of pharmacy staff/i, short: 'Pharmacy staff treatment' },
+  {
+    match: /quality of health services provided in private health facilities/i,
+    short: 'Private health service quality',
+  },
+  { match: /prices of health services within hospitals/i, short: 'Hospital service prices' },
+  { match: /drug prices in hospitals/i, short: 'Hospital drug prices' },
+  { match: /prices of medicines in pharmacies/i, short: 'Pharmacy medicine prices' },
+  { match: /national vaccination program/i, short: 'Vaccination program fairness' },
+  { match: /justice in the distribution of health system services/i, short: 'Fair health service access' },
+];
+
+const HEALTH_SYSTEM_ASSESSMENT: HealthAssessmentDef[] = [
+  { match: /cleanliness in general/i, short: 'Cleanliness in general' },
+  { match: /treatment of register\/counter staff/i, short: 'Registry/counter staff' },
+  { match: /treatment and services of doctors/i, short: 'Doctors & services' },
+  { match: /treatment of pharmacy staff/i, short: 'Pharmacy staff treatment' },
+  { match: /waiting time/i, short: 'Waiting time (queue)' },
+  { match: /review dates/i, short: 'Follow-up appointments' },
+  { match: /specialty clinics/i, short: 'Specialty clinics' },
+  { match: /sanitary facilities|bathrooms/i, short: 'Health facility bathrooms' },
+  { match: /rapid response to emergency/i, short: 'Emergency response speed' },
+  { match: /laboratory readiness/i, short: 'Laboratory readiness' },
+  { match: /radiology and imaging readiness/i, short: 'Radiology & imaging readiness' },
+];
+
+function findRatingQuestion(
+  questions: import('./types').Question[],
+  code: string,
+  matcher: RegExp,
+): import('./types').LikertQuestion | undefined {
+  return questions
+    .filter(isLikert)
+    .find((q) => q.code === code && matcher.test(q.statementEn ?? q.statementAr));
+}
+
+function getHealthAssessmentChartData(
+  questions: import('./types').Question[],
+  code: 'Q502' | 'Q501',
+  defs: HealthAssessmentDef[],
+  year: import('./types').SurveyYear,
+): IncomeChartRow[] {
+  return defs
+    .map((def) => {
+      const question = findRatingQuestion(questions, code, def.match);
+      if (!question) return null;
+      const fullName = question.statementEn ?? question.statementAr;
+      return {
+        name: def.short,
+        fullName,
+        value2024: question.data['2024']?.agreement ?? 0,
+        value2025: question.data['2025']?.agreement ?? 0,
+        value: question.data[year]?.agreement ?? 0,
+      };
+    })
+    .filter((row): row is IncomeChartRow => row != null)
+    .sort(
+      (a, b) =>
+        pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+    );
+}
+
+export function getHealthServiceAssessmentData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getHealthAssessmentChartData(questions, 'Q502', HEALTH_SERVICE_ASSESSMENT, year);
+}
+
+export function getHealthSystemAssessmentData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getHealthAssessmentChartData(questions, 'Q501', HEALTH_SYSTEM_ASSESSMENT, year);
+}
+
+export function classifyHealthAssessmentTier(value: number): 'good' | 'acceptable' | 'bad' {
+  if (value >= 60) return 'good';
+  if (value >= 50) return 'acceptable';
+  return 'bad';
+}
+
+function averageHealthAssessmentScore(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return rows.reduce((sum, row) => sum + pickYearValue(row.value2024, row.value2025, year), 0) / rows.length;
+}
+
+export function getHealthAssessmentBadgeScore(
+  rows: IncomeChartRow[],
+  rows2024: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  const current = averageHealthAssessmentScore(rows, year);
+  if (mode === 'current') return current;
+  return current - averageHealthAssessmentScore(rows2024, '2024');
+}
+
+function sumCategoryValues(
+  questions: import('./types').Question[],
+  code: string,
+  matchers: RegExp[],
+  year: '2024' | '2025',
+): number {
+  const items = getCategoryByQuestion(questions, code);
+  return matchers.reduce((sum, matcher) => {
+    const item = items.find((q) => matcher.test(q.categoryEn ?? q.categoryAr));
+    return sum + (item?.data[year] ?? 0);
+  }, 0);
+}
+
+function toNormalizedSentimentRow(
+  name: string,
+  fullName: string,
+  negative: number,
+  neutral: number,
+  positive: number,
+): EducationSentimentRow {
+  const total = negative + neutral + positive;
+  const scale = total > 0 ? 100 / total : 0;
+  return {
+    name,
+    fullName,
+    dissatisfied: negative * scale,
+    neutral: neutral * scale,
+    satisfied: positive * scale,
+  };
+}
+
+export function getHealthCurrentHealthGoodPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return sumCategoryValues(questions, 'Q504', [/^Good$/i, /^Very good$/i, /^Excellent$/i], year);
+}
+
+export function getHealthPhysicalActivityHours(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  const q = questions.find(
+    (item): item is import('./types').MeanQuestion => isMean(item) && item.code === 'Q512',
+  );
+  if (!q) return 0;
+  return (q.data[year] ?? 0) / 60;
+}
+
+export function getHealthSleepQualityGoodPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return sumCategoryValues(questions, 'Q505', [/^good$/i, /^very good$/i], year);
+}
+
+export function getHealthEmotionalStressData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  const low = sumCategoryValues(questions, 'Q509', [/^0$/, /^1$/, /^2$/, /^3$/], year);
+  const moderate = sumCategoryValues(questions, 'Q509', [/^4$/, /^5$/, /^6$/], year);
+  const high = sumCategoryValues(questions, 'Q509', [/^7$/, /^8$/, /^9$/, /^10$/], year);
+  return [
+    toNormalizedSentimentRow(
+      'Emotional stress',
+      'During the past 4 weeks, on a scale of 0-10 what was your level of emotional stress?',
+      high,
+      moderate,
+      low,
+    ),
+  ];
+}
+
+export function getHealthHealthyEatingData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  const never = sumCategoryValues(questions, 'Q510', [/^never$/i, /^rarely$/i], year);
+  const sometimes = sumCategoryValues(questions, 'Q510', [/^sometimes$/i], year);
+  const allTheTime = sumCategoryValues(
+    questions,
+    'Q510',
+    [/^Most of the time$/i, /^All the time$/i],
+    year,
+  );
+  return [
+    toNormalizedSentimentRow(
+      'Healthy eating',
+      'How often do you think you eat healthy meals?',
+      never,
+      sometimes,
+      allTheTime,
+    ),
+  ];
+}
+
+export function getHealthChronicDiseaseData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  const yes = sumCategoryValues(questions, 'Q506', [/^Yes$/i], year);
+  const no = sumCategoryValues(questions, 'Q506', [/^no$/i], year);
+  return [
+    toNormalizedSentimentRow(
+      'Chronic conditions',
+      'Do you suffer from any diseases or chronic health problems?',
+      no,
+      0,
+      yes,
+    ),
+  ];
+}
+
+export function getHealthTabChartBadgeScore(
+  rows: EducationSentimentRow[],
+  rows2024: EducationSentimentRow[],
+  mode: ViewMode,
+): number {
+  return getEducationTabChartBadgeScore(rows, rows2024, mode);
+}
+
+export function getHealthKpiSentence(
+  metric: 'score' | 'currentHealth' | 'activity' | 'sleep',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong health satisfaction overall.'
+        : value >= 50
+          ? 'Moderate health satisfaction.'
+          : 'Health satisfaction needs improvement.';
+    case 'currentHealth':
+      return value >= 70
+        ? 'Most residents rate their current health as good.'
+        : value >= 50
+          ? 'Views on current personal health are mixed.'
+          : 'Many residents do not feel their health is good.';
+    case 'activity':
+      return value >= 1
+        ? 'Residents report meaningful daily physical activity.'
+        : value >= 0.5
+          ? 'Daily physical activity levels are moderate.'
+          : 'Daily physical activity time remains low.';
+    case 'sleep':
+      return value >= 70
+        ? 'Most residents rate their sleep quality as good.'
+        : value >= 50
+          ? 'Sleep quality perception is moderate.'
+          : 'Many residents report poor sleep quality.';
+  }
+}
+
+export function generateHealthAssessmentInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['Healthcare ratings vary across survey items.'];
+  }
+
+  const top = rows[0];
+  const topValue = pickYearValue(top.value2024, top.value2025, year);
+
+  if (mode === 'yoy') {
+    const change = top.value2025 - top.value2024;
+    return [
+      { bold: top.name },
+      ' shows the largest ',
+      { bold: formatDelta(change) },
+      ' YoY shift.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' leads at ',
+    { bold: `${topValue.toFixed(1)}%` },
+    '.',
+  ];
+}
+
 export function generateHealthChartInsight(
   sectionScore: import('./types').SectionScore,
   mode: ViewMode,
@@ -1995,6 +2283,17 @@ export function generateInsights(
       `Income & Living satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
       'Living expense areas, debt obligations, and saving behaviour shape how residents manage household budgets.',
       'Expected spending trends and income sentiment indicate whether residents feel financially secure or under pressure.',
+    ];
+  }
+
+  if (tabId === 'health') {
+    const section = sectionScores.health;
+    if (!section) return ['Health and wellness data for Al Falah district residents.'];
+    const direction = section.yoyChange >= 0 ? 'improved' : 'declined';
+    return [
+      `Health satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
+      'Healthcare assessments, emotional stress, healthy eating, and chronic conditions shape resident wellbeing.',
+      'Personal health, activity levels, and sleep quality indicate how residents experience day-to-day wellness.',
     ];
   }
 

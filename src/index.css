@@ -1516,6 +1516,21 @@ button {
   margin: 0;
 }
 
+.chart-insight-text-single-line {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.chart-insight-copy {
+  min-width: 0;
+}
+
+.chart-insight-text-single-line .chart-insight-copy {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chart-insight-icon {
   flex-shrink: 0;
   display: inline-flex;
@@ -1606,6 +1621,21 @@ button {
   justify-content: space-between;
   margin-bottom: 18px;
   gap: 12px;
+  min-width: 0;
+}
+
+.chart-card-header-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chart-card-health-assessment > .chart-card-header {
+  align-items: center;
+}
+
+.chart-card-health-assessment > .chart-card-header .chart-header-actions {
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 .chart-title {
@@ -1695,6 +1725,164 @@ button {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-sm);
+}
+
+.health-assessment-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+
+.health-assessment-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.health-assessment-controls-yoy {
+  justify-content: flex-end;
+}
+
+.health-assessment-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.health-assessment-filter-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.health-assessment-select {
+  min-width: min(100%, 280px);
+  max-width: 100%;
+  padding: 7px 32px 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+}
+
+.health-assessment-select:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.25);
+  border-color: var(--accent);
+}
+
+.health-assessment-chart-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.health-assessment-chart-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.health-assessment-chart-scroll {
+  max-height: 320px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.health-assessment-bar-chart {
+  gap: 4px;
+}
+
+.health-assessment-x-axis-rail {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  padding: 6px 0 2px;
+  overflow: visible;
+}
+
+.health-assessment-x-axis-gutter {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.health-assessment-x-axis-plot {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  min-height: 64px;
+}
+
+.chart-card-health-assessment .health-assessment-x-axis-plot .recharts-wrapper,
+.chart-card-health-assessment .health-assessment-x-axis-plot .recharts-surface {
+  overflow: visible;
+}
+
+.health-assessment-chart-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.health-assessment-tier-legend-bottom {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.chart-card-health-assessment > .chart-card-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chart-card-health-assessment {
+  overflow: hidden;
+}
+
+.health-assessment-tier-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.health-assessment-tier::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.health-assessment-tier--good::before {
+  background: #10B981;
+}
+
+.health-assessment-tier--acceptable::before {
+  background: #94a3b8;
+}
+
+.health-assessment-tier--bad::before {
+  background: #DC2626;
 }
 
 /* ── Stat boxes (below line chart) ── */
