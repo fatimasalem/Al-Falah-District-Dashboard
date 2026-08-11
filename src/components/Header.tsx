@@ -10,7 +10,7 @@ interface HeaderProps {
   updatedAt: string;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  tabs: readonly { id: string; label: string; icon: string }[];
+  tabs: readonly { id: string; label: string; icon: string; reviewReady?: boolean }[];
 }
 
 function IconSparkle() {
@@ -270,6 +270,9 @@ export function Header({
             >
               <span className="tab-icon"><TabIcon name={tab.icon} /></span>
               {tab.label}
+              {tab.reviewReady && (
+                <span className="tab-review-badge">Review ready</span>
+              )}
             </button>
           ))}
         </div>

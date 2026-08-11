@@ -77,11 +77,11 @@ export interface SurveyData {
 }
 
 export const PILLAR_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'grid' },
-  { id: 'income', label: 'Income & Living', icon: 'wallet' },
-  { id: 'work', label: 'Work', icon: 'briefcase' },
-  { id: 'education', label: 'Education', icon: 'book' },
-  { id: 'security', label: 'Security & Safety', icon: 'shield' },
+  { id: 'overview', label: 'Overview', icon: 'grid', reviewReady: true },
+  { id: 'income', label: 'Income & Living', icon: 'wallet', reviewReady: true },
+  { id: 'work', label: 'Work', icon: 'briefcase', reviewReady: true },
+  { id: 'education', label: 'Education', icon: 'book', reviewReady: true },
+  { id: 'security', label: 'Security & Safety', icon: 'shield', reviewReady: true },
   { id: 'health', label: 'Health', icon: 'heart' },
   { id: 'environment', label: 'Environment', icon: 'leaf' },
   { id: 'infrastructure', label: 'Infrastructure', icon: 'building' },
