@@ -2041,6 +2041,112 @@ export function getHealthKpiSentence(
   }
 }
 
+const ENVIRONMENT_KPI_STATEMENT = {
+  cleanliness: /cleanliness of the neighborhood in my residential area/i,
+  airQuality: /air quality in the residential area/i,
+  noiseLevel: /noise level in my residential area/i,
+} as const;
+
+const ENVIRONMENT_CHART_STATEMENTS = {
+  insectsRodents: {
+    match: /insects and some rodents constantly appear/i,
+    short: 'Insects and rodents in living areas',
+  },
+  serviceFacilities: {
+    match: /quality of service facilities, such as gardens, parks, and public facilities/i,
+    short: 'Service facilities quality',
+  },
+  internalRoadServices: {
+    match: /quality of internal road services such as sidewalks, street lighting, parking lots, and walkways/i,
+    short: 'Internal road services',
+  },
+  urbanPlanning: {
+    match: /urban planning of the city/i,
+    short: 'Urban planning satisfaction',
+  },
+} as const;
+
+export function getEnvironmentCleanlinessPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, ENVIRONMENT_KPI_STATEMENT.cleanliness, year);
+}
+
+export function getEnvironmentAirQualityPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, ENVIRONMENT_KPI_STATEMENT.airQuality, year);
+}
+
+export function getEnvironmentNoiseLevelPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, ENVIRONMENT_KPI_STATEMENT.noiseLevel, year);
+}
+
+export function getEnvironmentInsectsRodentsData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [ENVIRONMENT_CHART_STATEMENTS.insectsRodents]);
+}
+
+export function getEnvironmentServiceFacilitiesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [ENVIRONMENT_CHART_STATEMENTS.serviceFacilities]);
+}
+
+export function getEnvironmentInternalRoadServicesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [ENVIRONMENT_CHART_STATEMENTS.internalRoadServices]);
+}
+
+export function getEnvironmentUrbanPlanningData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationLikertScaleRow[] {
+  return getEducationLikertScaleRows(questions, year, [ENVIRONMENT_CHART_STATEMENTS.urbanPlanning]);
+}
+
+export function getEnvironmentKpiSentence(
+  metric: 'score' | 'cleanliness' | 'airQuality' | 'noiseLevel',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong environment satisfaction overall.'
+        : value >= 50
+          ? 'Moderate environment satisfaction.'
+          : 'Environment satisfaction needs improvement.';
+    case 'cleanliness':
+      return value >= 70
+        ? 'Most residents are satisfied with neighborhood cleanliness.'
+        : value >= 50
+          ? 'Neighborhood cleanliness satisfaction is moderate.'
+          : 'Neighborhood cleanliness concerns are elevated.';
+    case 'airQuality':
+      return value >= 70
+        ? 'Most residents are satisfied with local air quality.'
+        : value >= 50
+          ? 'Air quality satisfaction is moderate.'
+          : 'Air quality concerns are elevated among residents.';
+    case 'noiseLevel':
+      return value >= 70
+        ? 'Most residents are satisfied with neighborhood noise levels.'
+        : value >= 50
+          ? 'Noise level satisfaction is moderate.'
+          : 'Neighborhood noise concerns are elevated.';
+  }
+}
+
 export function generateHealthAssessmentInsight(
   rows: IncomeChartRow[],
   mode: ViewMode,

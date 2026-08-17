@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear, Section } from '../types';
-import { KPI_GRADIENTS } from '../types';
 import {
   formatDelta,
   isCategory,
@@ -30,6 +29,10 @@ import {
   getHealthPhysicalActivityHours,
   getHealthSleepQualityGoodPercent,
   getHealthKpiSentence,
+  getEnvironmentCleanlinessPercent,
+  getEnvironmentAirQualityPercent,
+  getEnvironmentNoiseLevelPercent,
+  getEnvironmentKpiSentence,
 } from '../utils';
 
 export type KpiIconName =
@@ -246,72 +249,54 @@ function CategoryIcon({ name, size = 'default' }: { name: CategoryIconName; size
   return icons[name];
 }
 
-function getCategoryIcon(categoryEn: string): CategoryIconName {
-  const normalized = categoryEn.toLowerCase();
-
-  if (normalized.includes('car loan')) return 'car';
-  if (normalized.includes('home loan')) return 'home';
-  if (normalized.includes('credit card')) return 'credit-card';
-  if (normalized.includes('personal loan')) return 'loan';
-  if (normalized.includes('transportation')) return 'transport';
-  if (normalized.includes('housing') || normalized.includes('household')) return 'home';
-  if (normalized.includes('food')) return 'food';
-  if (normalized.includes('school education')) return 'school';
-  if (normalized.includes('university education')) return 'education';
-  if (normalized.includes('health')) return 'health';
-  if (normalized.includes('communication')) return 'phone';
-  if (normalized.includes('entertainment') || normalized.includes('vacation')) return 'entertainment';
-  if (normalized.includes('children')) return 'children';
-  if (normalized.includes('personal care')) return 'personal-care';
-  if (normalized.includes('miscellaneous')) return 'misc';
-  if (normalized.includes('debt obligation')) return 'debt';
-
-  return 'misc';
-}
-
 interface KpiCardsProps {
   items: KpiItem[];
   viewMode?: ViewMode;
 }
 
+function getTrendClass(delta: number | undefined): 'positive' | 'negative' | undefined {
+  if (delta === undefined) return undefined;
+  return delta >= 0 ? 'positive' : 'negative';
+}
+
 export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   return (
     <div className="kpi-row">
-      {items.slice(0, 4).map((item, i) => (
-        <div
-          key={item.label}
-          className="kpi-card"
-          style={{ background: KPI_GRADIENTS[i % KPI_GRADIENTS.length] }}
-        >
-          <div className="kpi-label">
-            {item.icon && (
-              <span className="kpi-label-icon">
-                <KpiIcon name={item.icon} />
-              </span>
-            )}
-            {item.label}
-          </div>
-          <div className="kpi-value">
-            {item.valueIcon && (
-              <span className="kpi-value-icon">
-                <CategoryIcon name={item.valueIcon} size="value" />
-              </span>
-            )}
-            <span className="kpi-value-text">
-              {item.value}
-              {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
-              {item.valueCaption && <span className="kpi-value-caption">{item.valueCaption}</span>}
-            </span>
-          </div>
-          {viewMode === 'yoy' && item.delta !== undefined && (
-            <div className={`kpi-delta ${item.delta >= 0 ? 'positive' : 'negative'}`}>
-              <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
-              {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? 'YoY'}
+      {items.slice(0, 4).map((item) => {
+        const trendClass = getTrendClass(item.delta);
+
+        return (
+          <div key={item.label} className="kpi-card">
+            <div className="kpi-label">
+              {item.icon && (
+                <span className="kpi-label-icon">
+                  <KpiIcon name={item.icon} />
+                </span>
+              )}
+              {item.label}
             </div>
-          )}
-          {item.subtext && <div className="kpi-subtext">{item.subtext}</div>}
-        </div>
-      ))}
+            <div className={`kpi-value${trendClass ? ` ${trendClass}` : ''}`}>
+              {item.valueIcon && (
+                <span className="kpi-value-icon">
+                  <CategoryIcon name={item.valueIcon} size="value" />
+                </span>
+              )}
+              <span className="kpi-value-text">
+                {item.value}
+                {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
+                {item.valueCaption && <span className="kpi-value-caption">{item.valueCaption}</span>}
+              </span>
+            </div>
+            {viewMode === 'yoy' && item.delta !== undefined && (
+              <div className={`kpi-delta ${trendClass}`}>
+                <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
+                {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? 'YoY'}
+              </div>
+            )}
+            {item.subtext && <div className="kpi-subtext">{item.subtext}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -487,7 +472,7 @@ export function buildIncomeKpis(
       value: topExpense ? `${topExpense.value.toFixed(1)}` : '—',
       suffix: topExpense ? '%' : undefined,
       valueCaption: topExpense ? 'report spending on' : undefined,
-      valueIcon: topExpense ? getCategoryIcon(topExpense.categoryEn) : undefined,
+      // valueIcon: topExpense ? getCategoryIcon(topExpense.categoryEn) : undefined,
       subtext: getIncomeKpiSentence('expense', topExpense?.value ?? 0, topExpense?.categoryEn, topExpense?.name),
       delta: topExpense ? expenseDelta : undefined,
     },
@@ -497,7 +482,7 @@ export function buildIncomeKpis(
       value: topDebt ? `${topDebt.value.toFixed(1)}` : '—',
       suffix: topDebt ? '%' : undefined,
       valueCaption: topDebt ? 'report this debt' : undefined,
-      valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
+      // valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
       subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn, topDebt?.name),
       delta: topDebt ? debtDelta : undefined,
     },
@@ -760,6 +745,71 @@ export function buildHealthKpis(
       valueCaption: 'rate sleep as good',
       subtext: getHealthKpiSentence('sleep', sleep),
       delta: sleep2025 - sleep2024,
+    },
+  ];
+
+  if (mode === 'yoy') {
+    return cards;
+  }
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+}
+
+export function buildEnvironmentKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const cleanliness2024 = getEnvironmentCleanlinessPercent(questions, '2024');
+  const cleanliness2025 = getEnvironmentCleanlinessPercent(questions, '2025');
+  const cleanliness = pickYearValue(cleanliness2024, cleanliness2025, year);
+  const airQuality2024 = getEnvironmentAirQualityPercent(questions, '2024');
+  const airQuality2025 = getEnvironmentAirQualityPercent(questions, '2025');
+  const airQuality = pickYearValue(airQuality2024, airQuality2025, year);
+  const noiseLevel2024 = getEnvironmentNoiseLevelPercent(questions, '2024');
+  const noiseLevel2025 = getEnvironmentNoiseLevelPercent(questions, '2025');
+  const noiseLevel = pickYearValue(noiseLevel2024, noiseLevel2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Overall Environment Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEnvironmentKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Neighborhood Cleanliness Satisfaction',
+      icon: 'shield',
+      value: `${cleanliness.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEnvironmentKpiSentence('cleanliness', cleanliness),
+      delta: cleanliness2025 - cleanliness2024,
+    },
+    {
+      label: 'Satisfaction with Air Quality',
+      icon: 'spark',
+      value: `${airQuality.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEnvironmentKpiSentence('airQuality', airQuality),
+      delta: airQuality2025 - airQuality2024,
+    },
+    {
+      label: 'Satisfaction with Neighborhood Noise Level',
+      icon: 'shield',
+      value: `${noiseLevel.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getEnvironmentKpiSentence('noiseLevel', noiseLevel),
+      delta: noiseLevel2025 - noiseLevel2024,
     },
   ];
 

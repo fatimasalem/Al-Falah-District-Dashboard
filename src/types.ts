@@ -83,7 +83,7 @@ export const PILLAR_TABS = [
   { id: 'education', label: 'Education', icon: 'book', reviewReady: true },
   { id: 'security', label: 'Security & Safety', icon: 'shield', reviewReady: true },
   { id: 'health', label: 'Health', icon: 'heart', reviewReady: true },
-  { id: 'environment', label: 'Environment', icon: 'leaf' },
+  { id: 'environment', label: 'Environment', icon: 'leaf', reviewReady: true },
   { id: 'infrastructure', label: 'Infrastructure', icon: 'building' },
   { id: 'demographics', label: 'Demographics', icon: 'users' },
   { id: 'housing', label: 'Housing', icon: 'home' },

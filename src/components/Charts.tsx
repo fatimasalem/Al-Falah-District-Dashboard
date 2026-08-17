@@ -479,10 +479,192 @@ function ChartInsightFooter({ insight, singleLine = false }: { insight: InsightP
       <hr className="chart-insight-separator" />
       <p className={`chart-insight-text${singleLine ? ' chart-insight-text-single-line' : ''}`.trim()}>
         <span className="chart-insight-icon" aria-hidden="true">
-          <span className="insights-badge">Bayaan AI</span>
+          <span className="insights-badge">AI Insight</span>
         </span>
         <span className="chart-insight-copy">{renderInsight(insight)}</span>
       </p>
+    </div>
+  );
+}
+
+export type ChartCardIconName =
+  | 'bar-chart'
+  | 'pie-chart'
+  | 'donut'
+  | 'treemap'
+  | 'heatmap'
+  | 'gauge'
+  | 'trend'
+  | 'distribution'
+  | 'compare'
+  | 'satisfaction'
+  | 'education'
+  | 'health'
+  | 'environment'
+  | 'security'
+  | 'work'
+  | 'income'
+  | 'statements'
+  | 'table';
+
+function ChartCardIcon({ name }: { name: ChartCardIconName }) {
+  const props = {
+    width: 18,
+    height: 18,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true as const,
+  };
+
+  const icons: Record<ChartCardIconName, ReactElement> = {
+    'bar-chart': (
+      <svg {...props}>
+        <path d="M12 20V10M18 20V4M6 20v-6" />
+      </svg>
+    ),
+    'pie-chart': (
+      <svg {...props}>
+        <path d="M21 12a9 9 0 11-6.22-8.56" />
+        <path d="M21 3v9h-9" />
+      </svg>
+    ),
+    donut: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4" />
+      </svg>
+    ),
+    treemap: (
+      <svg {...props}>
+        <rect x="3" y="3" width="8" height="8" rx="1" />
+        <rect x="13" y="3" width="8" height="5" rx="1" />
+        <rect x="13" y="10" width="8" height="11" rx="1" />
+        <rect x="3" y="13" width="8" height="8" rx="1" />
+      </svg>
+    ),
+    heatmap: (
+      <svg {...props}>
+        <rect x="3" y="3" width="5" height="5" rx="1" />
+        <rect x="10" y="3" width="5" height="5" rx="1" />
+        <rect x="17" y="3" width="4" height="5" rx="1" />
+        <rect x="3" y="10" width="5" height="5" rx="1" />
+        <rect x="10" y="10" width="5" height="5" rx="1" />
+        <rect x="17" y="10" width="4" height="5" rx="1" />
+        <rect x="3" y="17" width="5" height="4" rx="1" />
+        <rect x="10" y="17" width="5" height="4" rx="1" />
+        <rect x="17" y="17" width="4" height="4" rx="1" />
+      </svg>
+    ),
+    gauge: (
+      <svg {...props}>
+        <path d="M12 3a9 9 0 109 9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+    trend: (
+      <svg {...props}>
+        <path d="M3 17l6-6 4 4 8-8" />
+        <path d="M17 7h4v4" />
+      </svg>
+    ),
+    distribution: (
+      <svg {...props}>
+        <path d="M4 6h16M4 12h10M4 18h14" />
+        <circle cx="19" cy="12" r="2" />
+        <circle cx="21" cy="18" r="2" />
+      </svg>
+    ),
+    compare: (
+      <svg {...props}>
+        <path d="M8 3v18M16 3v18" />
+        <path d="M3 8h5M16 8h5M3 16h5M16 16h5" />
+      </svg>
+    ),
+    satisfaction: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </svg>
+    ),
+    education: (
+      <svg {...props}>
+        <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+      </svg>
+    ),
+    health: (
+      <svg {...props}>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+    environment: (
+      <svg {...props}>
+        <path d="M12 22c4-4 8-7.5 8-12a8 8 0 10-16 0c0 4.5 4 8 8 12z" />
+        <path d="M12 10v6M9 13h6" />
+      </svg>
+    ),
+    security: (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+    work: (
+      <svg {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    ),
+    income: (
+      <svg {...props}>
+        <path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" />
+        <path d="M16 11h.01" />
+        <path d="M3 10h18" />
+      </svg>
+    ),
+    statements: (
+      <svg {...props}>
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <path d="M14 2v6h6M8 13h8M8 17h5" />
+      </svg>
+    ),
+    table: (
+      <svg {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+      </svg>
+    ),
+  };
+
+  return icons[name];
+}
+
+interface ChartCardHeaderCopyProps {
+  icon: ChartCardIconName;
+  title: string;
+  subtitle?: string;
+  singleLineSubtitle?: boolean;
+}
+
+function ChartCardHeaderCopy({ icon, title, subtitle, singleLineSubtitle = false }: ChartCardHeaderCopyProps) {
+  return (
+    <div className="chart-card-header-copy">
+      <span className="chart-card-icon">
+        <ChartCardIcon name={icon} />
+      </span>
+      <div className="chart-card-header-text">
+        <div className="chart-title">{title}</div>
+        {subtitle && (
+          <div className={`chart-subtitle${singleLineSubtitle ? ' chart-subtitle-single-line' : ''}`.trim()}>
+            {subtitle}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -511,12 +693,11 @@ export function PillarScoresChart({ data, mode, year = '2025', title = 'Pillar S
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">{title}</div>
-          <div className="chart-subtitle">
-            {mode === 'current' ? `${year} satisfaction by pillar` : 'Year-over-year change (%)'}
-          </div>
-        </div>
+        <ChartCardHeaderCopy
+          icon="bar-chart"
+          title={title}
+          subtitle={mode === 'current' ? `${year} satisfaction by pillar` : 'Year-over-year change (%)'}
+        />
       </div>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={chartData} margin={{ top: 20, right: 12, left: 0, bottom: 8 }}>
@@ -568,10 +749,11 @@ export function TrendChart({ overall2024, overall2025, mode }: TrendChartProps) 
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">District Satisfaction — Annual Trends (%)</div>
-          <div className="chart-subtitle">Overall resident satisfaction score</div>
-        </div>
+        <ChartCardHeaderCopy
+          icon="trend"
+          title="District Satisfaction — Annual Trends (%)"
+          subtitle="Overall resident satisfaction score"
+        />
         <div className="chart-header-actions">
           <span className="chart-badge">Live</span>
           <div className="chart-toggle">
@@ -648,12 +830,11 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
   return (
     <div className="chart-card chart-card-fill">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">Satisfaction by Pillar</div>
-          <div className="chart-subtitle">
-            {isCurrent ? `Share of total — ${year} scores` : '2024 vs 2025 scores by pillar'}
-          </div>
-        </div>
+        <ChartCardHeaderCopy
+          icon="satisfaction"
+          title="Satisfaction by Pillar"
+          subtitle={isCurrent ? `Share of total — ${year} scores` : '2024 vs 2025 scores by pillar.'}
+        />
         {badgeScore !== undefined && <ChartScoreBadge score={badgeScore} mode={mode} />}
       </div>
       <div className="partner-chart-body">
@@ -737,10 +918,7 @@ export function DistributionChart({ data, title, subtitle }: DistributionChartPr
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">{title}</div>
-          {subtitle && <div className="chart-subtitle">{subtitle}</div>}
-        </div>
+        <ChartCardHeaderCopy icon="distribution" title={title} subtitle={subtitle} />
       </div>
       <ResponsiveContainer width="100%" height={Math.max(220, sorted.length * 34)}>
         <BarChart data={sorted} layout="vertical" margin={{ top: 0, right: 48, left: 4, bottom: 0 }}>
@@ -772,12 +950,11 @@ export function LikertChart({ statements, mode, year = '2025', title = 'Key Surv
   return (
     <div className="chart-card full-width">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">{title}</div>
-          <div className="chart-subtitle">
-            {mode === 'current' ? `Agreement rate (${year})` : 'Change in agreement (2024 → 2025)'}
-          </div>
-        </div>
+        <ChartCardHeaderCopy
+          icon="statements"
+          title={title}
+          subtitle={mode === 'current' ? `Agreement rate (${year})` : 'Change in agreement (2024 → 2025)'}
+        />
       </div>
       <ResponsiveContainer width="100%" height={Math.max(220, top.length * 38)}>
         <BarChart data={top} layout="vertical" margin={{ top: 0, right: 48, left: 4, bottom: 0 }}>
@@ -853,7 +1030,15 @@ export function DataTable({ rows, mode, year = '2025' }: DataTableProps) {
   return (
     <div className="data-table-card full-width">
       <div className="data-table-header">
-        <div className="data-table-title">Annual Pillar Data</div>
+        <ChartCardHeaderCopy
+          icon="table"
+          title="Annual Pillar Data"
+          subtitle={
+            isCurrent
+              ? `${year} scores and sentiment by pillar`
+              : '2024 vs 2025 scores and sentiment by pillar'
+          }
+        />
         <button type="button" className="data-table-export">Export CSV ↓</button>
       </div>
       {!isCurrent && (
@@ -1261,14 +1446,15 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
   return (
     <div className="chart-card chart-card-fill">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">Education Satisfaction</div>
-          <div className="chart-subtitle">
-            {isCurrent
+        <ChartCardHeaderCopy
+          icon="education"
+          title="Education Satisfaction"
+          subtitle={
+            isCurrent
               ? `${year} sentiment breakdown by statement`
-              : '2024 vs 2025 sentiment breakdown by statement'}
-          </div>
-        </div>
+              : '2024 vs 2025 sentiment breakdown by statement.'
+          }
+        />
         <ChartScoreBadge score={score} mode={mode} />
       </div>
       <div className="chart-card-body">
@@ -1444,14 +1630,15 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode, year = '20
   return (
     <div className="chart-card chart-card-fill">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">Health Satisfaction</div>
-          <div className="chart-subtitle">
-            {isCurrent
+        <ChartCardHeaderCopy
+          icon="health"
+          title="Health Satisfaction"
+          subtitle={
+            isCurrent
               ? `${year} agreement by health statement`
-              : 'Agreement heatmap by statement (2024 vs 2025)'}
-          </div>
-        </div>
+              : 'Agreement heatmap by statement (2024 vs 2025).'
+          }
+        />
         <ChartScoreBadge score={badgeScore} mode={mode} />
       </div>
       <div className="health-heatmap">
@@ -1751,14 +1938,15 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">Environment Satisfaction</div>
-          <div className="chart-subtitle">
-            {isCurrent
+        <ChartCardHeaderCopy
+          icon="environment"
+          title="Environment Satisfaction"
+          subtitle={
+            isCurrent
               ? `${year} sentiment breakdown by statement`
-              : '2024 vs 2025 sentiment breakdown by statement'}
-          </div>
-        </div>
+              : '2024 vs 2025 sentiment breakdown by statement.'
+          }
+        />
         <ChartScoreBadge score={score} mode={mode} />
       </div>
       <div className="chart-card-body chart-card-body-environment">
@@ -1951,6 +2139,7 @@ interface EducationSportsLikertGaugeCardProps {
   year?: SurveyYear;
   topicLabel?: string;
   emptyMessage?: string;
+  singleLineDescription?: boolean;
 }
 
 export function EducationSportsLikertGaugeCard({
@@ -1963,6 +2152,7 @@ export function EducationSportsLikertGaugeCard({
   year: _year = '2025',
   topicLabel,
   emptyMessage = 'No data available.',
+  singleLineDescription = false,
 }: EducationSportsLikertGaugeCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -1976,7 +2166,9 @@ export function EducationSportsLikertGaugeCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="gauge"
       className="chart-card-education-tab"
+      singleLineDescription={singleLineDescription}
     >
       <div className="chart-card-body-education-tab chart-card-body-education-gauge">
         {!row ? (
@@ -2090,6 +2282,7 @@ export function EducationDisciplineDonutCard({
         badgeScore={badgeScore}
         mode={mode}
         insight={[emptyMessage]}
+        icon="donut"
         className="chart-card-education-tab"
       >
         <div className="chart-card-body-education-tab" />
@@ -2104,6 +2297,7 @@ export function EducationDisciplineDonutCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="donut"
       className="chart-card-education-tab"
     >
       <div className="chart-card-body-education-tab chart-card-body-education-donut">
@@ -2304,6 +2498,7 @@ interface SecurityDivergingLikertBarCardProps {
   topicLabel?: string;
   emptyMessage?: string;
   sentimentLabels?: Record<SentimentKey, string>;
+  singleLineDescription?: boolean;
 }
 
 export function SecurityDivergingLikertBarCard({
@@ -2317,6 +2512,7 @@ export function SecurityDivergingLikertBarCard({
   topicLabel,
   emptyMessage = 'No data available.',
   sentimentLabels = EDUCATION_AGREEMENT_LABELS,
+  singleLineDescription = false,
 }: SecurityDivergingLikertBarCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2331,7 +2527,9 @@ export function SecurityDivergingLikertBarCard({
         badgeScore={badgeScore}
         mode={mode}
         insight={[emptyMessage]}
+        icon="security"
         className="chart-card-education-tab"
+        singleLineDescription={singleLineDescription}
       >
         <div className="chart-card-body-education-tab" />
       </IncomeChartCard>
@@ -2351,7 +2549,9 @@ export function SecurityDivergingLikertBarCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="security"
       className="chart-card-education-tab"
+      singleLineDescription={singleLineDescription}
     >
       <div className="chart-card-body-education-tab chart-card-body-diverging-likert">
         <ResponsiveContainer width="100%" height={isCurrent ? 180 : 220}>
@@ -2510,6 +2710,7 @@ interface SecuritySentimentTreemapCardProps {
   topicLabel?: string;
   emptyMessage?: string;
   sentimentLabels?: Record<SentimentKey, string>;
+  singleLineDescription?: boolean;
 }
 
 export function SecuritySentimentTreemapCard({
@@ -2523,6 +2724,7 @@ export function SecuritySentimentTreemapCard({
   topicLabel,
   emptyMessage = 'No data available.',
   sentimentLabels = EDUCATION_AGREEMENT_LABELS,
+  singleLineDescription = false,
 }: SecuritySentimentTreemapCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2537,7 +2739,9 @@ export function SecuritySentimentTreemapCard({
         badgeScore={badgeScore}
         mode={mode}
         insight={[emptyMessage]}
+        icon="treemap"
         className="chart-card-education-tab"
+        singleLineDescription={singleLineDescription}
       >
         <div className="chart-card-body-education-tab" />
       </IncomeChartCard>
@@ -2551,7 +2755,9 @@ export function SecuritySentimentTreemapCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="treemap"
       className="chart-card-education-tab"
+      singleLineDescription={singleLineDescription}
     >
       <div className="chart-card-body-education-tab chart-card-body-sentiment-treemap">
         {isCurrent ? (
@@ -2774,6 +2980,7 @@ interface EducationLikertStackedCardProps {
   mode: ViewMode;
   year?: SurveyYear;
   topic: 'sports' | 'bullying' | 'awareness' | 'discipline';
+  singleLineDescription?: boolean;
 }
 
 export function EducationLikertStackedCard({
@@ -2785,6 +2992,7 @@ export function EducationLikertStackedCard({
   mode,
   year: _year = '2025',
   topic,
+  singleLineDescription = false,
 }: EducationLikertStackedCardProps) {
   const isCurrent = mode === 'current';
   const sortedData = sortSentimentRowsDescending(data);
@@ -2801,7 +3009,9 @@ export function EducationLikertStackedCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="education"
       className="chart-card-education-tab"
+      singleLineDescription={singleLineDescription}
     >
       <div className="chart-card-body-education-tab">
         <StatementChartShell
@@ -2843,10 +3053,7 @@ export function YoYComparisonChart({ items, title = '2024 vs 2025 Comparison' }:
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">{title}</div>
-          <div className="chart-subtitle">Side-by-side year comparison</div>
-        </div>
+        <ChartCardHeaderCopy icon="compare" title={title} subtitle="Side-by-side year comparison" />
       </div>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
@@ -2870,6 +3077,7 @@ interface IncomeChartCardProps {
   mode: ViewMode;
   insight: InsightPart[];
   children: ReactNode;
+  icon: ChartCardIconName;
   singleLineDescription?: boolean;
   singleLineInsight?: boolean;
   className?: string;
@@ -2882,6 +3090,7 @@ function IncomeChartCard({
   mode,
   insight,
   children,
+  icon,
   singleLineDescription = false,
   singleLineInsight = false,
   className,
@@ -2889,12 +3098,12 @@ function IncomeChartCard({
   return (
     <div className={['chart-card chart-card-fill', className].filter(Boolean).join(' ')}>
       <div className="chart-card-header">
-        <div className="chart-card-header-copy">
-          <div className="chart-title">{title}</div>
-          <div className={`chart-subtitle${singleLineDescription ? ' chart-subtitle-single-line' : ''}`.trim()}>
-            {description}
-          </div>
-        </div>
+        <ChartCardHeaderCopy
+          icon={icon}
+          title={title}
+          subtitle={description}
+          singleLineSubtitle={singleLineDescription}
+        />
         <div className="chart-header-actions">
           <ChartScoreBadge score={badgeScore} mode={mode} />
         </div>
@@ -3137,7 +3346,7 @@ export function IncomeFeelingTreemapCard({
   const insight = generateIncomeFeelingInsight(data, mode, year);
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="treemap">
       <div className="chart-card-body-sentiment-treemap">
         {isCurrent ? (
           renderIncomeFeelingTreemapPanel(data, year)
@@ -3193,7 +3402,7 @@ export function IncomeBarChartCard({
   const fillHeight = metric === 'feeling';
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="income">
       <div
         className={[
           'income-bar-chart-wrap',
@@ -3359,6 +3568,7 @@ export function IncomePieChartCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="pie-chart"
       singleLineDescription
     >
       {isCurrent ? (
@@ -3462,7 +3672,7 @@ export function IncomeBarriersHeatmap({
   const currentValue = (row: IncomeChartRow) => (year === '2025' ? row.value2025 : row.value2024);
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="heatmap">
       <div className="health-heatmap income-barriers-heatmap">
         <div className={`health-heatmap-grid ${isCurrent ? 'health-heatmap-grid--single' : ''}`}>
           <div className="health-heatmap-header">
@@ -3532,6 +3742,7 @@ interface WorkPieChartCardProps {
   badgeScore: number;
   mode: ViewMode;
   year?: SurveyYear;
+  singleLineDescription?: boolean;
 }
 
 export function WorkPieChartCard({
@@ -3541,12 +3752,13 @@ export function WorkPieChartCard({
   badgeScore,
   mode,
   year = '2025',
+  singleLineDescription = false,
 }: WorkPieChartCardProps) {
   const isCurrent = mode === 'current';
   const insight = generateWorkJobseekerInsight(data, mode, year);
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="pie-chart" singleLineDescription={singleLineDescription}>
       {isCurrent ? (
         renderIncomePie(data, year)
       ) : (
@@ -3660,7 +3872,7 @@ export function WorkHorizontalBarChartCard({
   const xAxisLabel = 'Response Percentage (%)';
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="work">
       <div className={`income-bar-chart-wrap work-challenge-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
         <StatementChartShell
           className="statement-bar-chart-income"
@@ -3781,6 +3993,7 @@ export function WorkColumnBarChartCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="work"
       className={!isCurrent ? 'chart-card-work-business-yoy' : undefined}
     >
       <div className={`income-bar-chart-wrap work-column-bar-chart-wrap ${!isCurrent ? 'work-column-bar-chart-wrap-yoy' : ''}`.trim()}>
@@ -3938,7 +4151,7 @@ export function WorkSupportHeatmap({
   const currentValue = (row: IncomeChartRow) => (year === '2025' ? row.value2025 : row.value2024);
 
   return (
-    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight}>
+    <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="heatmap">
       <div className="health-heatmap income-barriers-heatmap work-support-heatmap">
         <div className="work-support-heatmap-scroll">
           <div className={`health-heatmap-grid ${isCurrent ? 'health-heatmap-grid--single' : ''}`}>
@@ -4077,6 +4290,7 @@ export function HealthAssessmentBarChartCard({
       badgeScore={badgeScore}
       mode={mode}
       insight={insight}
+      icon="health"
       singleLineDescription
       className="chart-card-education-tab chart-card-health-assessment"
     >
@@ -4243,10 +4457,11 @@ export function SentimentDonut({ positive, negative, neutral, year = '2025' }: S
   return (
     <div className="chart-card">
       <div className="chart-card-header">
-        <div>
-          <div className="chart-title">Sentiment Breakdown</div>
-          <div className="chart-subtitle">{year} positive vs negative sentiment</div>
-        </div>
+        <ChartCardHeaderCopy
+          icon="donut"
+          title="Sentiment Breakdown"
+          subtitle={`${year} positive vs negative sentiment`}
+        />
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>

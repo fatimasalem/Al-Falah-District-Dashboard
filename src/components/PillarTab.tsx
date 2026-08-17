@@ -53,6 +53,10 @@ import {
   getHealthHealthyEatingData,
   getHealthChronicDiseaseData,
   getHealthTabChartBadgeScore,
+  getEnvironmentInsectsRodentsData,
+  getEnvironmentServiceFacilitiesData,
+  getEnvironmentInternalRoadServicesData,
+  getEnvironmentUrbanPlanningData,
   isCategory,
   isMean,
   pickYearValue,
@@ -97,7 +101,7 @@ function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
         <IncomePieChartCard
           data={savingBehaviour}
           title="Saving from Monthly Income"
-          description="Percentage of residents who save from monthly income versus those who do not."
+          description="Share of residents who save from monthly income versus those who do not."
           badgeScore={getIncomeChartBadgeScore(savingBehaviour, selectedYear, 'saving', viewMode)}
           mode={viewMode}
           year={selectedYear}
@@ -137,8 +141,9 @@ function WorkCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
         <WorkPieChartCard
           data={jobseekers}
           title="Active Jobseekers"
-          description="Share of residents who looked for a paid job in the past four weeks."
+          description="Share of residents who looked for paid work in the past four weeks."
           badgeScore={getWorkChartBadgeScore(jobseekers, selectedYear, 'jobseekers', viewMode)}
+          singleLineDescription
           mode={viewMode}
           year={selectedYear}
         />
@@ -200,11 +205,12 @@ function EducationCharts({ section, viewMode, selectedYear }: PillarChartsProps)
           data={bullying}
           data2024={bullying2024}
           title="Children's Reported Experience of Bullying"
-          description="Parents' responses on repeated bullying experienced by their children at neighborhood schools."
+          description="Parents' reports of repeated bullying at neighborhood schools."
           badgeScore={getEducationTabChartBadgeScore(bullying, bullying2024, viewMode)}
           mode={viewMode}
           year={selectedYear}
           topic="bullying"
+          singleLineDescription
         />
       </div>
       <div className="chart-grid-bottom chart-grid-education">
@@ -315,7 +321,7 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           serviceData={serviceAssessment}
           systemData={systemAssessment}
           title="Healthcare Assessment"
-          description="Resident healthcare ratings by service and system quality (good 60%+, acceptable 50–59%, bad below 50%)."
+          description="Healthcare service and system ratings (good 60%+, acceptable 50–59%, bad below 50%)."
           mode={viewMode}
           year={selectedYear}
         />
@@ -357,6 +363,74 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           emptyMessage="No chronic disease data available."
           sentimentLabels={HEALTH_BINARY_LABELS}
           legendKeys={['dissatisfied', 'satisfied']}
+        />
+      </div>
+    </div>
+  );
+}
+
+function EnvironmentCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const insectsRodents = getEnvironmentInsectsRodentsData(section.questions, chartYear);
+  const insectsRodents2024 = getEnvironmentInsectsRodentsData(section.questions, '2024');
+  const serviceFacilities = getEnvironmentServiceFacilitiesData(section.questions, chartYear);
+  const serviceFacilities2024 = getEnvironmentServiceFacilitiesData(section.questions, '2024');
+  const internalRoadServices = getEnvironmentInternalRoadServicesData(section.questions, chartYear);
+  const internalRoadServices2024 = getEnvironmentInternalRoadServicesData(section.questions, '2024');
+  const urbanPlanning = getEnvironmentUrbanPlanningData(section.questions, chartYear);
+  const urbanPlanning2024 = getEnvironmentUrbanPlanningData(section.questions, '2024');
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationDisciplineDonutCard
+          data={insectsRodents}
+          data2024={insectsRodents2024}
+          title="Insects and Rodents in Living Areas"
+          description="Residents' perception on whether insects and rodents keep showing up in the living area."
+          badgeScore={getEducationTabChartBadgeScore(insectsRodents, insectsRodents2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="insects and rodents presence"
+          emptyMessage="No insects and rodents data available."
+        />
+        <SecurityDivergingLikertBarCard
+          data={serviceFacilities}
+          data2024={serviceFacilities2024}
+          title="Service Facilities Quality"
+          description="Resident satisfaction with parks, playgrounds, and public amenities."
+          badgeScore={getEducationTabChartBadgeScore(serviceFacilities, serviceFacilities2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="service facilities quality"
+          singleLineDescription
+          emptyMessage="No service facilities data available."
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <SecuritySentimentTreemapCard
+          data={internalRoadServices}
+          data2024={internalRoadServices2024}
+          title="Satisfaction with Internal Road Services"
+          description="Resident satisfaction with sidewalks, street lighting, parking, and walkways."
+          badgeScore={getEducationTabChartBadgeScore(internalRoadServices, internalRoadServices2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="internal road services"
+          singleLineDescription
+          emptyMessage="No internal road services data available."
+        />
+        <EducationSportsLikertGaugeCard
+          data={urbanPlanning}
+          data2024={urbanPlanning2024}
+          title="Satisfaction with Urban Planning"
+          description="Resident satisfaction with urban planning of streets, parking, sidewalks, and area access."
+          badgeScore={getEducationLikertScaleBadgeScore(urbanPlanning, urbanPlanning2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="urban planning satisfaction"
+          singleLineDescription
+          emptyMessage="No urban planning data available."
         />
       </div>
     </div>
@@ -452,6 +526,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'health') {
     return <HealthCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'environment') {
+    return <EnvironmentCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;
