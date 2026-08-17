@@ -5,7 +5,7 @@ import { Header } from './components/Header';
 import { InsightsPanel } from './components/InsightsPanel';
 import { OverviewCharts } from './components/OverviewTab';
 import { PillarCharts } from './components/PillarTab';
-import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis, buildWorkKpis, buildEducationKpis, buildSecurityKpis, buildHealthKpis, buildEnvironmentKpis } from './components/KpiCards';
+import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis, buildWorkKpis, buildEducationKpis, buildSecurityKpis, buildHealthKpis, buildEnvironmentKpis, buildInfrastructureKpis } from './components/KpiCards';
 
 const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
 const SELECTED_YEAR_STORAGE_KEY = 'alfalah-selected-year';
@@ -250,7 +250,9 @@ export default function App() {
                   ? buildHealthKpis(activeSection, viewMode, selectedYear)
                   : activeTab === 'environment' && activeSection
                     ? buildEnvironmentKpis(activeSection, viewMode, selectedYear)
-                    : activeSection?.score
+                    : activeTab === 'infrastructure' && activeSection
+                      ? buildInfrastructureKpis(activeSection, viewMode, selectedYear)
+                      : activeSection?.score
                 ? buildPillarKpis(activeSection.score, viewMode, selectedYear)
                 : [];
 

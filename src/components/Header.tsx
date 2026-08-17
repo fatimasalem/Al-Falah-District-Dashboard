@@ -271,7 +271,7 @@ export function Header({
               <span className="tab-icon"><TabIcon name={tab.icon} /></span>
               {tab.label}
               {tab.reviewReady && (
-                <span className="tab-review-badge">Review ready</span>
+                <span className="tab-review-badge">RR</span>
               )}
             </button>
           ))}

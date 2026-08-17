@@ -183,6 +183,76 @@ export function formatStatementAxisLabel(text: string): string {
   return fitAxisLabel(compactStatementLabel(text));
 }
 
+const EDUCATION_AXIS_LABELS: Record<string, string> = {
+  'Satisfied with the government school education system in my residential area': 'Govt. schools',
+  'Satisfied with the financial costs of public school education in a residential area': 'Public cost',
+  'Satisfied with the private school education system in my residential area': 'Private schools',
+  'Satisfied with the financial costs of private school education in a residential area': 'Private cost',
+  'Satisfied with the university education system in the emirate': 'University system',
+  'Satisfied with the financial costs of university education in the emirate': 'University cost',
+  'Satisfied with the quality of school education in my residential area': 'School quality',
+  'Satisfied with the ease of attending school education in my residential area': 'School access',
+  'Satisfied with the ease of enrolling in university education in the emirate': 'Uni enrollment',
+  'Satisfied with the proximity of the educational facility (schools and universities) to the residence':
+    'School proximity',
+  'My children are exposed to frequent verbal abuse by other students, such as ridicule, insults, or spreading rumors in schools in my residential area.':
+    'Verbal abuse',
+  'My children are frequently subjected to physical abuse by other students (such as hitting, kicking, or shoving) in schools in my residential area.':
+    'Physical abuse',
+  'I saw/heard about other students being physically harmed more than once at the school in my residential area (either by pushing, tripping, hitting, or by painful pinching).':
+    'Physical harm',
+  'My children are harassed, ridiculed, and called bad names more than once at school in my residential area':
+    'Child harassment',
+  'I saw/heard more than once about other students being harassed, ridiculed, and called names at school in my residential area.':
+    'Peer harassment',
+  'I feel physically safe for my son throughout the school building in my residential area': 'Physical safety',
+  'The school in a residential area applies a balanced and fair system to maintain student discipline':
+    'Discipline system',
+  'Schools in the residential area encourage students to participate in sports competitions and enter the Abu Dhabi Sports Championship':
+    'Sports programs',
+  'Schools in my residential area promote life skills, innovation and sports': 'Life skills',
+  'The schools provide sports facilities to students and community members in a residential area':
+    'Sports facilities',
+  'I have great respect for the teaching profession': 'Teaching respect',
+  'The labor market does not accept the quality of university education you obtained': 'Labor market fit',
+};
+
+const EDUCATION_AXIS_LABEL_PATTERNS: [RegExp, string][] = [
+  [/Abu Dhabi Sports Championship|sports competitions/i, 'Sports programs'],
+  [/physical abuse by other students/i, 'Physical abuse'],
+  [/harassed, ridiculed, and called names/i, 'Peer harassment'],
+  [/harassed, ridiculed, and called bad names/i, 'Child harassment'],
+  [/physically harmed more than once/i, 'Physical harm'],
+  [/verbal abuse by other students/i, 'Verbal abuse'],
+  [/physically safe for my son/i, 'Physical safety'],
+  [/student discipline/i, 'Discipline system'],
+  [/life skills, innovation and sports/i, 'Life skills'],
+  [/sports facilities/i, 'Sports facilities'],
+  [/respect for the teaching profession/i, 'Teaching respect'],
+  [/government school education system/i, 'Govt. schools'],
+  [/private school education system/i, 'Private schools'],
+  [/university education system/i, 'University system'],
+  [/financial costs of public school/i, 'Public cost'],
+  [/financial costs of private school/i, 'Private cost'],
+  [/financial costs of university/i, 'University cost'],
+  [/quality of school education/i, 'School quality'],
+  [/ease of attending school/i, 'School access'],
+  [/ease of enrolling in university/i, 'Uni enrollment'],
+  [/proximity of the educational facility/i, 'School proximity'],
+  [/labor market does not accept/i, 'Labor market fit'],
+];
+
+export function formatEducationAxisLabel(text: string): string {
+  const normalized = text.trim().replace(/\.$/, '');
+  if (EDUCATION_AXIS_LABELS[normalized]) return EDUCATION_AXIS_LABELS[normalized];
+
+  for (const [pattern, label] of EDUCATION_AXIS_LABEL_PATTERNS) {
+    if (pattern.test(normalized)) return label;
+  }
+
+  return compactStatementLabel(text);
+}
+
 const HEALTH_HEATMAP_LABEL_MAX_CHARS = 28;
 
 export function formatHealthHeatmapLabel(text: string): string {
@@ -1081,7 +1151,7 @@ export function getEducationChartData(
       const scale = total > 0 ? 100 / total : 0;
       const fullName = q.statementEn ?? q.statementAr;
       return {
-        name: formatStatementAxisLabel(fullName),
+        name: formatEducationAxisLabel(fullName),
         fullName,
         dissatisfied: dissatisfied * scale,
         neutral: neutral * scale,
@@ -2115,6 +2185,247 @@ export function getEnvironmentUrbanPlanningData(
   return getEducationLikertScaleRows(questions, year, [ENVIRONMENT_CHART_STATEMENTS.urbanPlanning]);
 }
 
+const INFRASTRUCTURE_KPI_STATEMENT = {
+  waterElectricity: /satisfied with the level of water and electricity services/i,
+  gasStations: /availability of gas stations in my residential area/i,
+  shopping: /commercial stores and shopping centers are available or close/i,
+} as const;
+
+const INFRASTRUCTURE_CHART_STATEMENTS = {
+  mentalHealthServices: {
+    match: /availability of mental health and addiction prevention and treatment services/i,
+    short: 'Mental health & addiction services',
+  },
+  sportsFacilities: {
+    match: /playgrounds for practicing different types of sports/i,
+    short: 'Sports facilities availability',
+  },
+} as const;
+
+const INFRASTRUCTURE_TOP_ISSUE_EXCLUSIONS = new Set(['No issues']);
+
+const INFRASTRUCTURE_TOP_ISSUE_LABELS: Record<string, string> = {
+  'Financial problems and high cost of living': 'Financial strain & cost of living',
+  'drug addiction': 'Drug addiction',
+  'Narrow housing, the need for maintenance, and poor sanitation': 'Poor housing, maintenance & sanitation',
+  'Fear for children from bad companions': 'Fear for children from bad influences',
+  'Divorce and family disintegration': 'Divorce & family breakdown',
+  'Traffic congestion and constant inconvenience': 'Traffic congestion & constant noise',
+  Debts: 'Debt',
+  Unemployment: 'Unemployment',
+  'Lack of awareness centers, entertainment services, and Qur’an memorization centers':
+    'Lack of awareness, recreation & Quran centers',
+  'Bullying and physical assault': 'Bullying & physical assault',
+  'There is a large presence of workers near family homes': 'Worker overcrowding near homes',
+  'Long time at work and school': 'Long work & school hours',
+  Smoking: 'Smoking',
+  'Lack of health centers and long waiting times for appointments': 'Few health centers & long waits',
+  'Lack of job opportunities': 'Lack of job opportunities',
+  'Quality of education in Al Falah area': 'Education quality in Al-Falah',
+  'Too many insects': 'Insect infestation',
+  'Drinking alcohol': 'Alcohol consumption',
+  'Internet problems/social media/harmful electronic content': 'Harmful online & social media content',
+  'Problems associated with public services': 'Public service problems',
+  'Breeding animals/dogs/stray animals': 'Pets, dogs & stray animals',
+  'Cleanliness/waste/neighborhood infrastructure problems': 'Cleanliness, waste & infrastructure',
+  'Crimes/theft/harassment/electronic crimes': 'Crime, theft & harassment',
+  'Mental health': 'Mental health',
+};
+
+const INFRASTRUCTURE_NEEDED_FACILITY_EXCLUSIONS = new Set(['Everything is available']);
+
+const INFRASTRUCTURE_NEEDED_FACILITY_LABELS: Record<string, string> = {
+  'Recreational facilities (gardens, jogging path, bicycle paths, youth playgrounds, sports clubs)':
+    'Recreational facilities (parks, tracks, clubs)',
+  'Commercial stores and shopping centers': 'Shops & shopping centers',
+  'Mosques and centers for memorizing the Qur’an': 'Mosques & Quran centers',
+  'Government service centers (police station, civil defense, social support center, municipality, public transportation, gas stations, public parking, technological services)':
+    'Government service centers',
+  'Health facilities (specialized clinics, government and private hospitals)':
+    'Health facilities (clinics & hospitals)',
+  'Educational facilities and nurseries': 'Educational facilities & nurseries',
+  'Community centers to support family cohesion': 'Family cohesion community centers',
+  'Centers for social and professional activities': 'Social & vocational activity centers',
+  'Planting and getting rid of insects': 'Afforestation & pest control',
+  'Prevention and treatment centers for mental health and addiction':
+    'Mental health & addiction centers',
+};
+
+export function getInfrastructureWaterElectricityPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, INFRASTRUCTURE_KPI_STATEMENT.waterElectricity, year);
+}
+
+export function getInfrastructureGasStationsPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, INFRASTRUCTURE_KPI_STATEMENT.gasStations, year);
+}
+
+export function getInfrastructureShoppingPercent(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): number {
+  return getEducationLikertAgreement(questions, INFRASTRUCTURE_KPI_STATEMENT.shopping, year);
+}
+
+export function getInfrastructureTopIssuesData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q802')
+    .filter((q) => !INFRASTRUCTURE_TOP_ISSUE_EXCLUSIONS.has(q.categoryEn ?? ''))
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = INFRASTRUCTURE_TOP_ISSUE_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getInfrastructureNeededFacilitiesData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  return getCategoryByQuestion(questions, 'Q803')
+    .filter((q) => !INFRASTRUCTURE_NEEDED_FACILITY_EXCLUSIONS.has(q.categoryEn ?? ''))
+    .map((q) => {
+      const fullName = translateLabel(q.categoryEn ?? q.categoryAr);
+      const shortName = INFRASTRUCTURE_NEEDED_FACILITY_LABELS[q.categoryEn ?? ''] ?? fullName;
+      return {
+        name: shortName,
+        fullName,
+        value2024: q.data['2024'] ?? 0,
+        value2025: q.data['2025'] ?? 0,
+        value: q.data[year] ?? 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getInfrastructureMentalHealthServicesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [INFRASTRUCTURE_CHART_STATEMENTS.mentalHealthServices]);
+}
+
+export function getInfrastructureSportsFacilitiesData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [INFRASTRUCTURE_CHART_STATEMENTS.sportsFacilities]);
+}
+
+export function getInfrastructureRankedBarBadgeScore(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  const top = [...rows].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) return 0;
+  if (mode === 'current') return pickYearValue(top.value2024, top.value2025, year);
+  return top.value2025 - top.value2024;
+}
+
+export function getInfrastructureKpiSentence(
+  metric: 'score' | 'waterElectricity' | 'gasStations' | 'shopping',
+  value: number,
+): string {
+  switch (metric) {
+    case 'score':
+      return value >= 70
+        ? 'Strong infrastructure satisfaction overall.'
+        : value >= 50
+          ? 'Moderate infrastructure satisfaction.'
+          : 'Infrastructure satisfaction needs improvement.';
+    case 'waterElectricity':
+      return value >= 70
+        ? 'Most residents are satisfied with water and electricity services.'
+        : value >= 50
+          ? 'Water and electricity satisfaction is moderate.'
+          : 'Water and electricity service concerns are elevated.';
+    case 'gasStations':
+      return value >= 70
+        ? 'Most residents are satisfied with gas station availability.'
+        : value >= 50
+          ? 'Gas station availability satisfaction is moderate.'
+          : 'Gas station availability concerns are elevated.';
+    case 'shopping':
+      return value >= 70
+        ? 'Most residents are satisfied with shops and shopping centers.'
+        : value >= 50
+          ? 'Shopping availability satisfaction is moderate.'
+          : 'Shopping availability concerns are elevated.';
+  }
+}
+
+export function generateInfrastructureRankedBarInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+  topic = 'issue',
+): InsightPart[] {
+  const top = [...rows].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) return [`Ranked ${topic} responses will appear once survey data is available.`];
+
+  const isFacilityNeed = topic === 'facility need';
+
+  if (mode === 'yoy') {
+    const biggestShift = [...rows].sort(
+      (a, b) => Math.abs(b.value2025 - b.value2024) - Math.abs(a.value2025 - a.value2024),
+    )[0];
+    const change = biggestShift.value2025 - biggestShift.value2024;
+    if (isFacilityNeed) {
+      return [
+        { bold: biggestShift.name },
+        ' moved most (',
+        { bold: formatDelta(change) },
+        '); ',
+        { bold: top.name },
+        ' leads.',
+      ];
+    }
+    return [
+      { bold: biggestShift.name },
+      ' shifted most at ',
+      { bold: formatDelta(change) },
+      ' while ',
+      { bold: top.name },
+      ` remains the top cited ${topic}.`,
+    ];
+  }
+
+  if (isFacilityNeed) {
+    return [
+      { bold: top.name },
+      ' leads at ',
+      { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+      '.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ` is the top cited ${topic} at `,
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' of responses.',
+  ];
+}
+
 export function getEnvironmentKpiSentence(
   metric: 'score' | 'cleanliness' | 'airQuality' | 'noiseLevel',
   value: number,
@@ -2400,6 +2711,17 @@ export function generateInsights(
       `Health satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
       'Healthcare assessments, emotional stress, healthy eating, and chronic conditions shape resident wellbeing.',
       'Personal health, activity levels, and sleep quality indicate how residents experience day-to-day wellness.',
+    ];
+  }
+
+  if (tabId === 'infrastructure') {
+    const section = sectionScores.infrastructure;
+    if (!section) return ['Infrastructure and community facilities data for Al Falah district residents.'];
+    const direction = section.yoyChange >= 0 ? 'improved' : 'declined';
+    return [
+      `Infrastructure satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
+      'Utility services, fuel access, and retail availability shape day-to-day convenience for households.',
+      'Community issues and missing facilities highlight where residents want stronger local infrastructure.',
     ];
   }
 

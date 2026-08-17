@@ -753,6 +753,11 @@ button {
   color: #d97706;
 }
 
+.statement-bar-label-icon.infrastructure-label-icon {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1827,6 +1832,18 @@ button {
 
 .health-assessment-bar-chart {
   gap: 4px;
+  overflow: hidden;
+}
+
+.health-assessment-bar-chart .statement-bar-labels {
+  grid-template-rows: repeat(var(--statement-rows), var(--statement-row-height, 1fr));
+  align-content: start;
+}
+
+.health-assessment-bar-chart .statement-bar-plot {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .health-assessment-x-axis-rail {

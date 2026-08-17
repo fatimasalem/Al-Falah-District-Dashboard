@@ -33,6 +33,10 @@ import {
   getEnvironmentAirQualityPercent,
   getEnvironmentNoiseLevelPercent,
   getEnvironmentKpiSentence,
+  getInfrastructureWaterElectricityPercent,
+  getInfrastructureGasStationsPercent,
+  getInfrastructureShoppingPercent,
+  getInfrastructureKpiSentence,
 } from '../utils';
 
 export type KpiIconName =
@@ -72,6 +76,27 @@ export interface KpiItem {
   suffix?: string;
   valueCaption?: string;
   subtext?: ReactNode;
+  tone?: 'positive' | 'negative';
+}
+
+const KPI_GOOD_THRESHOLD = 70;
+
+function getPercentTone(value: number, invert = false): 'positive' | 'negative' {
+  const good = value >= KPI_GOOD_THRESHOLD;
+  if (invert) return good ? 'negative' : 'positive';
+  return good ? 'positive' : 'negative';
+}
+
+function finalizeKpiCards(
+  cards: KpiItem[],
+  mode: ViewMode,
+  tones: Array<'positive' | 'negative' | undefined>,
+): KpiItem[] {
+  if (mode === 'yoy') return cards;
+  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }, index) => ({
+    ...rest,
+    tone: tones[index],
+  }));
 }
 
 function KpiIcon({ name }: { name: KpiIconName }) {
@@ -263,7 +288,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   return (
     <div className="kpi-row">
       {items.slice(0, 4).map((item) => {
-        const trendClass = getTrendClass(item.delta);
+        const trendClass = viewMode === 'yoy' ? getTrendClass(item.delta) : item.tone;
 
         return (
           <div key={item.label} className="kpi-card">
@@ -347,10 +372,12 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(satisfaction),
+    getPercentTone(incomeComfort),
+    getPercentTone(employment),
+    getPercentTone(safety),
+  ]);
 }
 
 export function buildDemographicsKpis(
@@ -381,13 +408,26 @@ export function buildDemographicsKpis(
   };
 
   if (mode === 'current') {
-    return [
-      { label: 'Male', value: `${catValue('Q902', 'ذكر').toFixed(1)}`, suffix: '%' },
-      { label: 'Female', value: `${catValue('Q902', 'أنثى').toFixed(1)}`, suffix: '%' },
-      { label: 'Emirati', value: `${catValue('Q905', 'إماراتي').toFixed(1)}`, suffix: '%' },
-      { label: 'Non-Emirati', value: `${catValue('Q905', 'غير إماراتي').toFixed(1)}`, suffix: '%' },
-      { label: 'Avg Household Size', value: `${meanValue('Q914').toFixed(1)}`, suffix: ' persons' },
-    ];
+    const male = catValue('Q902', 'ذكر');
+    const female = catValue('Q902', 'أنثى');
+    const emirati = catValue('Q905', 'إماراتي');
+    const nonEmirati = catValue('Q905', 'غير إماراتي');
+    return finalizeKpiCards(
+      [
+        { label: 'Male', value: `${male.toFixed(1)}`, suffix: '%' },
+        { label: 'Female', value: `${female.toFixed(1)}`, suffix: '%' },
+        { label: 'Emirati', value: `${emirati.toFixed(1)}`, suffix: '%' },
+        { label: 'Non-Emirati', value: `${nonEmirati.toFixed(1)}`, suffix: '%' },
+        { label: 'Avg Household Size', value: `${meanValue('Q914').toFixed(1)}`, suffix: ' persons' },
+      ],
+      mode,
+      [
+        getPercentTone(male),
+        getPercentTone(female),
+        getPercentTone(emirati),
+        getPercentTone(nonEmirati),
+      ],
+    );
   }
 
   return [
@@ -406,13 +446,26 @@ export function buildPillarKpis(
 ): KpiItem[] {
   if (!score) return [];
   if (mode === 'current') {
-    return [
-      { label: 'Section Score', value: `${pickYearValue(score.score2024, score.score2025, year)}`, suffix: '%', delta: score.yoyChange },
-      { label: 'Positive Sentiment', value: `${pickYearValue(score.positive2024, score.positive2025, year)}`, suffix: '%', delta: score.positive2025 - score.positive2024 },
-      { label: 'Negative Sentiment', value: `${pickYearValue(score.negative2024, score.negative2025, year)}`, suffix: '%', delta: score.negative2025 - score.negative2024 },
-      { label: year === '2025' ? '2024 Baseline' : '2025 Score', value: `${year === '2025' ? score.score2024 : score.score2025}`, suffix: '%' },
-      { label: 'Top Partner', value: score.sectionNameEn, subtext: 'Current pillar', delta: score.yoyChange },
-    ];
+    const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+    const positiveSentiment = pickYearValue(score.positive2024, score.positive2025, year);
+    const negativeSentiment = pickYearValue(score.negative2024, score.negative2025, year);
+    const comparisonScore = year === '2025' ? score.score2024 : score.score2025;
+    return finalizeKpiCards(
+      [
+        { label: 'Section Score', value: `${sectionScore}`, suffix: '%', delta: score.yoyChange },
+        { label: 'Positive Sentiment', value: `${positiveSentiment}`, suffix: '%', delta: score.positive2025 - score.positive2024 },
+        { label: 'Negative Sentiment', value: `${negativeSentiment}`, suffix: '%', delta: score.negative2025 - score.negative2024 },
+        { label: year === '2025' ? '2024 Baseline' : '2025 Score', value: `${comparisonScore}`, suffix: '%' },
+        { label: 'Top Partner', value: score.sectionNameEn, subtext: 'Current pillar', delta: score.yoyChange },
+      ],
+      mode,
+      [
+        getPercentTone(sectionScore),
+        getPercentTone(positiveSentiment),
+        getPercentTone(negativeSentiment, true),
+        getPercentTone(comparisonScore),
+      ],
+    );
   }
   return [
     { label: 'Score Change', value: formatDelta(score.yoyChange) },
@@ -488,10 +541,12 @@ export function buildIncomeKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    undefined,
+    topExpense ? getPercentTone(topExpense.value) : undefined,
+    topDebt ? getPercentTone(topDebt.value, true) : undefined,
+  ]);
 }
 
 export function buildWorkKpis(
@@ -553,10 +608,12 @@ export function buildWorkKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    undefined,
+    getPercentTone(balance),
+    getPercentTone(assistance),
+  ]);
 }
 
 export function buildEducationKpis(
@@ -618,10 +675,12 @@ export function buildEducationKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getPercentTone(safety),
+    getPercentTone(lifeSkills),
+    getPercentTone(university),
+  ]);
 }
 
 export function buildSecurityKpis(
@@ -683,10 +742,12 @@ export function buildSecurityKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getPercentTone(movingSafe),
+    getPercentTone(policeTrust),
+    getPercentTone(jobSecurity),
+  ]);
 }
 
 export function buildHealthKpis(
@@ -748,10 +809,12 @@ export function buildHealthKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getPercentTone(currentHealth),
+    undefined,
+    getPercentTone(sleep),
+  ]);
 }
 
 export function buildEnvironmentKpis(
@@ -813,8 +876,77 @@ export function buildEnvironmentKpis(
     },
   ];
 
-  if (mode === 'yoy') {
-    return cards;
-  }
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getPercentTone(cleanliness),
+    getPercentTone(airQuality),
+    getPercentTone(noiseLevel),
+  ]);
+}
+
+export function buildInfrastructureKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const waterElectricity2024 = getInfrastructureWaterElectricityPercent(questions, '2024');
+  const waterElectricity2025 = getInfrastructureWaterElectricityPercent(questions, '2025');
+  const waterElectricity = pickYearValue(waterElectricity2024, waterElectricity2025, year);
+  const gasStations2024 = getInfrastructureGasStationsPercent(questions, '2024');
+  const gasStations2025 = getInfrastructureGasStationsPercent(questions, '2025');
+  const gasStations = pickYearValue(gasStations2024, gasStations2025, year);
+  const shopping2024 = getInfrastructureShoppingPercent(questions, '2024');
+  const shopping2025 = getInfrastructureShoppingPercent(questions, '2025');
+  const shopping = pickYearValue(shopping2024, shopping2025, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Overall Infrastructure Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getInfrastructureKpiSentence('score', sectionScore),
+      delta: score.yoyChange,
+    },
+    {
+      label: 'Water and Electricity Services Satisfaction',
+      icon: 'shield',
+      value: `${waterElectricity.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getInfrastructureKpiSentence('waterElectricity', waterElectricity),
+      delta: waterElectricity2025 - waterElectricity2024,
+    },
+    {
+      label: 'Satisfaction on Gas Stations Availability',
+      icon: 'spark',
+      value: `${gasStations.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getInfrastructureKpiSentence('gasStations', gasStations),
+      delta: gasStations2025 - gasStations2024,
+    },
+    {
+      label: 'Shops & Shopping Centers Satisfaction',
+      icon: 'shield',
+      value: `${shopping.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getInfrastructureKpiSentence('shopping', shopping),
+      delta: shopping2025 - shopping2024,
+    },
+  ];
+
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getPercentTone(waterElectricity),
+    getPercentTone(gasStations),
+    getPercentTone(shopping),
+  ]);
 }

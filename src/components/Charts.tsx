@@ -41,6 +41,8 @@ import {
   generateWorkSupportInsight,
   generateEducationTabChartInsight,
   generateEducationLikertScaleInsight,
+  generateInfrastructureRankedBarInsight,
+  getInfrastructureRankedBarBadgeScore,
   getLikertDominantSegmentIndex,
   EDUCATION_LIKERT_SCALE_LABELS,
   EDUCATION_LIKERT_SCALE_ORDER,
@@ -839,11 +841,10 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
       </div>
       <div className="partner-chart-body">
         <div className={`partner-bar-list ${!isCurrent ? 'partner-bar-list-yoy' : ''}`}>
-          {sorted.map((item, i) => {
+          {sorted.map((item) => {
             const score2025 = item.value2025 ?? item.value;
             const score2024 = item.value2024 ?? score2025 - item.value;
             const currentScore = isCurrent ? getScore(item) : score2025;
-            const barColor = CHART_COLORS[i % CHART_COLORS.length];
 
             return (
               <div key={item.name} className={`partner-bar-item ${!isCurrent ? 'partner-bar-item-yoy' : ''}`}>
@@ -864,7 +865,7 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
                       className="partner-bar-fill"
                       style={{
                         width: `${Math.min(100, (currentScore / maxScore) * 100)}%`,
-                        background: barColor,
+                        background: YEAR_COMPARISON_BAR.current,
                       }}
                     />
                   </div>
@@ -877,7 +878,7 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
                           className="partner-bar-fill"
                           style={{
                             width: `${Math.min(100, (score2025 / maxScore) * 100)}%`,
-                            background: barColor,
+                            background: YEAR_COMPARISON_BAR.current,
                           }}
                         />
                       </div>
@@ -886,10 +887,10 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
                       <span className="partner-bar-year">2024</span>
                       <div className="partner-bar-track">
                         <div
-                          className="partner-bar-fill partner-bar-fill-muted"
+                          className="partner-bar-fill"
                           style={{
                             width: `${Math.min(100, (score2024 / maxScore) * 100)}%`,
-                            background: barColor,
+                            background: YEAR_COMPARISON_BAR.previous,
                           }}
                         />
                       </div>
@@ -4314,7 +4315,11 @@ export function HealthAssessmentBarChartCard({
             <div className="statement-bar-chart-scroll health-assessment-chart-scroll">
               <div
                 className="statement-bar-chart statement-bar-chart-income health-assessment-bar-chart"
-                style={{ height: chartHeight, ['--statement-rows' as string]: chartData.length }}
+                style={{
+                  height: chartHeight,
+                  ['--statement-rows' as string]: chartData.length,
+                  ['--statement-row-height' as string]: `${rowHeight}px`,
+                }}
               >
                 <div className="statement-bar-labels" ref={labelsRef}>
                   {chartData.map((row) => (
@@ -4327,7 +4332,7 @@ export function HealthAssessmentBarChartCard({
                   ))}
                 </div>
                 <div className="statement-bar-plot">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={chartHeight} key={`${filter}-${chartData.length}`}>
                     {isCurrent ? (
                       <BarChart
                         data={chartData}
@@ -4432,6 +4437,508 @@ export function HealthAssessmentBarChartCard({
               <YearComparisonLegend rounded />
             )}
           </div>
+        </div>
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+type InfrastructureDisplayFilter = 'top5' | 'all';
+type InfrastructureLabelIconVariant = 'issues' | 'facilities';
+
+function InfrastructureBarLabelIcon({
+  fullName,
+  variant,
+}: {
+  fullName: string;
+  variant: InfrastructureLabelIconVariant;
+}) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    'aria-hidden': true as const,
+  };
+
+  const lower = fullName.toLowerCase();
+
+  if (variant === 'issues') {
+    if (/financial|cost of living/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" />
+          <path d="M16 11h.01" />
+        </svg>
+      );
+    }
+    if (/drug addiction|drinking alcohol/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      );
+    }
+    if (/housing|maintenance|sanitation/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+          <path d="M9 21V12h6v9" />
+        </svg>
+      );
+    }
+    if (/fear.*children|bad companion/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 00-3-3.87" />
+          <path d="M16 3.13a4 4 0 010 7.75" />
+        </svg>
+      );
+    }
+    if (/divorce|family disintegration/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+        </svg>
+      );
+    }
+    if (/traffic|congestion|inconvenience/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M5 17h14M5 17a2 2 0 01-2-2V9a2 2 0 012-2h1l2-3h8l2 3h1a2 2 0 012 2v6a2 2 0 01-2 2" />
+        </svg>
+      );
+    }
+    if (/debt/.test(lower)) {
+      return (
+        <svg {...props}>
+          <rect x="1" y="4" width="22" height="16" rx="2" />
+          <path d="M1 10h22" />
+        </svg>
+      );
+    }
+    if (/unemployment|job opportunit/.test(lower)) {
+      return (
+        <svg {...props}>
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+        </svg>
+      );
+    }
+    if (/awareness|entertainment|qur/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+        </svg>
+      );
+    }
+    if (/bullying|assault/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    }
+    if (/workers near|presence of workers/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 00-3-3.87" />
+          <path d="M16 3.13a4 4 0 010 7.75" />
+        </svg>
+      );
+    }
+    if (/work and school|long time/.test(lower)) {
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 6v6l4 2" />
+        </svg>
+      );
+    }
+    if (/smoking/.test(lower)) {
+      return (
+        <svg {...props}>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      );
+    }
+    if (/health center|waiting time/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+      );
+    }
+    if (/education quality|education in/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+          <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+        </svg>
+      );
+    }
+    if (/insect/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M8 2v4M16 2v4M12 6v14M8 10h8M8 14h8M6 18h12" />
+        </svg>
+      );
+    }
+    if (/internet|social media|electronic/.test(lower)) {
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+        </svg>
+      );
+    }
+    if (/public service/.test(lower)) {
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+        </svg>
+      );
+    }
+    if (/animal|dog|stray/.test(lower)) {
+      return (
+        <svg {...props}>
+          <circle cx="11" cy="4" r="2" />
+          <circle cx="18" cy="8" r="2" />
+          <circle cx="20" cy="16" r="2" />
+          <path d="M9 10a5 5 0 005 8 5 5 0 005-8" />
+        </svg>
+      );
+    }
+    if (/cleanliness|waste|infrastructure problem/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+        </svg>
+      );
+    }
+    if (/crime|theft|harassment/.test(lower)) {
+      return (
+        <svg {...props}>
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0110 0v4" />
+        </svg>
+      );
+    }
+    if (/mental health/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.46 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 011.32-4.24 2.5 2.5 0 014.44-1.54z" />
+          <path d="M14.5 2A2.5 2.5 0 0117 4.5v15a2.5 2.5 0 004.96-.46 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-1.32-4.24 2.5 2.5 0 00-4.44-1.54z" />
+        </svg>
+      );
+    }
+  } else {
+    if (/recreational|garden|jogging|playground|sports club/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M12 22v-7M5 12h14M12 5a7 7 0 017 7H5a7 7 0 017-7z" />
+        </svg>
+      );
+    }
+    if (/commercial|shopping/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <path d="M16 10a4 4 0 01-8 0" />
+        </svg>
+      );
+    }
+    if (/mosque|qur/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+        </svg>
+      );
+    }
+    if (/government service/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M3 21h18M6 21V7l6-4 6 4v14M10 21v-4h4v4" />
+        </svg>
+      );
+    }
+    if (/health facilit|clinic|hospital/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+      );
+    }
+    if (/educational|nurser/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M22 10l-10-5L2 10l10 5 10-5z" />
+          <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+        </svg>
+      );
+    }
+    if (/family cohesion|community center/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+          <path d="M9 21V12h6v9" />
+        </svg>
+      );
+    }
+    if (/social and professional|activity center/.test(lower)) {
+      return (
+        <svg {...props}>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      );
+    }
+    if (/planting|getting rid of insect/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+          <path d="M12 6v12M8 10h8M8 14h8" />
+        </svg>
+      );
+    }
+    if (/mental health|addiction/.test(lower)) {
+      return (
+        <svg {...props}>
+          <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.46 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 011.32-4.24 2.5 2.5 0 014.44-1.54z" />
+          <path d="M14.5 2A2.5 2.5 0 0117 4.5v15a2.5 2.5 0 004.96-.46 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-1.32-4.24 2.5 2.5 0 00-4.44-1.54z" />
+        </svg>
+      );
+    }
+  }
+
+  return (
+    <svg {...props}>
+      <path d="M3 21h18" />
+      <path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16" />
+      <path d="M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1" />
+    </svg>
+  );
+}
+
+interface InfrastructureRankedBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  mode: ViewMode;
+  year?: SurveyYear;
+  insightTopic?: string;
+  singleLineDescription?: boolean;
+  singleLineInsight?: boolean;
+  labelIconVariant?: InfrastructureLabelIconVariant;
+}
+
+export function InfrastructureRankedBarChartCard({
+  data,
+  title,
+  description,
+  mode,
+  year = '2025',
+  insightTopic = 'issue',
+  singleLineDescription = false,
+  singleLineInsight = false,
+  labelIconVariant,
+}: InfrastructureRankedBarChartCardProps) {
+  const [filter, setFilter] = useState<InfrastructureDisplayFilter>('top5');
+  const labelsRef = useRef<HTMLDivElement>(null);
+  const [labelColumnWidth, setLabelColumnWidth] = useState(0);
+  const isCurrent = mode === 'current';
+  const filteredData = filter === 'top5' ? data.slice(0, 5) : data;
+  const badgeScore = getInfrastructureRankedBarBadgeScore(filteredData, mode, year);
+  const chartData = [...filteredData]
+    .map((row) => ({
+      name: row.name,
+      fullName: row.fullName,
+      value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+      value2024: row.value2024,
+      value2025: row.value2025,
+    }))
+    .sort((a, b) => b.value - a.value);
+  const insight = generateInfrastructureRankedBarInsight(filteredData, mode, year, insightTopic);
+  const rowHeight = isCurrent ? 68 : 76;
+  const chartHeight = Math.max(300, chartData.length * rowHeight + 8);
+  const xAxisLabel = 'Response Share (%)';
+  const scrollMargin = isCurrent ? HEALTH_ASSESSMENT_SCROLL_MARGIN : HEALTH_ASSESSMENT_SCROLL_MARGIN_YOY;
+  const axisMargin = isCurrent ? HEALTH_ASSESSMENT_AXIS_MARGIN : HEALTH_ASSESSMENT_AXIS_MARGIN_YOY;
+  const axisProbe = [{ name: '_axis', value: 100 }];
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (labelsRef.current) {
+        setLabelColumnWidth(labelsRef.current.offsetWidth);
+      }
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [chartData, filter, isCurrent]);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      icon="bar-chart"
+      singleLineDescription={singleLineDescription}
+      singleLineInsight={singleLineInsight}
+      className="chart-card-education-tab chart-card-health-assessment"
+    >
+      <div className="health-assessment-chart">
+        <div className={`health-assessment-controls${isCurrent ? '' : ' health-assessment-controls-yoy'}`.trim()}>
+          <label className="health-assessment-filter">
+            <span className="health-assessment-filter-label">Chart display</span>
+            <select
+              className="health-assessment-select"
+              value={filter}
+              aria-label="Chart display range"
+              onChange={(event) => setFilter(event.target.value as InfrastructureDisplayFilter)}
+            >
+              <option value="top5">Top 5</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+        </div>
+        <div className={`income-bar-chart-wrap health-assessment-chart-wrap ${!isCurrent ? 'income-bar-chart-wrap-yoy' : ''}`.trim()}>
+          <div className="health-assessment-chart-panel">
+            <div className="statement-bar-chart-scroll health-assessment-chart-scroll">
+              <div
+                className="statement-bar-chart statement-bar-chart-income health-assessment-bar-chart"
+                style={{
+                  height: chartHeight,
+                  ['--statement-rows' as string]: chartData.length,
+                  ['--statement-row-height' as string]: `${rowHeight}px`,
+                }}
+              >
+                <div className="statement-bar-labels" ref={labelsRef}>
+                  {chartData.map((row) => (
+                    <div key={row.fullName} className="statement-bar-label" title={row.fullName}>
+                      {labelIconVariant && (
+                        <span className="statement-bar-label-icon infrastructure-label-icon">
+                          <InfrastructureBarLabelIcon fullName={row.fullName} variant={labelIconVariant} />
+                        </span>
+                      )}
+                      <span className="statement-bar-label-text">{row.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="statement-bar-plot">
+                  <ResponsiveContainer width="100%" height={chartHeight} key={`${filter}-${chartData.length}`}>
+                    {isCurrent ? (
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={scrollMargin}
+                        barCategoryGap="18%"
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+                        <Tooltip
+                          formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                          labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                        />
+                        <Bar dataKey="value" fill={yearBarColor(year)} radius={[0, 4, 4, 0]} maxBarSize={26} legendType="none">
+                          <LabelList
+                            dataKey="value"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={scrollMargin}
+                        barCategoryGap="18%"
+                        barGap={2}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} />
+                        <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+                        <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                          {renderYoYBarCells(chartData, '2025')}
+                          <LabelList
+                            dataKey="value2025"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                          />
+                        </Bar>
+                        <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[0, 4, 4, 0]} maxBarSize={14} legendType="none">
+                          {renderYoYBarCells(chartData, '2024')}
+                          <LabelList
+                            dataKey="value2024"
+                            position="right"
+                            formatter={(v: number) => `${v.toFixed(1)}%`}
+                            style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+            <div className="health-assessment-x-axis-rail">
+              <div
+                className="health-assessment-x-axis-gutter"
+                style={labelColumnWidth > 0 ? { width: labelColumnWidth } : undefined}
+                aria-hidden="true"
+              />
+              <div className="health-assessment-x-axis-plot">
+                <ResponsiveContainer width="100%" height={HEALTH_ASSESSMENT_AXIS_HEIGHT}>
+                  <BarChart data={axisProbe} layout="vertical" margin={axisMargin}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} vertical={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 11, fill: DESIGN.chart.axis }}
+                      domain={[0, 100]}
+                      height={30}
+                      tickMargin={8}
+                    >
+                      <Label
+                        value={xAxisLabel}
+                        position="bottom"
+                        offset={4}
+                        style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                      />
+                    </XAxis>
+                    <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} hide />
+                    <Bar dataKey="value" fill="transparent" stroke="none" isAnimationActive={false} legendType="none" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+          {!isCurrent && (
+            <div className="health-assessment-chart-meta">
+              <YearComparisonLegend rounded />
+            </div>
+          )}
         </div>
       </div>
     </IncomeChartCard>

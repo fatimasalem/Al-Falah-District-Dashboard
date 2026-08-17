@@ -20,6 +20,7 @@ import {
   SecurityDivergingLikertBarCard,
   SecuritySentimentTreemapCard,
   HealthAssessmentBarChartCard,
+  InfrastructureRankedBarChartCard,
   HEALTH_STRESS_LABELS,
   HEALTH_EATING_LABELS,
   HEALTH_BINARY_LABELS,
@@ -57,6 +58,10 @@ import {
   getEnvironmentServiceFacilitiesData,
   getEnvironmentInternalRoadServicesData,
   getEnvironmentUrbanPlanningData,
+  getInfrastructureTopIssuesData,
+  getInfrastructureNeededFacilitiesData,
+  getInfrastructureMentalHealthServicesData,
+  getInfrastructureSportsFacilitiesData,
   isCategory,
   isMean,
   pickYearValue,
@@ -437,6 +442,67 @@ function EnvironmentCharts({ section, viewMode, selectedYear }: PillarChartsProp
   );
 }
 
+function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const topIssues = getInfrastructureTopIssuesData(section.questions, chartYear);
+  const neededFacilities = getInfrastructureNeededFacilitiesData(section.questions, chartYear);
+  const mentalHealth = getInfrastructureMentalHealthServicesData(section.questions, chartYear);
+  const mentalHealth2024 = getInfrastructureMentalHealthServicesData(section.questions, '2024');
+  const sportsFacilities = getInfrastructureSportsFacilitiesData(section.questions, chartYear);
+  const sportsFacilities2024 = getInfrastructureSportsFacilitiesData(section.questions, '2024');
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <InfrastructureRankedBarChartCard
+          data={topIssues}
+          title="Top Issues Affecting Families and Communities"
+          description="Residents' perception of issues with the biggest negative impact on families and communities."
+          mode={viewMode}
+          year={selectedYear}
+          insightTopic="issue"
+          labelIconVariant="issues"
+        />
+        <SecuritySentimentTreemapCard
+          data={mentalHealth}
+          data2024={mentalHealth2024}
+          title="Satisfaction with Mental Health and Addiction Services"
+          description="Residents' satisfaction with mental health and addiction service availability."
+          badgeScore={getEducationTabChartBadgeScore(mentalHealth, mentalHealth2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="mental health and addiction services"
+          emptyMessage="No mental health services data available."
+          singleLineDescription
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationDisciplineDonutCard
+          data={sportsFacilities}
+          data2024={sportsFacilities2024}
+          title="Satisfaction with Sports Facilities Availability"
+          description="Residents' satisfaction with availability of fields for practicing various sports."
+          badgeScore={getEducationTabChartBadgeScore(sportsFacilities, sportsFacilities2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="sports facilities availability"
+          emptyMessage="No sports facilities data available."
+        />
+        <InfrastructureRankedBarChartCard
+          data={neededFacilities}
+          title="Most Needed Facilities in Residential Areas"
+          description="Residents' perception of the most important facilities not available in their residential area."
+          mode={viewMode}
+          year={selectedYear}
+          insightTopic="facility need"
+          singleLineDescription
+          labelIconVariant="facilities"
+        />
+      </div>
+    </div>
+  );
+}
+
 function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const meanComparison = section.questions
     .filter(isMean)
@@ -530,6 +596,10 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
 
   if (section.id === 'environment') {
     return <EnvironmentCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (section.id === 'infrastructure') {
+    return <InfrastructureCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
   }
 
   const { score, questions } = section;
