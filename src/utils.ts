@@ -1246,7 +1246,7 @@ export function getStatementYoYChartData(section: import('./types').Section) {
     .sort((a, b) => b.value2025 - a.value2025);
 }
 
-export type InsightPart = string | { bold: string };
+export type InsightPart = string | { bold: string; tone?: 'positive' | 'negative' };
 
 export function generatePartnerChartInsight(
   data: { name: string; fullName?: string; value: number }[],
@@ -2665,6 +2665,349 @@ export function getTopCategories(
     }))
     .sort((a, b) => b.value - a.value)
     .slice(0, limit);
+}
+
+const DEMOGRAPHICS_AGE_EXCLUSIONS = new Set(['Not mentioned', 'لم يذكر']);
+
+const DEMOGRAPHICS_MARITAL_KEYS = ['married', 'absolute', 'A widower', 'bachelor'] as const;
+
+const DEMOGRAPHICS_MARITAL_LABELS: Record<string, string> = {
+  married: 'Married',
+  absolute: 'Divorced',
+  'A widower': 'Widowed',
+  bachelor: 'Single',
+  متزوج: 'Married',
+  مطلق: 'Divorced',
+  أرمل: 'Widowed',
+  أعزب: 'Single',
+};
+
+const DEMOGRAPHICS_INCOME_ORDER = [
+  '10,001-20,000 dirhams',
+  '20,001-30,000 dirhams',
+  '30,001-50,000 dirhams',
+  '5000-10000 dirhams',
+  'Less than 5000 dirhams',
+  'More than 50,000 dirhams',
+] as const;
+
+const DEMOGRAPHICS_INCOME_LABELS: Record<string, string> = {
+  '10,001-20,000 dirhams': '10,001-20,000',
+  '20,001-30,000 dirhams': '20,001-30,000',
+  '30,001-50,000 dirhams': '30,001-50,000',
+  '5000-10000 dirhams': '5,000-10,000',
+  'Less than 5000 dirhams': 'Less than 5,000',
+  'More than 50,000 dirhams': 'More than 50,000',
+};
+
+export function getDemographicsMeanValue(
+  questions: import('./types').Question[],
+  code: 'Q914' | 'Q915',
+  year: import('./types').SurveyYear,
+): number {
+  const q = questions.find(
+    (item): item is import('./types').MeanQuestion =>
+      isMean(item) && item.code === code && item.dimensionAr === 'الإجمالي',
+  );
+  return q?.data[year] ?? 0;
+}
+
+export function getDemographicsTopCategory(
+  questions: import('./types').Question[],
+  code: string,
+  year: import('./types').SurveyYear,
+  excludeCategories: Set<string> = DEMOGRAPHICS_AGE_EXCLUSIONS,
+  formatLabel?: (categoryEn: string | undefined, categoryAr: string) => string,
+): { name: string; value: number; value2024: number; value2025: number } | null {
+  const items = getCategoryByQuestion(questions, code)
+    .filter((q) => !excludeCategories.has(q.categoryEn ?? '') && !excludeCategories.has(q.categoryAr))
+    .map((q) => ({
+      name: formatLabel
+        ? formatLabel(q.categoryEn, q.categoryAr)
+        : translateLabel(q.categoryEn ?? q.categoryAr),
+      value2024: q.data['2024'] ?? 0,
+      value2025: q.data['2025'] ?? 0,
+      value: q.data[year] ?? 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  return items[0] ?? null;
+}
+
+function getDemographicsBinaryDonutData(
+  questions: import('./types').Question[],
+  code: string,
+  year: import('./types').SurveyYear,
+  positiveMatchers: RegExp[],
+  negativeMatchers: RegExp[],
+  name: string,
+  fullName: string,
+): EducationSentimentRow[] {
+  const positive = sumCategoryValues(questions, code, positiveMatchers, year);
+  const negative = sumCategoryValues(questions, code, negativeMatchers, year);
+  return [toNormalizedSentimentRow(name, fullName, negative, 0, positive)];
+}
+
+export function getDemographicsGenderData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): EducationSentimentRow[] {
+  return getDemographicsBinaryDonutData(
+    questions,
+    'Q902',
+    year,
+    [/^male$/i, /^ذكر$/],
+    [/^feminine$/i, /^female$/i, /^أنثى$/],
+    'Gender',
+    'Sex distribution among residents',
+  );
+}
+
+export function getDemographicsCitizenshipData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): EducationSentimentRow[] {
+  return getDemographicsBinaryDonutData(
+    questions,
+    'Q905',
+    year,
+    [/^Emirati$/i, /^إماراتي$/],
+    [/^Non-Emirati$/i, /^غير إماراتي$/],
+    'Citizenship',
+    'Citizenship distribution among residents',
+  );
+}
+
+export function getDemographicsMaritalChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  const items = getCategoryByQuestion(questions, 'Q904');
+  return DEMOGRAPHICS_MARITAL_KEYS.map((key) => {
+    const item = items.find((q) => (q.categoryEn ?? q.categoryAr) === key);
+    const label = DEMOGRAPHICS_MARITAL_LABELS[key] ?? key;
+    return {
+      name: label,
+      fullName: label,
+      value2024: item?.data['2024'] ?? 0,
+      value2025: item?.data['2025'] ?? 0,
+      value: item?.data[year] ?? 0,
+    };
+  });
+}
+
+export function getDemographicsIncomeChartData(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  const items = getCategoryByQuestion(questions, 'Q909');
+  return DEMOGRAPHICS_INCOME_ORDER.map((key) => {
+    const item = items.find((q) => (q.categoryEn ?? q.categoryAr) === key);
+    const label = DEMOGRAPHICS_INCOME_LABELS[key] ?? key;
+    return {
+      name: label,
+      fullName: label,
+      value2024: item?.data['2024'] ?? 0,
+      value2025: item?.data['2025'] ?? 0,
+      value: item?.data[year] ?? 0,
+    };
+  });
+}
+
+function getDemographicsDonutDominantShare(row: EducationSentimentRow | undefined): number {
+  if (!row) return 0;
+  return Math.max(row.satisfied, row.dissatisfied);
+}
+
+function getDemographicsTopIncomeShare(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return Math.max(...rows.map((row) => pickYearValue(row.value2024, row.value2025, year)));
+}
+
+function getDemographicsTopMaritalShare(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return Math.max(...rows.map((row) => pickYearValue(row.value2024, row.value2025, year)));
+}
+
+export function getDemographicsChartBadgeScore(
+  score2025: number,
+  score2024: number,
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  if (mode === 'yoy') return score2025 - score2024;
+  return year === '2025' ? score2025 : score2024;
+}
+
+export function getDemographicsDonutBadgeScore(
+  rows: EducationSentimentRow[],
+  rows2024: EducationSentimentRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  const share2025 = getDemographicsDonutDominantShare(rows[0]);
+  const share2024 = getDemographicsDonutDominantShare(rows2024[0]);
+  return getDemographicsChartBadgeScore(share2025, share2024, mode, year);
+}
+
+export function getDemographicsDistributionBadgeScore(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  const share2025 = getDemographicsTopMaritalShare(rows, '2025');
+  const share2024 = getDemographicsTopMaritalShare(rows, '2024');
+  return getDemographicsChartBadgeScore(share2025, share2024, mode, year);
+}
+
+export function getDemographicsIncomeBadgeScore(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  const share2025 = getDemographicsTopIncomeShare(rows, '2025');
+  const share2024 = getDemographicsTopIncomeShare(rows, '2024');
+  return getDemographicsChartBadgeScore(share2025, share2024, mode, year);
+}
+
+export function getDemographicsKpiSentence(
+  metric: 'familySize' | 'workingMembers' | 'ageGroup' | 'education',
+  value: number,
+  label?: string,
+): string {
+  switch (metric) {
+    case 'familySize':
+      return value >= 4
+        ? 'Larger-than-average household size.'
+        : value >= 3
+          ? 'Typical household size for the district.'
+          : 'Smaller household size on average.';
+    case 'workingMembers':
+      return value >= 2
+        ? 'Multiple earners support each household.'
+        : value >= 1
+          ? 'At least one working member per household on average.'
+          : 'Limited working members per household.';
+    case 'ageGroup':
+      return label
+        ? `${value.toFixed(1)}% of residents are in the ${label} age group.`
+        : `${value.toFixed(1)}% of residents are in this age group.`;
+    case 'education':
+      return label
+        ? `${value.toFixed(1)}% of residents hold a ${label} qualification.`
+        : `${value.toFixed(1)}% hold this education level.`;
+  }
+}
+
+export function generateDemographicsBinaryInsight(
+  row: EducationSentimentRow | undefined,
+  positiveLabel: string,
+  negativeLabel: string,
+  mode: ViewMode,
+  row2024?: EducationSentimentRow,
+): InsightPart[] {
+  if (!row) return ['Resident profile data varies across survey responses.'];
+
+  if (mode === 'yoy' && row2024) {
+    const change = row.satisfied - row2024.satisfied;
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: positiveLabel },
+      ` share ${direction} `,
+      { bold: formatDelta(change) },
+      ` to ${row.satisfied.toFixed(1)}%.`,
+    ];
+  }
+
+  const dominantLabel = row.satisfied >= row.dissatisfied ? positiveLabel : negativeLabel;
+  const dominantValue = Math.max(row.satisfied, row.dissatisfied);
+  return [
+    { bold: dominantLabel },
+    ' represent the largest share at ',
+    { bold: `${dominantValue.toFixed(1)}%` },
+    '.',
+  ];
+}
+
+export function generateDemographicsMaritalInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  if (rows.length === 0) return ['Marital status distribution varies across survey responses.'];
+
+  const top = [...rows].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+
+  if (mode === 'yoy') {
+    const change = top.value2025 - top.value2024;
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: top.name },
+      ` share ${direction} `,
+      { bold: formatDelta(change) },
+      ` to ${top.value2025.toFixed(1)}%.`,
+    ];
+  }
+
+  const share = pickYearValue(top.value2024, top.value2025, year);
+  return [
+    { bold: top.name },
+    ' is the most common status at ',
+    { bold: `${share.toFixed(1)}%` },
+    '.',
+  ];
+}
+
+export function generateDemographicsIncomeInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): InsightPart[] {
+  if (rows.length === 0) return ['Household income distribution varies across survey responses.'];
+
+  const top = [...rows].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+
+  if (mode === 'yoy') {
+    const change = top.value2025 - top.value2024;
+    const direction = change >= 0 ? 'rose' : 'fell';
+    return [
+      { bold: top.fullName },
+      ` bracket share ${direction} `,
+      { bold: formatDelta(change) },
+      ` to ${top.value2025.toFixed(1)}%.`,
+    ];
+  }
+
+  const share = pickYearValue(top.value2024, top.value2025, year);
+  return [
+    { bold: top.fullName },
+    ' is the largest income bracket at ',
+    { bold: `${share.toFixed(1)}%` },
+    '.',
+  ];
+}
+
+export function formatInsightParts(parts: InsightPart[]): string {
+  return parts.map((part) => (typeof part === 'string' ? part : part.bold)).join('');
+}
+
+export function generateChartFollowUpDetails(
+  chartTitle: string,
+  insight: InsightPart[],
+): { chartTitle: string; question: string; answer: string } {
+  const summary = formatInsightParts(insight);
+  const question = `Can you provide more details about ${chartTitle}?`;
+  const answer = [
+    `Looking deeper at ${chartTitle}: ${summary}`,
+    'This reflects how Al Falah district residents responded in the latest survey cycle.',
+    'Compare year-over-year movement in the chart above and review lower-performing segments to identify where targeted interventions may have the greatest impact.',
+  ].join(' ');
+
+  return { chartTitle, question, answer };
 }
 
 export function generateInsights(

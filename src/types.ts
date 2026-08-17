@@ -85,7 +85,7 @@ export const PILLAR_TABS = [
   { id: 'health', label: 'Health', icon: 'heart', reviewReady: true },
   { id: 'environment', label: 'Environment', icon: 'leaf', reviewReady: true },
   { id: 'infrastructure', label: 'Infrastructure', icon: 'building', reviewReady: true },
-  { id: 'demographics', label: 'Demographics', icon: 'users' },
+  { id: 'demographics', label: 'Demographics', icon: 'users', reviewReady: true },
   { id: 'housing', label: 'Housing', icon: 'home' },
 ] as const;
 

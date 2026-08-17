@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useInsights } from '../context/InsightsContext';
 import {
   BarChart,
   Bar,
@@ -42,6 +43,8 @@ import {
   generateEducationTabChartInsight,
   generateEducationLikertScaleInsight,
   generateInfrastructureRankedBarInsight,
+  generateDemographicsIncomeInsight,
+  generateDemographicsMaritalInsight,
   getInfrastructureRankedBarBadgeScore,
   getLikertDominantSegmentIndex,
   EDUCATION_LIKERT_SCALE_LABELS,
@@ -463,28 +466,94 @@ function ChartTooltip({
   );
 }
 
+const INSIGHT_NUMERIC_PATTERN = /([+-]?\d+(?:\.\d+)?%)/g;
+
+function getInsightNumericTone(text: string): 'positive' | 'negative' | undefined {
+  const trimmed = text.trim();
+  if (/^[+-]\d+(?:\.\d+)?%$/.test(trimmed)) {
+    return trimmed.startsWith('-') ? 'negative' : 'positive';
+  }
+  if (/^\d+(?:\.\d+)?%$/.test(trimmed)) {
+    return parseFloat(trimmed) >= 70 ? 'positive' : 'negative';
+  }
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    return 'positive';
+  }
+  return undefined;
+}
+
+function getInsightEmphasisClass(tone?: 'positive' | 'negative', text?: string): string {
+  const resolvedTone = tone ?? (text ? getInsightNumericTone(text) : undefined);
+  return resolvedTone ? `chart-insight-emphasis ${resolvedTone}` : 'chart-insight-emphasis';
+}
+
+function renderInsightTextWithNumericTone(text: string, keyPrefix: string) {
+  const segments = text.split(INSIGHT_NUMERIC_PATTERN);
+  return segments.map((segment, index) => {
+    if (!segment) return null;
+    const tone = getInsightNumericTone(segment);
+    if (tone) {
+      return (
+        <strong key={`${keyPrefix}-${index}`} className={`chart-insight-emphasis ${tone}`}>
+          {segment}
+        </strong>
+      );
+    }
+    return segment;
+  });
+}
+
 function renderInsight(parts: InsightPart[]) {
   return parts.map((part, index) =>
     typeof part === 'string' ? (
-      part
+      <span key={index}>{renderInsightTextWithNumericTone(part, `insight-text-${index}`)}</span>
     ) : (
-      <strong key={index} className="chart-insight-emphasis">
+      <strong key={index} className={getInsightEmphasisClass(part.tone, part.bold)}>
         {part.bold}
       </strong>
     ),
   );
 }
 
-function ChartInsightFooter({ insight, singleLine = false }: { insight: InsightPart[]; singleLine?: boolean }) {
+function ChartInsightChatIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  );
+}
+
+function ChartInsightFooter({
+  chartTitle,
+  insight,
+  singleLine = false,
+}: {
+  chartTitle: string;
+  insight: InsightPart[];
+  singleLine?: boolean;
+}) {
+  const { askChartFollowUp } = useInsights();
+
   return (
     <div className="chart-insight-footer">
       <hr className="chart-insight-separator" />
-      <p className={`chart-insight-text${singleLine ? ' chart-insight-text-single-line' : ''}`.trim()}>
-        <span className="chart-insight-icon" aria-hidden="true">
-          <span className="insights-badge">AI Insight</span>
-        </span>
-        <span className="chart-insight-copy">{renderInsight(insight)}</span>
-      </p>
+      <div className="chart-insight-row">
+        <p className={`chart-insight-text${singleLine ? ' chart-insight-text-single-line' : ''}`.trim()}>
+          <span className="chart-insight-icon" aria-hidden="true">
+            <span className="insights-badge">AI Insight</span>
+          </span>
+          <span className="chart-insight-copy">{renderInsight(insight)}</span>
+        </p>
+        <button
+          type="button"
+          className="chart-insight-chat-btn"
+          aria-label={`Ask for more details about ${chartTitle}`}
+          title="Ask for more details"
+          onClick={() => askChartFollowUp(chartTitle, insight)}
+        >
+          <ChartInsightChatIcon />
+        </button>
+      </div>
     </div>
   );
 }
@@ -902,7 +971,7 @@ export function PartnerChart({ data, mode, year = '2025', badgeScore }: PartnerC
           })}
         </div>
       </div>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter chartTitle="Satisfaction by Pillar" insight={insight} />
     </div>
   );
 }
@@ -1095,7 +1164,7 @@ export function DataTable({ rows, mode, year = '2025' }: DataTableProps) {
           ))}
         </tbody>
       </table>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter chartTitle="Annual Pillar Data" insight={insight} />
     </div>
   );
 }
@@ -1466,7 +1535,7 @@ export function EducationDivergingBar({ data, data2024, mode, year = '2025', sco
         </ResponsiveContainer>
         <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter chartTitle="Education Satisfaction" insight={insight} />
     </div>
   );
 }
@@ -1700,7 +1769,7 @@ export function HealthHeatmapChart({ heatmapData, sectionScore, mode, year = '20
           <span>High agreement</span>
         </div>
       </div>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter chartTitle="Health Satisfaction" insight={insight} />
     </div>
   );
 }
@@ -1962,7 +2031,7 @@ export function EnvironmentStackedBar({ data, data2024, mode, year = '2025', sco
         </StatementChartShell>
         <SentimentLegend showYears={!isCurrent} align={isCurrent ? 'bottom-right' : 'default'} />
       </div>
-      <ChartInsightFooter insight={insight} />
+      <ChartInsightFooter chartTitle="Environment Satisfaction" insight={insight} />
     </div>
   );
 }
@@ -1989,6 +2058,18 @@ export const HEALTH_BINARY_LABELS: Record<SentimentKey, string> = {
   dissatisfied: 'No',
   neutral: 'Neutral',
   satisfied: 'Yes',
+};
+
+export const DEMOGRAPHICS_GENDER_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'Female',
+  neutral: 'Neutral',
+  satisfied: 'Male',
+};
+
+export const DEMOGRAPHICS_CITIZENSHIP_LABELS: Record<SentimentKey, string> = {
+  dissatisfied: 'Non-Emirati',
+  neutral: 'Neutral',
+  satisfied: 'Emirati',
 };
 
 const LIKERT_SCALE_COLORS: Record<EducationLikertScaleKey, string> = {
@@ -2196,7 +2277,9 @@ function renderEducationDisciplineDonut(
   showLegend = true,
   labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
   legendKeys: SentimentKey[] = SENTIMENT_LEGEND_ORDER,
+  compactCard = false,
 ) {
+  const panelHeight = compactCard ? 200 : compact ? 210 : 240;
   const pieData = (
     [
       { key: 'dissatisfied' as const, value: row.dissatisfied },
@@ -2216,7 +2299,7 @@ function renderEducationDisciplineDonut(
       className={`income-pie-panel discipline-donut-panel ${compact ? 'income-pie-panel-compact discipline-donut-panel-compact' : ''}`.trim()}
     >
       {compact && <div className="income-pie-year-label">{yearLabel}</div>}
-      <ResponsiveContainer width="100%" height={compact ? 210 : 240}>
+      <ResponsiveContainer width="100%" height={panelHeight}>
         <PieChart margin={{ top: 16, right: 28, bottom: compact ? 12 : 36, left: 28 }}>
           <Pie
             data={pieData}
@@ -2255,6 +2338,8 @@ interface EducationDisciplineDonutCardProps {
   emptyMessage?: string;
   sentimentLabels?: Record<SentimentKey, string>;
   legendKeys?: SentimentKey[];
+  compact?: boolean;
+  insight?: InsightPart[];
 }
 
 export function EducationDisciplineDonutCard({
@@ -2269,11 +2354,15 @@ export function EducationDisciplineDonutCard({
   emptyMessage = 'No data available.',
   sentimentLabels = EDUCATION_AGREEMENT_LABELS,
   legendKeys = SENTIMENT_LEGEND_ORDER,
+  compact = false,
+  insight: insightOverride,
 }: EducationDisciplineDonutCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
   const row2024 = data2024[0];
-  const insight = generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
+  const insight =
+    insightOverride ??
+    generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
 
   if (!row) {
     return (
@@ -2303,17 +2392,269 @@ export function EducationDisciplineDonutCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-education-donut">
         {isCurrent ? (
-          renderEducationDisciplineDonut(row, year, false, true, sentimentLabels, legendKeys)
+          renderEducationDisciplineDonut(row, year, false, true, sentimentLabels, legendKeys, compact)
         ) : row2024 ? (
           <div className="discipline-donut-yoy">
             <div className="income-pie-dual">
-              {renderEducationDisciplineDonut(row2024, '2024', true, false, sentimentLabels, legendKeys)}
-              {renderEducationDisciplineDonut(row, '2025', true, false, sentimentLabels, legendKeys)}
+              {renderEducationDisciplineDonut(row2024, '2024', true, false, sentimentLabels, legendKeys, compact)}
+              {renderEducationDisciplineDonut(row, '2025', true, false, sentimentLabels, legendKeys, compact)}
             </div>
             <SentimentLegend align="bottom-right" labels={sentimentLabels} legendKeys={legendKeys} />
           </div>
         ) : (
-          renderEducationDisciplineDonut(row, '2025', false, true, sentimentLabels, legendKeys)
+          renderEducationDisciplineDonut(row, '2025', false, true, sentimentLabels, legendKeys, compact)
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+const GENDER_HUB_COLORS = {
+  female: '#BE185D',
+  male: DESIGN.chart.yearCurrent,
+  track: '#e2e8f0',
+  hubBg: '#f8fafc',
+  hubRing: '#e2e8f0',
+  connector: '#cbd5e1',
+} as const;
+
+const GENDER_HUB_BAR = {
+  current: DESIGN.chart.yearCurrent,
+  previous: '#93C5FD',
+} as const;
+
+function getGenderHubBarColor(yearLabel: string | undefined, isYoY: boolean): string {
+  if (!isYoY || !yearLabel) return GENDER_HUB_BAR.current;
+  return yearLabel === '2024' ? GENDER_HUB_BAR.previous : GENDER_HUB_BAR.current;
+}
+
+const DEMOGRAPHICS_YEAR_BAR = DESIGN.chart.yearCurrent;
+
+function GenderHubIcon({ gender }: { gender: 'female' | 'male' }) {
+  const color = gender === 'female' ? GENDER_HUB_COLORS.female : GENDER_HUB_COLORS.male;
+  const props = {
+    width: 32,
+    height: 32,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: color,
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className: 'gender-hub-icon',
+    'aria-hidden': true as const,
+  };
+
+  if (gender === 'female') {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="8" r="5" />
+        <path d="M12 13v6" />
+        <path d="M9 17h6" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...props}>
+      <circle cx="10" cy="14" r="5" />
+      <path d="M19 5h-4" />
+      <path d="M19 5v4" />
+      <path d="M19 5l-6 6" />
+    </svg>
+  );
+}
+
+function GenderHubStatCard({
+  label,
+  value,
+  barColor,
+  yearLabel,
+  align,
+}: {
+  label: string;
+  value: number;
+  barColor: string;
+  yearLabel?: string;
+  align: 'left' | 'right';
+}) {
+  return (
+    <div className={`gender-hub-stat gender-hub-stat--${align}`}>
+      <div className="gender-hub-stat-header">
+        <span className="gender-hub-stat-label">
+          {label}
+          {yearLabel && <span className="gender-hub-stat-year">{yearLabel}</span>}
+        </span>
+      </div>
+      <span className="gender-hub-stat-value">{value.toFixed(1)}%</span>
+      <div className="gender-hub-stat-bar" aria-hidden>
+        <div
+          className="gender-hub-stat-bar-fill"
+          style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: barColor }}
+        />
+      </div>
+    </div>
+  );
+}
+
+type GenderHubCard = {
+  label: string;
+  value: number;
+  yearLabel?: string;
+};
+
+function GenderHubChart({
+  femaleValue,
+  maleValue,
+  femaleValue2024,
+  maleValue2024,
+  isYoY,
+  year,
+}: {
+  femaleValue: number;
+  maleValue: number;
+  femaleValue2024?: number;
+  maleValue2024?: number;
+  isYoY: boolean;
+  year: SurveyYear;
+}) {
+  const femaleCards: GenderHubCard[] = isYoY
+    ? [
+        { label: 'Female', value: femaleValue, yearLabel: '2025' },
+        { label: 'Female', value: femaleValue2024 ?? 0, yearLabel: '2024' },
+      ]
+    : [{ label: 'Female', value: femaleValue }];
+  const maleCards: GenderHubCard[] = isYoY
+    ? [
+        { label: 'Male', value: maleValue, yearLabel: '2025' },
+        { label: 'Male', value: maleValue2024 ?? 0, yearLabel: '2024' },
+      ]
+    : [{ label: 'Male', value: maleValue }];
+
+  return (
+    <div
+      className={`gender-hub-chart${isYoY ? ' gender-hub-chart--yoy' : ' gender-hub-chart--single'}`.trim()}
+      role="img"
+      aria-label={`Gender distribution${isYoY ? ' year over year' : ` for ${year}`}: Female ${femaleValue.toFixed(1)}%, Male ${maleValue.toFixed(1)}%`}
+    >
+      <svg className="gender-hub-connectors" viewBox="0 0 520 240" preserveAspectRatio="xMidYMid meet" aria-hidden>
+        {isYoY ? (
+          <>
+            <line x1="260" y1="120" x2="148" y2="62" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <line x1="260" y1="120" x2="148" y2="178" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <line x1="260" y1="120" x2="372" y2="62" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <line x1="260" y1="120" x2="372" y2="178" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <circle cx="148" cy="62" r="3" fill={GENDER_HUB_COLORS.connector} />
+            <circle cx="148" cy="178" r="3" fill={GENDER_HUB_COLORS.connector} />
+            <circle cx="372" cy="62" r="3" fill={GENDER_HUB_COLORS.connector} />
+            <circle cx="372" cy="178" r="3" fill={GENDER_HUB_COLORS.connector} />
+          </>
+        ) : (
+          <>
+            <line x1="260" y1="120" x2="148" y2="120" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <line x1="260" y1="120" x2="372" y2="120" stroke={GENDER_HUB_COLORS.connector} strokeWidth="1.5" />
+            <circle cx="148" cy="120" r="3" fill={GENDER_HUB_COLORS.connector} />
+            <circle cx="372" cy="120" r="3" fill={GENDER_HUB_COLORS.connector} />
+          </>
+        )}
+        <circle cx="260" cy="120" r="4" fill={GENDER_HUB_COLORS.connector} />
+      </svg>
+
+      <div className="gender-hub-side gender-hub-side--female">
+        {femaleCards.map((card) => (
+          <GenderHubStatCard
+            key={`female-${card.yearLabel ?? year}`}
+            label={card.label}
+            value={card.value}
+            barColor={getGenderHubBarColor(card.yearLabel, isYoY)}
+            yearLabel={card.yearLabel}
+            align="left"
+          />
+        ))}
+      </div>
+
+      <div className="gender-hub-center">
+        <div className="gender-hub-center-ring">
+          <GenderHubIcon gender="female" />
+          <GenderHubIcon gender="male" />
+        </div>
+      </div>
+
+      <div className="gender-hub-side gender-hub-side--male">
+        {maleCards.map((card) => (
+          <GenderHubStatCard
+            key={`male-${card.yearLabel ?? year}`}
+            label={card.label}
+            value={card.value}
+            barColor={getGenderHubBarColor(card.yearLabel, isYoY)}
+            yearLabel={card.yearLabel}
+            align="right"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface DemographicsGenderHubCardProps {
+  data: EducationSentimentRow[];
+  data2024: EducationSentimentRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  topicLabel?: string;
+  emptyMessage?: string;
+  insight?: InsightPart[];
+}
+
+export function DemographicsGenderHubCard({
+  data,
+  data2024,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+  topicLabel,
+  emptyMessage = 'No gender data available.',
+  insight: insightOverride,
+}: DemographicsGenderHubCardProps) {
+  const isCurrent = mode === 'current';
+  const row = data[0];
+  const row2024 = data2024[0];
+  const insight =
+    insightOverride ??
+    generateEducationTabChartInsight(data, mode, data2024, 'discipline', topicLabel);
+
+  const femaleValue = row?.dissatisfied ?? 0;
+  const maleValue = row?.satisfied ?? 0;
+  const femaleValue2024 = row2024?.dissatisfied;
+  const maleValue2024 = row2024?.satisfied;
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      icon="distribution"
+      className="chart-card-education-tab"
+    >
+      <div className="chart-card-body-education-tab chart-card-body-gender-hub">
+        {!row ? (
+          <div className="gender-hub-empty">{emptyMessage}</div>
+        ) : (
+          <GenderHubChart
+            femaleValue={femaleValue}
+            maleValue={maleValue}
+            femaleValue2024={femaleValue2024}
+            maleValue2024={maleValue2024}
+            isYoY={!isCurrent && !!row2024}
+            year={year}
+          />
         )}
       </div>
     </IncomeChartCard>
@@ -2677,13 +3018,15 @@ function renderSentimentTreemapPanel(
   compact = false,
   showLegend = true,
   labels: Record<SentimentKey, string> = EDUCATION_AGREEMENT_LABELS,
+  compactCard = false,
 ) {
   const nodes = toSentimentTreemapNodes(row, labels);
+  const panelHeight = compactCard ? 200 : compact ? 210 : 240;
 
   return (
     <div className={`sentiment-treemap-panel ${compact ? 'sentiment-treemap-panel-compact' : ''}`.trim()}>
       {compact && <div className="income-pie-year-label">{yearLabel}</div>}
-      <ResponsiveContainer width="100%" height={compact ? 210 : 240}>
+      <ResponsiveContainer width="100%" height={panelHeight}>
         <Treemap
           data={nodes}
           dataKey="value"
@@ -2712,6 +3055,7 @@ interface SecuritySentimentTreemapCardProps {
   emptyMessage?: string;
   sentimentLabels?: Record<SentimentKey, string>;
   singleLineDescription?: boolean;
+  compact?: boolean;
 }
 
 export function SecuritySentimentTreemapCard({
@@ -2726,6 +3070,7 @@ export function SecuritySentimentTreemapCard({
   emptyMessage = 'No data available.',
   sentimentLabels = EDUCATION_AGREEMENT_LABELS,
   singleLineDescription = false,
+  compact = false,
 }: SecuritySentimentTreemapCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2762,17 +3107,17 @@ export function SecuritySentimentTreemapCard({
     >
       <div className="chart-card-body-education-tab chart-card-body-sentiment-treemap">
         {isCurrent ? (
-          renderSentimentTreemapPanel(row, year, false, true, sentimentLabels)
+          renderSentimentTreemapPanel(row, year, false, true, sentimentLabels, compact)
         ) : row2024 ? (
           <div className="sentiment-treemap-yoy">
             <div className="income-pie-dual">
-              {renderSentimentTreemapPanel(row2024, '2024', true, false, sentimentLabels)}
-              {renderSentimentTreemapPanel(row, '2025', true, false, sentimentLabels)}
+              {renderSentimentTreemapPanel(row2024, '2024', true, false, sentimentLabels, compact)}
+              {renderSentimentTreemapPanel(row, '2025', true, false, sentimentLabels, compact)}
             </div>
             <SentimentLegend align="bottom-right" labels={sentimentLabels} />
           </div>
         ) : (
-          renderSentimentTreemapPanel(row, '2025', false, true, sentimentLabels)
+          renderSentimentTreemapPanel(row, '2025', false, true, sentimentLabels, compact)
         )}
       </div>
     </IncomeChartCard>
@@ -3110,7 +3455,7 @@ function IncomeChartCard({
         </div>
       </div>
       <div className="chart-card-body">{children}</div>
-      <ChartInsightFooter insight={insight} singleLine={singleLineInsight} />
+      <ChartInsightFooter chartTitle={title} insight={insight} singleLine={singleLineInsight} />
     </div>
   );
 }
@@ -3500,6 +3845,325 @@ export function IncomeBarChartCard({
   );
 }
 
+const DEMOGRAPHICS_COLUMN_CHART_MARGIN = { top: 20, right: 12, left: 4, bottom: 64 };
+const DEMOGRAPHICS_COLUMN_CHART_MARGIN_YOY = { top: 24, right: 12, left: 4, bottom: 64 };
+const DEMOGRAPHICS_MARITAL_CHART_MARGIN = { top: 8, right: 56, left: 4, bottom: 28 };
+const DEMOGRAPHICS_MARITAL_CHART_MARGIN_YOY = { top: 8, right: 72, left: 4, bottom: 28 };
+
+interface DemographicsIncomeBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+}
+
+export function DemographicsIncomeBarChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+}: DemographicsIncomeBarChartCardProps) {
+  const isCurrent = mode === 'current';
+  const chartData = data.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const insight = generateDemographicsIncomeInsight(data, mode, year);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      icon="income"
+      className={!isCurrent ? 'chart-card-work-business-yoy' : 'chart-card-education-tab'}
+    >
+      <div className={`demographics-income-chart-wrap work-column-bar-chart-wrap ${!isCurrent ? 'work-column-bar-chart-wrap-yoy' : ''}`.trim()}>
+        <div className="demographics-income-chart-plot work-column-bar-chart-plot">
+          <ResponsiveContainer width="100%" height="100%">
+            {isCurrent ? (
+              <BarChart data={chartData} margin={DEMOGRAPHICS_COLUMN_CHART_MARGIN} barCategoryGap="22%">
+                <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 9, fill: DESIGN.chart.axis }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={56}
+                >
+                  <Label
+                    value="Monthly Income (AED)"
+                    position="insideBottom"
+                    offset={-4}
+                    style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                  />
+                </XAxis>
+                <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} width={44} domain={[0, 'auto']}>
+                  <Label
+                    value="Response Percentage (%)"
+                    angle={-90}
+                    position="insideLeft"
+                    offset={12}
+                    style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600, textAnchor: 'middle' }}
+                  />
+                </YAxis>
+                <Tooltip
+                  formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                  labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                />
+                <Bar dataKey="value" fill={DEMOGRAPHICS_YEAR_BAR} radius={[4, 4, 0, 0]} maxBarSize={56} legendType="none">
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                  />
+                </Bar>
+              </BarChart>
+            ) : (
+              <BarChart
+                data={chartData}
+                margin={DEMOGRAPHICS_COLUMN_CHART_MARGIN_YOY}
+                barCategoryGap="22%"
+                barGap={4}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 9, fill: DESIGN.chart.axis }}
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={56}
+                >
+                  <Label
+                    value="Monthly Income (AED)"
+                    position="insideBottom"
+                    offset={-4}
+                    style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                  />
+                </XAxis>
+                <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} width={44} domain={[0, 'auto']} />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+                <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                  {renderYoYBarCells(chartData, '2025')}
+                  <LabelList
+                    dataKey="value2025"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                  />
+                </Bar>
+                <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                  {renderYoYBarCells(chartData, '2024')}
+                  <LabelList
+                    dataKey="value2024"
+                    position="top"
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                  />
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+        {!isCurrent && (
+          <div className="work-column-bar-chart-legend">
+            <YearComparisonLegend rounded />
+          </div>
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
+function MaritalStatusIcon({ fullName }: { fullName: string }) {
+  const props = {
+    width: 12,
+    height: 12,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true as const,
+  };
+
+  switch (fullName) {
+    case 'Married':
+      return (
+        <svg {...props}>
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+        </svg>
+      );
+    case 'Divorced':
+      return (
+        <svg {...props}>
+          <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+        </svg>
+      );
+    case 'Widowed':
+      return (
+        <svg {...props}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    case 'Single':
+    default:
+      return (
+        <svg {...props}>
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+  }
+}
+
+interface DemographicsMaritalBarChartCardProps {
+  data: IncomeChartRow[];
+  title: string;
+  description: string;
+  badgeScore: number;
+  mode: ViewMode;
+  year?: SurveyYear;
+  singleLineDescription?: boolean;
+}
+
+export function DemographicsMaritalBarChartCard({
+  data,
+  title,
+  description,
+  badgeScore,
+  mode,
+  year = '2025',
+  singleLineDescription = false,
+}: DemographicsMaritalBarChartCardProps) {
+  const isCurrent = mode === 'current';
+  const chartData = data.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const insight = generateDemographicsMaritalInsight(data, mode, year);
+  const xAxisLabel = 'Response Percentage (%)';
+  const rowHeight = isCurrent ? 68 : 76;
+  const chartHeight = Math.max(220, chartData.length * rowHeight + 28);
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      icon="bar-chart"
+      singleLineDescription={singleLineDescription}
+      className="chart-card-education-tab"
+    >
+      <div className={`demographics-marital-chart-wrap ${!isCurrent ? 'demographics-marital-chart-wrap-yoy' : ''}`.trim()}>
+        <StatementChartShell
+          className="statement-bar-chart-income demographics-marital-bar-chart"
+          data={chartData}
+          chartHeight={chartHeight}
+          fillHeight
+          renderLabelIcon={(row) => <MaritalStatusIcon fullName={row.fullName} />}
+          labelIconClassName={() => 'demographics-marital-label-icon'}
+        >
+          {isCurrent ? (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={DEMOGRAPHICS_MARITAL_CHART_MARGIN}
+              barCategoryGap="18%"
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                />
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <Tooltip
+                formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+              />
+              <Bar dataKey="value" fill={DEMOGRAPHICS_YEAR_BAR} radius={[0, 4, 4, 0]} maxBarSize={28} legendType="none">
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          ) : (
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={DEMOGRAPHICS_MARITAL_CHART_MARGIN_YOY}
+              barCategoryGap="18%"
+              barGap={2}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: DESIGN.chart.axis }} domain={[0, 'auto']}>
+                <Label
+                  value={xAxisLabel}
+                  position="insideBottom"
+                  offset={-2}
+                  style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                />
+              </XAxis>
+              <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} reversed />
+              <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+              <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[0, 4, 4, 0]} maxBarSize={16} legendType="none">
+                {renderYoYBarCells(chartData, '2025')}
+                <LabelList
+                  dataKey="value2025"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                />
+              </Bar>
+              <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[0, 4, 4, 0]} maxBarSize={16} legendType="none">
+                {renderYoYBarCells(chartData, '2024')}
+                <LabelList
+                  dataKey="value2024"
+                  position="right"
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          )}
+        </StatementChartShell>
+        {!isCurrent && (
+          <div className="demographics-marital-chart-legend">
+            <YearComparisonLegend rounded />
+          </div>
+        )}
+      </div>
+    </IncomeChartCard>
+  );
+}
+
 interface IncomePieChartCardProps {
   data: IncomeChartRow[];
   title: string;
@@ -3744,6 +4408,7 @@ interface WorkPieChartCardProps {
   mode: ViewMode;
   year?: SurveyYear;
   singleLineDescription?: boolean;
+  insight?: InsightPart[];
 }
 
 export function WorkPieChartCard({
@@ -3754,9 +4419,10 @@ export function WorkPieChartCard({
   mode,
   year = '2025',
   singleLineDescription = false,
+  insight: insightOverride,
 }: WorkPieChartCardProps) {
   const isCurrent = mode === 'current';
-  const insight = generateWorkJobseekerInsight(data, mode, year);
+  const insight = insightOverride ?? generateWorkJobseekerInsight(data, mode, year);
 
   return (
     <IncomeChartCard title={title} description={description} badgeScore={badgeScore} mode={mode} insight={insight} icon="pie-chart" singleLineDescription={singleLineDescription}>
@@ -4239,6 +4905,7 @@ interface HealthAssessmentBarChartCardProps {
   description: string;
   mode: ViewMode;
   year?: SurveyYear;
+  compact?: boolean;
 }
 
 export function HealthAssessmentBarChartCard({
@@ -4248,6 +4915,7 @@ export function HealthAssessmentBarChartCard({
   description,
   mode,
   year = '2025',
+  compact = false,
 }: HealthAssessmentBarChartCardProps) {
   const [filter, setFilter] = useState<HealthAssessmentFilter>('service');
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -4265,12 +4933,13 @@ export function HealthAssessmentBarChartCard({
     }))
     .sort((a, b) => b.value - a.value);
   const insight = generateHealthAssessmentInsight(data, mode, year);
-  const rowHeight = isCurrent ? 68 : 76;
-  const chartHeight = Math.max(300, chartData.length * rowHeight + 8);
+  const rowHeight = compact ? (isCurrent ? 56 : 64) : isCurrent ? 68 : 76;
+  const chartHeight = Math.max(compact ? 240 : 300, chartData.length * rowHeight + 8);
   const xAxisLabel = 'Assessment Rating (%)';
   const scrollMargin = isCurrent ? HEALTH_ASSESSMENT_SCROLL_MARGIN : HEALTH_ASSESSMENT_SCROLL_MARGIN_YOY;
   const axisMargin = isCurrent ? HEALTH_ASSESSMENT_AXIS_MARGIN : HEALTH_ASSESSMENT_AXIS_MARGIN_YOY;
   const axisProbe = [{ name: '_axis', value: 100 }];
+  const axisHeight = compact ? 52 : HEALTH_ASSESSMENT_AXIS_HEIGHT;
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -4402,7 +5071,7 @@ export function HealthAssessmentBarChartCard({
                 aria-hidden="true"
               />
               <div className="health-assessment-x-axis-plot">
-                <ResponsiveContainer width="100%" height={HEALTH_ASSESSMENT_AXIS_HEIGHT}>
+                <ResponsiveContainer width="100%" height={axisHeight}>
                   <BarChart data={axisProbe} layout="vertical" margin={axisMargin}>
                     <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} vertical={false} />
                     <XAxis
@@ -4744,6 +5413,7 @@ interface InfrastructureRankedBarChartCardProps {
   singleLineDescription?: boolean;
   singleLineInsight?: boolean;
   labelIconVariant?: InfrastructureLabelIconVariant;
+  compact?: boolean;
 }
 
 export function InfrastructureRankedBarChartCard({
@@ -4756,6 +5426,7 @@ export function InfrastructureRankedBarChartCard({
   singleLineDescription = false,
   singleLineInsight = false,
   labelIconVariant,
+  compact = false,
 }: InfrastructureRankedBarChartCardProps) {
   const [filter, setFilter] = useState<InfrastructureDisplayFilter>('top5');
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -4773,12 +5444,13 @@ export function InfrastructureRankedBarChartCard({
     }))
     .sort((a, b) => b.value - a.value);
   const insight = generateInfrastructureRankedBarInsight(filteredData, mode, year, insightTopic);
-  const rowHeight = isCurrent ? 68 : 76;
-  const chartHeight = Math.max(300, chartData.length * rowHeight + 8);
+  const rowHeight = compact ? (isCurrent ? 56 : 64) : isCurrent ? 68 : 76;
+  const chartHeight = Math.max(compact ? 240 : 300, chartData.length * rowHeight + 8);
   const xAxisLabel = 'Response Share (%)';
   const scrollMargin = isCurrent ? HEALTH_ASSESSMENT_SCROLL_MARGIN : HEALTH_ASSESSMENT_SCROLL_MARGIN_YOY;
   const axisMargin = isCurrent ? HEALTH_ASSESSMENT_AXIS_MARGIN : HEALTH_ASSESSMENT_AXIS_MARGIN_YOY;
   const axisProbe = [{ name: '_axis', value: 100 }];
+  const axisHeight = compact ? 52 : HEALTH_ASSESSMENT_AXIS_HEIGHT;
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -4910,7 +5582,7 @@ export function InfrastructureRankedBarChartCard({
                 aria-hidden="true"
               />
               <div className="health-assessment-x-axis-plot">
-                <ResponsiveContainer width="100%" height={HEALTH_ASSESSMENT_AXIS_HEIGHT}>
+                <ResponsiveContainer width="100%" height={axisHeight}>
                   <BarChart data={axisProbe} layout="vertical" margin={axisMargin}>
                     <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} horizontal={false} vertical={false} />
                     <XAxis

@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+import { useInsights } from '../context/InsightsContext';
 import { generateInsights } from '../utils';
 import type { SurveyData } from '../types';
 
@@ -31,6 +33,18 @@ function InsightsChatIcon() {
 
 export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
   const insights = generateInsights(activeTab, data);
+  const { followUp, clearFollowUp } = useInsights();
+  const followUpRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    clearFollowUp();
+  }, [activeTab, clearFollowUp]);
+
+  useEffect(() => {
+    if (followUp && followUpRef.current) {
+      followUpRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [followUp]);
 
   return (
     <aside className="insights-panel">
@@ -55,10 +69,18 @@ export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
           ))}
         </ul>
       </div>
-      <button type="button" className="insights-cta">
-        <InsightsChatIcon />
-        Ask a follow-up
-      </button>
+      {followUp && (
+        <div className="insights-follow-up" ref={followUpRef}>
+          <div className="insights-follow-up-question">
+            <InsightsChatIcon />
+            <p>{followUp.question}</p>
+          </div>
+          <div className="insights-follow-up-answer">
+            <span className="insights-badge">Bayaan AI</span>
+            <p>{followUp.answer}</p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

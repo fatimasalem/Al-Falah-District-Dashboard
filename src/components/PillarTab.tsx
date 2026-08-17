@@ -5,7 +5,6 @@ import {
   DistributionChart,
   YoYComparisonChart,
   PillarScoresChart,
-  PartnerChart,
   IncomeBarChartCard,
   IncomePieChartCard,
   IncomeBarriersHeatmap,
@@ -17,6 +16,10 @@ import {
   EducationLikertStackedCard,
   EducationSportsLikertGaugeCard,
   EducationDisciplineDonutCard,
+  DemographicsGenderHubCard,
+  DemographicsIncomeBarChartCard,
+  DemographicsMaritalBarChartCard,
+  DEMOGRAPHICS_CITIZENSHIP_LABELS,
   SecurityDivergingLikertBarCard,
   SecuritySentimentTreemapCard,
   HealthAssessmentBarChartCard,
@@ -65,6 +68,14 @@ import {
   isCategory,
   isMean,
   pickYearValue,
+  getDemographicsGenderData,
+  getDemographicsCitizenshipData,
+  getDemographicsMaritalChartData,
+  getDemographicsIncomeChartData,
+  getDemographicsDonutBadgeScore,
+  getDemographicsDistributionBadgeScore,
+  getDemographicsIncomeBadgeScore,
+  generateDemographicsBinaryInsight,
 } from '../utils';
 import { translateLabel } from '../translations';
 
@@ -78,12 +89,79 @@ function truncate(str: string, max = 36): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str;
 }
 
-const DEMO_QUESTIONS: { code: string; title: string }[] = [
-  { code: 'Q902', title: 'Gender Distribution' },
-  { code: 'Q903', title: 'Age Group Distribution' },
-  { code: 'Q905', title: 'Nationality Distribution' },
-  { code: 'Q907', title: 'Education Level Distribution' },
-];
+function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+  const gender = getDemographicsGenderData(section.questions, chartYear);
+  const gender2024 = getDemographicsGenderData(section.questions, '2024');
+  const citizenship = getDemographicsCitizenshipData(section.questions, chartYear);
+  const citizenship2024 = getDemographicsCitizenshipData(section.questions, '2024');
+  const marital = getDemographicsMaritalChartData(section.questions, chartYear);
+  const income = getDemographicsIncomeChartData(section.questions, chartYear);
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education">
+        <DemographicsGenderHubCard
+          data={gender}
+          data2024={gender2024}
+          title="Gender"
+          description="Share of male and female residents in Al Falah district."
+          badgeScore={getDemographicsDonutBadgeScore(gender, gender2024, viewMode, selectedYear)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="gender distribution"
+          emptyMessage="No gender data available."
+          insight={generateDemographicsBinaryInsight(
+            gender[0],
+            'Male',
+            'Female',
+            viewMode,
+            gender2024[0],
+          )}
+        />
+        <EducationDisciplineDonutCard
+          data={citizenship}
+          data2024={citizenship2024}
+          title="Citizenship"
+          description="Share of Emirati and non-Emirati residents in Al Falah district."
+          badgeScore={getDemographicsDonutBadgeScore(citizenship, citizenship2024, viewMode, selectedYear)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="citizenship distribution"
+          emptyMessage="No citizenship data available."
+          sentimentLabels={DEMOGRAPHICS_CITIZENSHIP_LABELS}
+          legendKeys={['dissatisfied', 'satisfied']}
+          insight={generateDemographicsBinaryInsight(
+            citizenship[0],
+            'Emirati',
+            'Non-Emirati',
+            viewMode,
+            citizenship2024[0],
+          )}
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <DemographicsMaritalBarChartCard
+          data={marital}
+          title="Marital Status"
+          description="Share of residents by marital status — married, divorced, widowed, or single."
+          badgeScore={getDemographicsDistributionBadgeScore(marital, viewMode, selectedYear)}
+          mode={viewMode}
+          year={selectedYear}
+          singleLineDescription
+        />
+        <DemographicsIncomeBarChartCard
+          data={income}
+          title="Family Monthly Income Level"
+          description="Distribution of household monthly income brackets across Al Falah residents."
+          badgeScore={getDemographicsIncomeBadgeScore(income, viewMode, selectedYear)}
+          mode={viewMode}
+          year={selectedYear}
+        />
+      </div>
+    </div>
+  );
+}
 
 function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   const spendingExpectation = getIncomeDistributionData(section.questions, 'Q108', selectedYear, 6);
@@ -321,7 +399,7 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
 
   return (
     <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education">
+      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
         <HealthAssessmentBarChartCard
           serviceData={serviceAssessment}
           systemData={systemAssessment}
@@ -329,6 +407,7 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           description="Healthcare service and system ratings (good 60%+, acceptable 50–59%, bad below 50%)."
           mode={viewMode}
           year={selectedYear}
+          compact
         />
         <SecuritySentimentTreemapCard
           data={emotionalStress}
@@ -341,6 +420,7 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
           topicLabel="emotional stress"
           emptyMessage="No emotional stress data available."
           sentimentLabels={HEALTH_STRESS_LABELS}
+          compact
         />
       </div>
       <div className="chart-grid-bottom chart-grid-education">
@@ -453,7 +533,7 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
 
   return (
     <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education">
+      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
         <InfrastructureRankedBarChartCard
           data={topIssues}
           title="Top Issues Affecting Families and Communities"
@@ -462,6 +542,7 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
           year={selectedYear}
           insightTopic="issue"
           labelIconVariant="issues"
+          compact
         />
         <SecuritySentimentTreemapCard
           data={mentalHealth}
@@ -474,9 +555,10 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
           topicLabel="mental health and addiction services"
           emptyMessage="No mental health services data available."
           singleLineDescription
+          compact
         />
       </div>
-      <div className="chart-grid-bottom chart-grid-education">
+      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
         <EducationDisciplineDonutCard
           data={sportsFacilities}
           data2024={sportsFacilities2024}
@@ -487,6 +569,7 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
           year={selectedYear}
           topicLabel="sports facilities availability"
           emptyMessage="No sports facilities data available."
+          compact
         />
         <InfrastructureRankedBarChartCard
           data={neededFacilities}
@@ -497,81 +580,20 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
           insightTopic="facility need"
           singleLineDescription
           labelIconVariant="facilities"
+          compact
         />
       </div>
-    </div>
-  );
-}
-
-function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const meanComparison = section.questions
-    .filter(isMean)
-    .filter((q) => q.dimensionAr === 'الإجمالي')
-    .map((q) => ({
-      name: truncate(translateLabel(q.labelEn ?? q.labelAr), 22),
-      value2024: q.data['2024'] ?? 0,
-      value2025: q.data['2025'] ?? 0,
-    }));
-
-  const shareSubtitle = viewMode === 'current' ? `${selectedYear} share (%)` : 'YoY change (%)';
-
-  const charts = DEMO_QUESTIONS.map(({ code, title }) => {
-    const items = getTopCategories(getCategoryByQuestion(section.questions, code), viewMode, 10, selectedYear);
-    return {
-      title,
-      data: items.map((c) => ({
-        name: truncate(c.name, 24),
-        fullName: c.name,
-        value: viewMode === 'current'
-          ? pickYearValue(c.value2024, c.value2025, selectedYear)
-          : c.value,
-      })),
-    };
-  }).filter((c) => c.data.length > 0);
-
-  const partnerData = charts[0]?.data ?? [];
-
-  return (
-    <div className="main-content">
-      <div className="chart-grid-top">
-        <DistributionChart
-          data={charts[0]?.data ?? []}
-          title={charts[0]?.title ?? 'Gender Distribution'}
-          subtitle={shareSubtitle}
-        />
-        <PartnerChart
-          data={partnerData}
-          mode={viewMode}
-          year={selectedYear}
-        />
-      </div>
-      <div className="chart-grid-bottom">
-        {charts.slice(1, 3).map((chart) => (
-          <DistributionChart
-            key={chart.title}
-            data={chart.data}
-            title={chart.title}
-            subtitle={shareSubtitle}
-          />
-        ))}
-      </div>
-      {charts[3] && (
-        <DistributionChart
-          data={charts[3].data}
-          title={charts[3].title}
-          subtitle={shareSubtitle}
-        />
-      )}
-      {meanComparison.length > 0 && (
-        <YoYComparisonChart items={meanComparison} title="Household Metrics — Year Comparison" />
-      )}
     </div>
   );
 }
 
 export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  if (section.id === 'demographics' || !section.score) {
+  if (section.id === 'demographics') {
     return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+  }
+
+  if (!section.score) {
+    return null;
   }
 
   if (section.id === 'income') {

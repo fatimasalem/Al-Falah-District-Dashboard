@@ -1,9 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
-import type { ViewMode, CategoryQuestion, MeanQuestion, SurveyData, SurveyYear, Section } from '../types';
+import type { ViewMode, SurveyData, SurveyYear, Section } from '../types';
 import {
   formatDelta,
-  isCategory,
-  isMean,
   getIncomeComfortPercent,
   getEmploymentPercent,
   getSafetyPercent,
@@ -37,6 +35,9 @@ import {
   getInfrastructureGasStationsPercent,
   getInfrastructureShoppingPercent,
   getInfrastructureKpiSentence,
+  getDemographicsMeanValue,
+  getDemographicsTopCategory,
+  getDemographicsKpiSentence,
 } from '../utils';
 
 export type KpiIconName =
@@ -87,16 +88,37 @@ function getPercentTone(value: number, invert = false): 'positive' | 'negative' 
   return good ? 'positive' : 'negative';
 }
 
+function getFamilySizeTone(value: number): 'positive' | 'negative' {
+  return value >= 3 ? 'positive' : 'negative';
+}
+
+function getWorkingMembersTone(value: number): 'positive' | 'negative' {
+  return value >= 1 ? 'positive' : 'negative';
+}
+
+function getMonthlyIncomeTone(value: number): 'positive' | 'negative' {
+  return value >= 8000 ? 'positive' : 'negative';
+}
+
+function getWeeklyHoursTone(value: number): 'positive' | 'negative' {
+  return value >= 20 ? 'positive' : 'negative';
+}
+
+function getPhysicalActivityTone(value: number): 'positive' | 'negative' {
+  return value >= 1 ? 'positive' : 'negative';
+}
+
 function finalizeKpiCards(
   cards: KpiItem[],
   mode: ViewMode,
   tones: Array<'positive' | 'negative' | undefined>,
 ): KpiItem[] {
-  if (mode === 'yoy') return cards;
-  return cards.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }, index) => ({
-    ...rest,
+  const cardsWithTone = cards.map((card, index) => ({
+    ...card,
     tone: tones[index],
   }));
+  if (mode === 'yoy') return cardsWithTone;
+  return cardsWithTone.map(({ delta: _delta, deltaLabel: _deltaLabel, ...rest }) => rest);
 }
 
 function KpiIcon({ name }: { name: KpiIconName }) {
@@ -279,17 +301,10 @@ interface KpiCardsProps {
   viewMode?: ViewMode;
 }
 
-function getTrendClass(delta: number | undefined): 'positive' | 'negative' | undefined {
-  if (delta === undefined) return undefined;
-  return delta >= 0 ? 'positive' : 'negative';
-}
-
 export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   return (
     <div className="kpi-row">
       {items.slice(0, 4).map((item) => {
-        const trendClass = viewMode === 'yoy' ? getTrendClass(item.delta) : item.tone;
-
         return (
           <div key={item.label} className="kpi-card">
             <div className="kpi-label">
@@ -300,7 +315,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
               )}
               {item.label}
             </div>
-            <div className={`kpi-value${trendClass ? ` ${trendClass}` : ''}`}>
+            <div className={`kpi-value${item.tone ? ` ${item.tone}` : ''}`}>
               {item.valueIcon && (
                 <span className="kpi-value-icon">
                   <CategoryIcon name={item.valueIcon} size="value" />
@@ -313,7 +328,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
               </span>
             </div>
             {viewMode === 'yoy' && item.delta !== undefined && (
-              <div className={`kpi-delta ${trendClass}`}>
+              <div className={`kpi-delta${item.tone ? ` ${item.tone}` : ''}`}>
                 <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
                 {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? 'YoY'}
               </div>
@@ -380,63 +395,98 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
   ]);
 }
 
+function formatDemographicsAgeLabel(categoryEn: string | undefined, categoryAr: string): string {
+  const raw = categoryEn ?? categoryAr;
+  if (raw === '65 years and over') return '65+';
+  if (raw === 'Under 18 years old') return 'Under 18';
+  return raw;
+}
+
+function formatDemographicsEducationLabel(categoryEn: string | undefined, categoryAr: string): string {
+  const labels: Record<string, string> = {
+    "Bachelor's": "Bachelor's",
+    secondary: 'Secondary',
+    preparatory: 'Preparatory',
+    'Primary school or less': 'Primary or less',
+    diploma: 'Diploma',
+    "Master's degree or higher": "Master's or higher",
+  };
+  const raw = categoryEn ?? categoryAr;
+  return labels[raw] ?? raw;
+}
+
 export function buildDemographicsKpis(
   section: import('../types').Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
 ): KpiItem[] {
-  const catValue = (code: string, category: string): number => {
-    const q = section.questions.find(
-      (item): item is CategoryQuestion =>
-        isCategory(item) && item.code === code && item.categoryAr === category,
-    );
-    if (!q) return 0;
-    const v2025 = q.data['2025'] ?? 0;
-    const v2024 = q.data['2024'] ?? 0;
-    return mode === 'current' ? (q.data[year] ?? 0) : v2025 - v2024;
-  };
+  const questions = section.questions;
+  const familySize2024 = getDemographicsMeanValue(questions, 'Q914', '2024');
+  const familySize2025 = getDemographicsMeanValue(questions, 'Q914', '2025');
+  const familySize = pickYearValue(familySize2024, familySize2025, year);
+  const workingMembers2024 = getDemographicsMeanValue(questions, 'Q915', '2024');
+  const workingMembers2025 = getDemographicsMeanValue(questions, 'Q915', '2025');
+  const workingMembers = pickYearValue(workingMembers2024, workingMembers2025, year);
+  const topAge = getDemographicsTopCategory(
+    questions,
+    'Q903',
+    year,
+    new Set(['Not mentioned', 'لم يذكر']),
+    formatDemographicsAgeLabel,
+  );
+  const topEducation = getDemographicsTopCategory(
+    questions,
+    'Q907',
+    year,
+    new Set(),
+    formatDemographicsEducationLabel,
+  );
 
-  const meanValue = (code: string): number => {
-    const q = section.questions.find(
-      (item): item is MeanQuestion =>
-        isMean(item) && item.code === code && item.dimensionAr === 'الإجمالي',
-    );
-    if (!q) return 0;
-    const v2025 = q.data['2025'] ?? 0;
-    const v2024 = q.data['2024'] ?? 0;
-    return mode === 'current' ? (q.data[year] ?? 0) : v2025 - v2024;
-  };
-
-  if (mode === 'current') {
-    const male = catValue('Q902', 'ذكر');
-    const female = catValue('Q902', 'أنثى');
-    const emirati = catValue('Q905', 'إماراتي');
-    const nonEmirati = catValue('Q905', 'غير إماراتي');
-    return finalizeKpiCards(
-      [
-        { label: 'Male', value: `${male.toFixed(1)}`, suffix: '%' },
-        { label: 'Female', value: `${female.toFixed(1)}`, suffix: '%' },
-        { label: 'Emirati', value: `${emirati.toFixed(1)}`, suffix: '%' },
-        { label: 'Non-Emirati', value: `${nonEmirati.toFixed(1)}`, suffix: '%' },
-        { label: 'Avg Household Size', value: `${meanValue('Q914').toFixed(1)}`, suffix: ' persons' },
-      ],
-      mode,
-      [
-        getPercentTone(male),
-        getPercentTone(female),
-        getPercentTone(emirati),
-        getPercentTone(nonEmirati),
-      ],
-    );
-  }
-
-  return [
-    { label: 'Male Δ', value: formatDelta(catValue('Q902', 'ذكر')) },
-    { label: 'Female Δ', value: formatDelta(catValue('Q902', 'أنثى')) },
-    { label: 'Emirati Δ', value: formatDelta(catValue('Q905', 'إماراتي')) },
-    { label: 'Non-Emirati Δ', value: formatDelta(catValue('Q905', 'غير إماراتي')) },
-    { label: 'Household Δ', value: formatDelta(meanValue('Q914')), suffix: '' },
+  const cards: KpiItem[] = [
+    {
+      label: 'Average Number of Family Members',
+      icon: 'spark',
+      value: `${familySize.toFixed(1)}`,
+      suffix: ' members',
+      valueCaption: 'per household',
+      subtext: getDemographicsKpiSentence('familySize', familySize),
+      delta: familySize2025 - familySize2024,
+    },
+    {
+      label: 'Largest Age Group',
+      icon: 'briefcase',
+      value: topAge?.name ?? '—',
+      subtext: topAge
+        ? getDemographicsKpiSentence('ageGroup', topAge.value, topAge.name)
+        : 'No age group data available.',
+      delta: topAge ? topAge.value2025 - topAge.value2024 : undefined,
+    },
+    {
+      label: 'Highest-Represented Education Level',
+      icon: 'education',
+      value: topEducation?.name ?? '—',
+      subtext: topEducation
+        ? getDemographicsKpiSentence('education', topEducation.value, topEducation.name)
+        : 'No education level data available.',
+      delta: topEducation ? topEducation.value2025 - topEducation.value2024 : undefined,
+    },
+    {
+      label: 'Avg Number of Working Family Members',
+      icon: 'wallet',
+      value: `${workingMembers.toFixed(1)}`,
+      suffix: ' members',
+      valueCaption: 'per household',
+      subtext: getDemographicsKpiSentence('workingMembers', workingMembers),
+      delta: workingMembers2025 - workingMembers2024,
+    },
   ];
+
+  return finalizeKpiCards(cards, mode, [
+    getFamilySizeTone(familySize),
+    topAge ? getPercentTone(topAge.value) : undefined,
+    topEducation ? getPercentTone(topEducation.value) : undefined,
+    getWorkingMembersTone(workingMembers),
+  ]);
 }
 
 export function buildPillarKpis(
@@ -543,7 +593,7 @@ export function buildIncomeKpis(
 
   return finalizeKpiCards(cards, mode, [
     getPercentTone(sectionScore),
-    undefined,
+    getMonthlyIncomeTone(avgIncome),
     topExpense ? getPercentTone(topExpense.value) : undefined,
     topDebt ? getPercentTone(topDebt.value, true) : undefined,
   ]);
@@ -610,7 +660,7 @@ export function buildWorkKpis(
 
   return finalizeKpiCards(cards, mode, [
     getPercentTone(sectionScore),
-    undefined,
+    getWeeklyHoursTone(avgHours),
     getPercentTone(balance),
     getPercentTone(assistance),
   ]);
@@ -812,7 +862,7 @@ export function buildHealthKpis(
   return finalizeKpiCards(cards, mode, [
     getPercentTone(sectionScore),
     getPercentTone(currentHealth),
-    undefined,
+    getPhysicalActivityTone(activity),
     getPercentTone(sleep),
   ]);
 }
