@@ -39,6 +39,16 @@ import {
   getInfrastructureGasStationsPercent,
   getInfrastructureShoppingPercent,
   getInfrastructureKpiSentence,
+  getHousingSpaceAdequacySentiment,
+  getHousingMaintenanceSentiment,
+  getHousingHomeownershipSentiment,
+  getHousingDominantSentimentDelta,
+  getHousingKpiSentence,
+  HOUSING_KPI_STATEMENT,
+  HOUSING_SPACE_ADEQUACY_LABELS,
+  HOUSING_MAINTENANCE_LABELS,
+  HOUSING_HOMEOWNERSHIP_LABELS,
+  type HousingDominantSentiment,
   getDemographicsMeanValue,
   getDemographicsTopCategory,
   getDemographicsKpiSentence,
@@ -1031,5 +1041,118 @@ export function buildInfrastructureKpis(
     getPercentTone(waterElectricity),
     getPercentTone(gasStations),
     getPercentTone(shopping),
+  ]);
+}
+
+function getHousingSpaceTone(sentiment: HousingDominantSentiment): 'positive' | 'negative' {
+  if (sentiment.displayLabel === 'Adequate') return 'positive';
+  if (sentiment.displayLabel === 'Inadequate') return 'negative';
+  return 'negative';
+}
+
+function getHousingMaintenanceTone(sentiment: HousingDominantSentiment): 'positive' | 'negative' {
+  if (sentiment.displayLabel === 'Well maintained') return 'positive';
+  if (sentiment.displayLabel === 'Needs maintenance') return 'negative';
+  return 'negative';
+}
+
+function getHousingHomeownershipTone(sentiment: HousingDominantSentiment): 'positive' | 'negative' {
+  if (sentiment.displayLabel === 'Planning to own') return 'positive';
+  if (sentiment.displayLabel === 'Not planning') return 'negative';
+  return 'negative';
+}
+
+function getHousingSpaceValueCaption(sentiment: HousingDominantSentiment): string {
+  if (sentiment.displayLabel === 'Adequate') return 'thinks space is adequate';
+  if (sentiment.displayLabel === 'Inadequate') return 'think space is inadequate';
+  return 'have mixed views on space';
+}
+
+function getHousingMaintenanceValueCaption(sentiment: HousingDominantSentiment): string {
+  if (sentiment.displayLabel === 'Needs maintenance') return 'need maintenance';
+  if (sentiment.displayLabel === 'Well maintained') return 'feel home is well maintained';
+  return 'have mixed views on maintenance';
+}
+
+function getHousingHomeownershipValueCaption(sentiment: HousingDominantSentiment): string {
+  if (sentiment.displayLabel === 'Not planning') return 'are not planning';
+  if (sentiment.displayLabel === 'Planning to own') return 'are planning to own';
+  return 'are undecided';
+}
+
+export function buildHousingKpis(
+  section: Section,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
+): KpiItem[] {
+  const score = section.score;
+  if (!score) return [];
+
+  const questions = section.questions;
+  const sectionScore = pickYearValue(score.score2024, score.score2025, year);
+  const space = getHousingSpaceAdequacySentiment(questions, year);
+  const maintenance = getHousingMaintenanceSentiment(questions, year);
+  const homeownership = getHousingHomeownershipSentiment(questions, year);
+
+  const cards: KpiItem[] = [
+    {
+      label: 'Overall Housing Satisfaction',
+      icon: 'satisfaction',
+      value: `${sectionScore.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: 'are satisfied',
+      subtext: getHousingKpiSentence('score', sectionScore),
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
+    },
+    {
+      label: 'Housing Space Adequacy',
+      icon: 'shield',
+      value: `${space.value.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: getHousingSpaceValueCaption(space),
+      subtext: getHousingKpiSentence('spaceAdequacy', space),
+      delta: getHousingDominantSentimentDelta(
+        questions,
+        HOUSING_KPI_STATEMENT.spaceAdequacy,
+        HOUSING_SPACE_ADEQUACY_LABELS,
+        compareYears,
+      ),
+    },
+    {
+      label: 'Housing Maintenance Needs',
+      icon: 'spark',
+      value: `${maintenance.value.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: getHousingMaintenanceValueCaption(maintenance),
+      subtext: getHousingKpiSentence('maintenance', maintenance),
+      delta: getHousingDominantSentimentDelta(
+        questions,
+        HOUSING_KPI_STATEMENT.maintenance,
+        HOUSING_MAINTENANCE_LABELS,
+        compareYears,
+      ),
+    },
+    {
+      label: 'Homeownership Intention',
+      icon: 'briefcase',
+      value: `${homeownership.value.toFixed(1)}`,
+      suffix: '%',
+      valueCaption: getHousingHomeownershipValueCaption(homeownership),
+      subtext: getHousingKpiSentence('homeownership', homeownership),
+      delta: getHousingDominantSentimentDelta(
+        questions,
+        HOUSING_KPI_STATEMENT.homeownership,
+        HOUSING_HOMEOWNERSHIP_LABELS,
+        compareYears,
+      ),
+    },
+  ];
+
+  return finalizeKpiCards(cards, mode, [
+    getPercentTone(sectionScore),
+    getHousingSpaceTone(space),
+    getHousingMaintenanceTone(maintenance),
+    getHousingHomeownershipTone(homeownership),
   ]);
 }

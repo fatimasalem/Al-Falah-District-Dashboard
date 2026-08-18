@@ -24,6 +24,7 @@ import {
   SecuritySentimentTreemapCard,
   HealthAssessmentBarChartCard,
   InfrastructureRankedBarChartCard,
+  HousingAccessibilityBarChartCard,
   HEALTH_STRESS_LABELS,
   HEALTH_EATING_LABELS,
   HEALTH_BINARY_LABELS,
@@ -65,6 +66,10 @@ import {
   getInfrastructureNeededFacilitiesData,
   getInfrastructureMentalHealthServicesData,
   getInfrastructureSportsFacilitiesData,
+  getHousingAccessibilityData,
+  getHousingVentilationData,
+  getHousingNaturalLightingData,
+  getHousingHomeownershipPriceData,
   isCategory,
   isMean,
   pickYearValue,
@@ -589,6 +594,68 @@ function InfrastructureCharts({ section, viewMode, selectedYear, compareYears }:
   );
 }
 
+function HousingCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
+  const ventilation = getHousingVentilationData(section.questions, chartYear);
+  const ventilation2024 = getHousingVentilationData(section.questions, compareYears[0]);
+  const naturalLighting = getHousingNaturalLightingData(section.questions, chartYear);
+  const naturalLighting2024 = getHousingNaturalLightingData(section.questions, compareYears[0]);
+  const homeownershipPrice = getHousingHomeownershipPriceData(section.questions, chartYear);
+  const homeownershipPrice2024 = getHousingHomeownershipPriceData(section.questions, compareYears[0]);
+
+  return (
+    <div className="main-content main-content-education">
+      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
+        <HousingAccessibilityBarChartCard
+          getCategoryData={(category) => getHousingAccessibilityData(section.questions, category, chartYear)}
+          title="Accessibility Features in Current Residences"
+          description="Share of residents reporting accessibility features present in their current residence."
+          mode={viewMode}
+          year={selectedYear}
+          singleLineDescription
+        />
+        <SecuritySentimentTreemapCard
+          data={ventilation}
+          data2024={ventilation2024}
+          title="Housing Ventilation"
+          description="Resident responses on whether the ventilation system in their housing is suitable."
+          badgeScore={getEducationTabChartBadgeScore(ventilation, ventilation2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="ventilation suitability"
+          singleLineDescription
+          emptyMessage="No ventilation data available."
+        />
+      </div>
+      <div className="chart-grid-bottom chart-grid-education">
+        <EducationDisciplineDonutCard
+          data={naturalLighting}
+          data2024={naturalLighting2024}
+          title="Natural Lighting"
+          description="Resident responses on whether sunlight enters most parts of their house daily."
+          badgeScore={getEducationTabChartBadgeScore(naturalLighting, naturalLighting2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="natural lighting"
+          emptyMessage="No natural lighting data available."
+        />
+        <SecurityDivergingLikertBarCard
+          data={homeownershipPrice}
+          data2024={homeownershipPrice2024}
+          title="Homeownership Price Satisfaction"
+          description="Resident responses on satisfaction with home ownership prices in their residential area."
+          badgeScore={getEducationTabChartBadgeScore(homeownershipPrice, homeownershipPrice2024, viewMode)}
+          mode={viewMode}
+          year={selectedYear}
+          topicLabel="homeownership price satisfaction"
+          singleLineDescription
+          emptyMessage="No homeownership price satisfaction data available."
+        />
+      </div>
+    </div>
+  );
+}
+
 export function PillarCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
   if (section.id === 'demographics') {
     return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
@@ -624,6 +691,10 @@ export function PillarCharts({ section, viewMode, selectedYear, compareYears }: 
 
   if (section.id === 'infrastructure') {
     return <InfrastructureCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
+  }
+
+  if (section.id === 'housing') {
+    return <HousingCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   const { score, questions } = section;

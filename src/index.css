@@ -2325,6 +2325,57 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
+.chart-toggle-full {
+  width: 100%;
+}
+
+.chart-toggle-full .chart-toggle-btn {
+  flex: 1;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.25;
+  padding: 6px 8px;
+}
+
+.housing-accessibility-chart {
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-grid-compact > .chart-card-housing-accessibility {
+  min-height: 380px;
+}
+
+.chart-card-housing-accessibility .work-column-bar-chart-plot {
+  min-height: 300px;
+}
+
+.chart-card-housing-accessibility .work-column-bar-chart-wrap-yoy .work-column-bar-chart-plot {
+  min-height: 280px;
+}
+
+.housing-accessibility-controls {
+  width: 100%;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.housing-accessibility-yoy-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.housing-accessibility-y-axis-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  line-height: 1.2;
+  padding-left: 4px;
+}
+
 .health-assessment-chart {
   display: flex;
   flex-direction: column;

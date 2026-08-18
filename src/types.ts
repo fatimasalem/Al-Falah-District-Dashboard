@@ -96,7 +96,7 @@ export const PILLAR_TABS = [
   { id: 'environment', label: 'Environment', icon: 'leaf', status: 'RR' },
   { id: 'infrastructure', label: 'Infrastructure', icon: 'building', status: 'RR' },
   { id: 'demographics', label: 'Demographics', icon: 'users', status: 'RR' },
-  { id: 'housing', label: 'Housing', icon: 'home', status: 'DEV' },
+  { id: 'housing', label: 'Housing', icon: 'home', status: 'RR' },
 ] as const;
 
 export type TabId = (typeof PILLAR_TABS)[number]['id'];

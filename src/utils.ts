@@ -2434,6 +2434,307 @@ export function generateInfrastructureRankedBarInsight(
   ];
 }
 
+export const HOUSING_KPI_STATEMENT = {
+  spaceAdequacy: /size of the house is small or insufficient/i,
+  maintenance: /residence needs repairs and maintenance/i,
+  homeownership: /thinking of getting a private residence/i,
+} as const;
+
+const HOUSING_CHART_STATEMENTS = {
+  ventilation: {
+    match: /ventilation system in the residence is adequate/i,
+    short: 'Ventilation adequacy',
+  },
+  naturalLighting: {
+    match: /sun enters most parts of the residence on a daily basis/i,
+    short: 'Natural lighting',
+  },
+  homeownershipPrice: {
+    match: /Satisfied with home ownership prices in a residential area/i,
+    short: 'Homeownership price satisfaction',
+  },
+} as const;
+
+export type HousingDominantSentiment = {
+  segment: 'agree' | 'neutral' | 'disagree';
+  label: string;
+  displayLabel: string;
+  value: number;
+};
+
+export type HousingAccessibilityCategoryId = 'mobility' | 'bathroom' | 'safety';
+
+const HOUSING_ACCESSIBILITY_GROUPS: Record<
+  HousingAccessibilityCategoryId,
+  { label: string; features: ReadonlyArray<{ match: RegExp; short: string }> }
+> = {
+  mobility: {
+    label: 'Accessibility & Mobility',
+    features: [
+      { match: /bedroom on ground floor/i, short: 'Ground-Floor Bedroom' },
+      { match: /floor of the house is non-slip/i, short: 'Non-Slip Flooring' },
+      { match: /large corridors and entrances/i, short: 'Wide Corridors & Entrances' },
+    ],
+  },
+  bathroom: {
+    label: 'Accessible Bathroom Features',
+    features: [
+      { match: /iron bars.*toilet/i, short: 'Toilet Support Bars' },
+      { match: /bathrooms equipped for people with special needs/i, short: 'Accessible Shower' },
+      { match: /large shower room to accommodate a wheelchair/i, short: 'Wheelchair-Accessible Shower Room' },
+      { match: /bathtub with a door/i, short: 'Walk-In Bathtub' },
+    ],
+  },
+  safety: {
+    label: 'Safety & Care Support',
+    features: [
+      { match: /personal emergency response system/i, short: 'Personal Emergency Response System' },
+      { match: /private room for healthcare provider/i, short: 'Private Room for Caregiver' },
+    ],
+  },
+};
+
+export const HOUSING_SPACE_ADEQUACY_LABELS = {
+  agree: 'Inadequate',
+  neutral: 'Mixed views',
+  disagree: 'Adequate',
+} as const;
+
+export const HOUSING_MAINTENANCE_LABELS = {
+  agree: 'Needs maintenance',
+  neutral: 'Mixed views',
+  disagree: 'Well maintained',
+} as const;
+
+export const HOUSING_HOMEOWNERSHIP_LABELS = {
+  agree: 'Planning to own',
+  neutral: 'Undecided',
+  disagree: 'Not planning',
+} as const;
+
+function getHousingLikertSentimentPercents(
+  questions: import('./types').Question[],
+  matcher: RegExp,
+  year: '2024' | '2025',
+): { agree: number; neutral: number; disagree: number } {
+  const question = getLikertStatements(questions).find((q) => matcher.test(q.statementEn ?? q.statementAr));
+  if (!question) return { agree: 0, neutral: 0, disagree: 0 };
+  const breakdown = question.data[year]?.breakdown ?? {};
+  const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+  const total = dissatisfied + neutral + satisfied;
+  const scale = total > 0 ? 100 / total : 0;
+  return {
+    agree: satisfied * scale,
+    neutral: neutral * scale,
+    disagree: dissatisfied * scale,
+  };
+}
+
+function getHousingDominantSentiment(
+  questions: import('./types').Question[],
+  matcher: RegExp,
+  year: '2024' | '2025',
+  displayLabels: { agree: string; neutral: string; disagree: string },
+): HousingDominantSentiment {
+  const { agree, neutral, disagree } = getHousingLikertSentimentPercents(questions, matcher, year);
+  const segments: HousingDominantSentiment[] = [
+    { segment: 'agree', label: 'Agree', displayLabel: displayLabels.agree, value: agree },
+    { segment: 'neutral', label: 'Neutral', displayLabel: displayLabels.neutral, value: neutral },
+    { segment: 'disagree', label: 'Disagree', displayLabel: displayLabels.disagree, value: disagree },
+  ];
+  return segments.sort((a, b) => b.value - a.value)[0];
+}
+
+export function getHousingSpaceAdequacySentiment(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): HousingDominantSentiment {
+  return getHousingDominantSentiment(
+    questions,
+    HOUSING_KPI_STATEMENT.spaceAdequacy,
+    year,
+    HOUSING_SPACE_ADEQUACY_LABELS,
+  );
+}
+
+export function getHousingMaintenanceSentiment(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): HousingDominantSentiment {
+  return getHousingDominantSentiment(
+    questions,
+    HOUSING_KPI_STATEMENT.maintenance,
+    year,
+    HOUSING_MAINTENANCE_LABELS,
+  );
+}
+
+export function getHousingHomeownershipSentiment(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): HousingDominantSentiment {
+  return getHousingDominantSentiment(
+    questions,
+    HOUSING_KPI_STATEMENT.homeownership,
+    year,
+    HOUSING_HOMEOWNERSHIP_LABELS,
+  );
+}
+
+export function getHousingDominantSentimentDelta(
+  questions: import('./types').Question[],
+  matcher: RegExp,
+  displayLabels: { agree: string; neutral: string; disagree: string },
+  compareYears: CompareYears,
+): number {
+  const previous = getHousingDominantSentiment(questions, matcher, compareYears[0], displayLabels);
+  const current = getHousingDominantSentiment(questions, matcher, compareYears[1], displayLabels);
+  if (previous.segment === current.segment) {
+    return current.value - previous.value;
+  }
+  return current.value - previous.value;
+}
+
+export function getHousingAccessibilityData(
+  questions: import('./types').Question[],
+  category: HousingAccessibilityCategoryId,
+  year: import('./types').SurveyYear = '2025',
+): IncomeChartRow[] {
+  const group = HOUSING_ACCESSIBILITY_GROUPS[category];
+  const items = getCategoryByQuestion(questions, 'Q702');
+
+  return group.features
+    .map((feature) => {
+      const question = items.find((q) => feature.match.test(q.categoryEn ?? q.categoryAr));
+      if (!question) return null;
+      const fullName = translateLabel(question.categoryEn ?? question.categoryAr);
+      return {
+        name: feature.short,
+        fullName,
+        value2024: question.data['2024'] ?? 0,
+        value2025: question.data['2025'] ?? 0,
+        value: question.data[year] ?? 0,
+      };
+    })
+    .filter((row): row is IncomeChartRow => row != null)
+    .sort((a, b) => b.value - a.value);
+}
+
+export function getHousingVentilationData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [HOUSING_CHART_STATEMENTS.ventilation]);
+}
+
+export function getHousingNaturalLightingData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [HOUSING_CHART_STATEMENTS.naturalLighting]);
+}
+
+export function getHousingHomeownershipPriceData(
+  questions: import('./types').Question[],
+  year: '2024' | '2025',
+): EducationSentimentRow[] {
+  return getEducationSentimentRows(questions, year, [HOUSING_CHART_STATEMENTS.homeownershipPrice]);
+}
+
+export function getHousingAccessibilityBadgeScore(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+): number {
+  if (rows.length === 0) return 0;
+  const average =
+    rows.reduce((sum, row) => sum + pickYearValue(row.value2024, row.value2025, year), 0) / rows.length;
+  if (mode === 'current') return average;
+  const average2024 =
+    rows.reduce((sum, row) => sum + row.value2024, 0) / rows.length;
+  const average2025 =
+    rows.reduce((sum, row) => sum + row.value2025, 0) / rows.length;
+  return average2025 - average2024;
+}
+
+export function getHousingKpiSentence(
+  metric: 'score' | 'spaceAdequacy' | 'maintenance' | 'homeownership',
+  value: number | HousingDominantSentiment,
+): string {
+  switch (metric) {
+    case 'score': {
+      const score = value as number;
+      return score >= 70
+        ? 'Strong housing satisfaction overall.'
+        : score >= 50
+          ? 'Moderate housing satisfaction.'
+          : 'Housing satisfaction needs improvement.';
+    }
+    case 'spaceAdequacy': {
+      const sentiment = value as HousingDominantSentiment;
+      if (sentiment.displayLabel === 'Adequate') {
+        return 'Most residents feel their housing space is adequate.';
+      }
+      if (sentiment.displayLabel === 'Inadequate') {
+        return 'Many residents feel housing space is insufficient.';
+      }
+      return 'Resident views on housing space adequacy are mixed.';
+    }
+    case 'maintenance': {
+      const sentiment = value as HousingDominantSentiment;
+      if (sentiment.displayLabel === 'Needs maintenance') {
+        return 'Many residents report their home needs repairs or maintenance.';
+      }
+      if (sentiment.displayLabel === 'Well maintained') {
+        return 'Most residents feel their home is well maintained.';
+      }
+      return 'Resident views on housing maintenance needs are mixed.';
+    }
+    case 'homeownership': {
+      const sentiment = value as HousingDominantSentiment;
+      if (sentiment.displayLabel === 'Planning to own') {
+        return 'Many residents are considering getting a home of their own.';
+      }
+      if (sentiment.displayLabel === 'Not planning') {
+        return 'Most residents are not currently planning to get a private residence.';
+      }
+      return 'Resident views on homeownership intention are mixed.';
+    }
+  }
+}
+
+export function generateHousingAccessibilityInsight(
+  rows: IncomeChartRow[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear = '2025',
+  categoryLabel = 'accessibility feature',
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['Accessibility feature availability varies across survey responses.'];
+  }
+
+  const top = [...rows].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+
+  if (mode === 'yoy') {
+    const change = top.value2025 - top.value2024;
+    return [
+      { bold: top.name },
+      ` presence ${change >= 0 ? 'rose' : 'fell'} `,
+      { bold: formatDelta(change) },
+      ` to ${top.value2025.toFixed(1)}%.`,
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ` is the most reported ${categoryLabel} at `,
+    { bold: `${pickYearValue(top.value2024, top.value2025, year).toFixed(1)}%` },
+    ' of residences.',
+  ];
+}
+
 export function getEnvironmentKpiSentence(
   metric: 'score' | 'cleanliness' | 'airQuality' | 'noiseLevel',
   value: number,

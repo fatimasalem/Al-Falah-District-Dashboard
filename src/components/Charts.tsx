@@ -45,7 +45,9 @@ import {
   generateInfrastructureRankedBarInsight,
   generateDemographicsIncomeInsight,
   generateDemographicsMaritalInsight,
+  generateHousingAccessibilityInsight,
   getInfrastructureRankedBarBadgeScore,
+  getHousingAccessibilityBadgeScore,
   getLikertDominantSegmentIndex,
   EDUCATION_LIKERT_SCALE_LABELS,
   EDUCATION_LIKERT_SCALE_ORDER,
@@ -53,6 +55,7 @@ import {
   type EducationSentimentRow,
   type EducationLikertScaleKey,
   type EducationLikertScaleRow,
+  type HousingAccessibilityCategoryId,
   type InsightPart,
 } from '../utils';
 
@@ -5654,5 +5657,175 @@ export function SentimentDonut({ positive, negative, neutral, year = '2025' }: S
         </PieChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+const HOUSING_ACCESSIBILITY_CATEGORY_OPTIONS: Array<{
+  id: HousingAccessibilityCategoryId;
+  label: string;
+}> = [
+  { id: 'mobility', label: 'Accessibility & Mobility' },
+  { id: 'bathroom', label: 'Accessible Bathroom Features' },
+  { id: 'safety', label: 'Safety & Care Support' },
+];
+
+interface HousingAccessibilityBarChartCardProps {
+  getCategoryData: (category: HousingAccessibilityCategoryId) => IncomeChartRow[];
+  title: string;
+  description: string;
+  mode: ViewMode;
+  year?: SurveyYear;
+  singleLineDescription?: boolean;
+}
+
+export function HousingAccessibilityBarChartCard({
+  getCategoryData,
+  title,
+  description,
+  mode,
+  year = '2025',
+  singleLineDescription = false,
+}: HousingAccessibilityBarChartCardProps) {
+  const [category, setCategory] = useState<HousingAccessibilityCategoryId>('mobility');
+  const isCurrent = mode === 'current';
+  const data = getCategoryData(category);
+  const sorted = [...data].sort(
+    (a, b) =>
+      (isCurrent ? (year === '2025' ? b.value2025 : b.value2024) : b.value2025) -
+      (isCurrent ? (year === '2025' ? a.value2025 : a.value2024) : a.value2025),
+  );
+  const chartData = sorted.map((row) => ({
+    name: row.name,
+    fullName: row.fullName,
+    value: isCurrent ? (year === '2025' ? row.value2025 : row.value2024) : row.value2025,
+    value2024: row.value2024,
+    value2025: row.value2025,
+  }));
+  const badgeScore = getHousingAccessibilityBadgeScore(data, mode, year);
+  const categoryLabel = HOUSING_ACCESSIBILITY_CATEGORY_OPTIONS.find((option) => option.id === category)?.label ?? 'feature';
+  const insight = generateHousingAccessibilityInsight(data, mode, year, categoryLabel.toLowerCase());
+  const xAxisLabel = 'Accessibility Feature';
+  const yAxisLabel = 'Residents Reporting Feature (%)';
+
+  return (
+    <IncomeChartCard
+      title={title}
+      description={description}
+      badgeScore={badgeScore}
+      mode={mode}
+      insight={insight}
+      icon="bar-chart"
+      singleLineDescription={singleLineDescription}
+      className="chart-card-education-tab chart-card-housing-accessibility"
+    >
+      <div className="health-assessment-chart housing-accessibility-chart">
+        <div className={`income-bar-chart-wrap work-column-bar-chart-wrap ${!isCurrent ? 'work-column-bar-chart-wrap-yoy' : ''}`.trim()}>
+          <div className="work-column-bar-chart-plot">
+            <ResponsiveContainer width="100%" height="100%">
+              {isCurrent ? (
+                <BarChart data={chartData} margin={WORK_COLUMN_CHART_MARGIN} barCategoryGap="22%">
+                  <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10, fill: DESIGN.chart.axis }}
+                    interval={0}
+                    textAnchor="middle"
+                    height={56}
+                  >
+                    <Label
+                      value={xAxisLabel}
+                      position="insideBottom"
+                      offset={-4}
+                      style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                    />
+                  </XAxis>
+                  <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} width={44} domain={[0, 'auto']}>
+                    <Label
+                      value={yAxisLabel}
+                      angle={-90}
+                      position="insideLeft"
+                      offset={12}
+                      style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600, textAnchor: 'middle' }}
+                    />
+                  </YAxis>
+                  <Tooltip
+                    formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                  />
+                  <Bar dataKey="value" fill={yearBarColor(year)} radius={[4, 4, 0, 0]} maxBarSize={56} legendType="none">
+                    <LabelList
+                      dataKey="value"
+                      position="top"
+                      formatter={(v: number) => `${v.toFixed(1)}%`}
+                      style={{ fontSize: 10, fill: '#374151', fontWeight: 600 }}
+                    />
+                  </Bar>
+                </BarChart>
+              ) : (
+                <BarChart data={chartData} margin={WORK_COLUMN_CHART_MARGIN_YOY} barCategoryGap="22%" barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={DESIGN.chart.grid} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10, fill: DESIGN.chart.axis }}
+                    interval={0}
+                    textAnchor="middle"
+                    height={56}
+                  >
+                    <Label
+                      value={xAxisLabel}
+                      position="insideBottom"
+                      offset={-4}
+                      style={{ fontSize: 11, fill: DESIGN.chart.axis, fontWeight: 600 }}
+                    />
+                  </XAxis>
+                  <YAxis tick={{ fontSize: 11, fill: DESIGN.chart.axis }} width={44} domain={[0, 'auto']} />
+                  <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''} />
+                  <Bar dataKey="value2025" name="2025" fill={YEAR_COMPARISON_BAR.current} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                    {renderYoYBarCells(chartData, '2025')}
+                    <LabelList
+                      dataKey="value2025"
+                      position="top"
+                      formatter={(v: number) => `${v.toFixed(1)}%`}
+                      style={{ fontSize: 9, fill: '#374151', fontWeight: 600 }}
+                    />
+                  </Bar>
+                  <Bar dataKey="value2024" name="2024" fill={YEAR_COMPARISON_BAR.previous} radius={[4, 4, 0, 0]} maxBarSize={32} legendType="none">
+                    {renderYoYBarCells(chartData, '2024')}
+                    <LabelList
+                      dataKey="value2024"
+                      position="top"
+                      formatter={(v: number) => `${v.toFixed(1)}%`}
+                      style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                    />
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+          {!isCurrent && (
+            <div className="work-column-bar-chart-legend housing-accessibility-yoy-meta">
+              <YearComparisonLegend rounded />
+              <span className="housing-accessibility-y-axis-label">{yAxisLabel}</span>
+            </div>
+          )}
+        </div>
+        <div className="housing-accessibility-controls">
+          <div className="chart-toggle chart-toggle-full" role="tablist" aria-label="Accessibility feature categories">
+            {HOUSING_ACCESSIBILITY_CATEGORY_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                aria-selected={category === option.id}
+                className={`chart-toggle-btn ${category === option.id ? 'active' : ''}`}
+                onClick={() => setCategory(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </IncomeChartCard>
   );
 }
