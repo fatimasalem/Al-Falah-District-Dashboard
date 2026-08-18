@@ -1,4 +1,5 @@
-import type { SectionScore, SurveyData, ViewMode } from './types';
+import type { CompareYears, SectionScore, SurveyData, SurveyYear, ViewMode } from './types';
+import { DEFAULT_COMPARE_YEARS } from './types';
 import { translateLabel } from './translations';
 
 const INCOME_COMFORT_CATEGORIES = [
@@ -1038,7 +1039,7 @@ const KPI_CATEGORY_SHORT_LABELS: Record<string, string> = {
   'Personal loans': 'Personal loans',
 };
 
-function getKpiCategoryShortLabel(categoryEn: string, fallbackName?: string): string {
+export function getKpiCategoryShortLabel(categoryEn: string, fallbackName?: string): string {
   return KPI_CATEGORY_SHORT_LABELS[categoryEn] ?? fallbackName ?? categoryEn;
 }
 
@@ -1046,7 +1047,6 @@ export function getIncomeKpiSentence(
   metric: 'score' | 'income' | 'expense' | 'debt',
   value: number,
   categoryEn?: string,
-  categoryName?: string,
 ): string {
   switch (metric) {
     case 'score':
@@ -1063,11 +1063,19 @@ export function getIncomeKpiSentence(
           : 'Limited household income level.';
     case 'expense':
       return categoryEn
-        ? `Top expense: ${getKpiCategoryShortLabel(categoryEn, categoryName)}`
+        ? value >= 40
+          ? 'A large share of households report this cost.'
+          : value >= 25
+            ? 'A common expense across households.'
+            : 'Reported by a notable share of households.'
         : 'No living expense data available.';
     case 'debt':
       return categoryEn
-        ? `Top debt: ${getKpiCategoryShortLabel(categoryEn, categoryName)}`
+        ? value >= 40
+          ? 'A large share of households carry this debt.'
+          : value >= 25
+            ? 'A common debt across households.'
+            : 'Reported by a notable share of households.'
         : 'No debt obligation data available.';
   }
 }
@@ -2595,34 +2603,55 @@ export function formatDelta(value: number): string {
   return `${sign}${value.toFixed(1)}%`;
 }
 
-export function pickYearValue<T>(value2024: T, value2025: T, year: import('./types').SurveyYear): T {
+export function pickYearValue<T>(value2024: T, value2025: T, year: SurveyYear): T {
   return year === '2025' ? value2025 : value2024;
+}
+
+export function normalizeCompareYears(years: SurveyYear[]): CompareYears | null {
+  if (years.length !== 2) return null;
+  const sorted = [...years].sort() as SurveyYear[];
+  return [sorted[0], sorted[1]];
+}
+
+export function getYearDelta(
+  value2024: number,
+  value2025: number,
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
+): number {
+  return pickYearValue(value2024, value2025, compareYears[1]) - pickYearValue(value2024, value2025, compareYears[0]);
+}
+
+export function formatCompareYearsLabel(compareYears: CompareYears): string {
+  return `${compareYears[0]}→${compareYears[1]}`;
 }
 
 export function getScoreValue(
   score: SectionScore,
   mode: ViewMode,
-  year: import('./types').SurveyYear = '2025',
+  year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): number {
-  if (mode === 'yoy') return score.yoyChange;
+  if (mode === 'yoy') return getYearDelta(score.score2024, score.score2025, compareYears);
   return pickYearValue(score.score2024, score.score2025, year);
 }
 
 export function getPositiveValue(
   score: SectionScore,
   mode: ViewMode,
-  year: import('./types').SurveyYear = '2025',
+  year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): number {
-  if (mode === 'yoy') return score.positive2025 - score.positive2024;
+  if (mode === 'yoy') return getYearDelta(score.positive2024, score.positive2025, compareYears);
   return pickYearValue(score.positive2024, score.positive2025, year);
 }
 
 export function getNegativeValue(
   score: SectionScore,
   mode: ViewMode,
-  year: import('./types').SurveyYear = '2025',
+  year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): number {
-  if (mode === 'yoy') return score.negative2025 - score.negative2024;
+  if (mode === 'yoy') return getYearDelta(score.negative2024, score.negative2025, compareYears);
   return pickYearValue(score.negative2024, score.negative2025, year);
 }
 
@@ -2683,11 +2712,11 @@ const DEMOGRAPHICS_MARITAL_LABELS: Record<string, string> = {
 };
 
 const DEMOGRAPHICS_INCOME_ORDER = [
+  'Less than 5000 dirhams',
+  '5000-10000 dirhams',
   '10,001-20,000 dirhams',
   '20,001-30,000 dirhams',
   '30,001-50,000 dirhams',
-  '5000-10000 dirhams',
-  'Less than 5000 dirhams',
   'More than 50,000 dirhams',
 ] as const;
 
@@ -2873,7 +2902,6 @@ export function getDemographicsIncomeBadgeScore(
 export function getDemographicsKpiSentence(
   metric: 'familySize' | 'workingMembers' | 'ageGroup' | 'education',
   value: number,
-  label?: string,
 ): string {
   switch (metric) {
     case 'familySize':
@@ -2889,13 +2917,17 @@ export function getDemographicsKpiSentence(
           ? 'At least one working member per household on average.'
           : 'Limited working members per household.';
     case 'ageGroup':
-      return label
-        ? `${value.toFixed(1)}% of residents are in the ${label} age group.`
-        : `${value.toFixed(1)}% of residents are in this age group.`;
+      return value >= 35
+        ? 'The dominant age segment in the district.'
+        : value >= 25
+          ? 'A major age segment in the district.'
+          : 'A notable share of residents fall in this bracket.';
     case 'education':
-      return label
-        ? `${value.toFixed(1)}% of residents hold a ${label} qualification.`
-        : `${value.toFixed(1)}% hold this education level.`;
+      return value >= 35
+        ? 'The most common qualification among residents.'
+        : value >= 25
+          ? 'A widely held qualification in the district.'
+          : 'A notable share of residents hold this level.';
   }
 }
 

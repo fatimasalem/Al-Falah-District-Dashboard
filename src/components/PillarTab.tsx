@@ -1,4 +1,4 @@
-import type { Section, SurveyYear, ViewMode } from '../types';
+import type { CompareYears, Section, SurveyYear, ViewMode } from '../types';
 import {
   SentimentDonut,
   LikertChart,
@@ -68,6 +68,7 @@ import {
   isCategory,
   isMean,
   pickYearValue,
+  getYearDelta,
   getDemographicsGenderData,
   getDemographicsCitizenshipData,
   getDemographicsMaritalChartData,
@@ -83,18 +84,19 @@ interface PillarChartsProps {
   section: Section;
   viewMode: ViewMode;
   selectedYear: SurveyYear;
+  compareYears: CompareYears;
 }
 
 function truncate(str: string, max = 36): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str;
 }
 
-function DemographicsCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function DemographicsCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const gender = getDemographicsGenderData(section.questions, chartYear);
-  const gender2024 = getDemographicsGenderData(section.questions, '2024');
+  const gender2024 = getDemographicsGenderData(section.questions, compareYears[0]);
   const citizenship = getDemographicsCitizenshipData(section.questions, chartYear);
-  const citizenship2024 = getDemographicsCitizenshipData(section.questions, '2024');
+  const citizenship2024 = getDemographicsCitizenshipData(section.questions, compareYears[0]);
   const marital = getDemographicsMaritalChartData(section.questions, chartYear);
   const income = getDemographicsIncomeChartData(section.questions, chartYear);
 
@@ -261,16 +263,16 @@ function WorkCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   );
 }
 
-function EducationCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function EducationCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const sports = getEducationSportsFacilitiesData(section.questions, chartYear);
-  const sports2024 = getEducationSportsFacilitiesData(section.questions, '2024');
+  const sports2024 = getEducationSportsFacilitiesData(section.questions, compareYears[0]);
   const bullying = getEducationBullyingExperienceData(section.questions, chartYear);
-  const bullying2024 = getEducationBullyingExperienceData(section.questions, '2024');
+  const bullying2024 = getEducationBullyingExperienceData(section.questions, compareYears[0]);
   const awareness = getEducationBullyingAwarenessData(section.questions, chartYear);
-  const awareness2024 = getEducationBullyingAwarenessData(section.questions, '2024');
+  const awareness2024 = getEducationBullyingAwarenessData(section.questions, compareYears[0]);
   const discipline = getEducationDisciplineFairnessData(section.questions, chartYear);
-  const discipline2024 = getEducationDisciplineFairnessData(section.questions, '2024');
+  const discipline2024 = getEducationDisciplineFairnessData(section.questions, compareYears[0]);
 
   return (
     <div className="main-content main-content-education">
@@ -321,16 +323,16 @@ function EducationCharts({ section, viewMode, selectedYear }: PillarChartsProps)
   );
 }
 
-function SecurityCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function SecurityCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const freedom = getSecurityFreedomExpressionData(section.questions, chartYear);
-  const freedom2024 = getSecurityFreedomExpressionData(section.questions, '2024');
+  const freedom2024 = getSecurityFreedomExpressionData(section.questions, compareYears[0]);
   const peerInfluence = getSecurityPeerInfluenceData(section.questions, chartYear);
-  const peerInfluence2024 = getSecurityPeerInfluenceData(section.questions, '2024');
+  const peerInfluence2024 = getSecurityPeerInfluenceData(section.questions, compareYears[0]);
   const powerOutages = getSecurityPowerOutagesData(section.questions, chartYear);
-  const powerOutages2024 = getSecurityPowerOutagesData(section.questions, '2024');
+  const powerOutages2024 = getSecurityPowerOutagesData(section.questions, compareYears[0]);
   const drugPrevention = getSecurityDrugPreventionData(section.questions, chartYear);
-  const drugPrevention2024 = getSecurityDrugPreventionData(section.questions, '2024');
+  const drugPrevention2024 = getSecurityDrugPreventionData(section.questions, compareYears[0]);
 
   return (
     <div className="main-content main-content-education">
@@ -386,16 +388,16 @@ function SecurityCharts({ section, viewMode, selectedYear }: PillarChartsProps) 
   );
 }
 
-function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function HealthCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const serviceAssessment = getHealthServiceAssessmentData(section.questions, chartYear);
   const systemAssessment = getHealthSystemAssessmentData(section.questions, chartYear);
   const emotionalStress = getHealthEmotionalStressData(section.questions, chartYear);
-  const emotionalStress2024 = getHealthEmotionalStressData(section.questions, '2024');
+  const emotionalStress2024 = getHealthEmotionalStressData(section.questions, compareYears[0]);
   const healthyEating = getHealthHealthyEatingData(section.questions, chartYear);
-  const healthyEating2024 = getHealthHealthyEatingData(section.questions, '2024');
+  const healthyEating2024 = getHealthHealthyEatingData(section.questions, compareYears[0]);
   const chronicDisease = getHealthChronicDiseaseData(section.questions, chartYear);
-  const chronicDisease2024 = getHealthChronicDiseaseData(section.questions, '2024');
+  const chronicDisease2024 = getHealthChronicDiseaseData(section.questions, compareYears[0]);
 
   return (
     <div className="main-content main-content-education">
@@ -454,16 +456,16 @@ function HealthCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   );
 }
 
-function EnvironmentCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const insectsRodents = getEnvironmentInsectsRodentsData(section.questions, chartYear);
-  const insectsRodents2024 = getEnvironmentInsectsRodentsData(section.questions, '2024');
+  const insectsRodents2024 = getEnvironmentInsectsRodentsData(section.questions, compareYears[0]);
   const serviceFacilities = getEnvironmentServiceFacilitiesData(section.questions, chartYear);
-  const serviceFacilities2024 = getEnvironmentServiceFacilitiesData(section.questions, '2024');
+  const serviceFacilities2024 = getEnvironmentServiceFacilitiesData(section.questions, compareYears[0]);
   const internalRoadServices = getEnvironmentInternalRoadServicesData(section.questions, chartYear);
-  const internalRoadServices2024 = getEnvironmentInternalRoadServicesData(section.questions, '2024');
+  const internalRoadServices2024 = getEnvironmentInternalRoadServicesData(section.questions, compareYears[0]);
   const urbanPlanning = getEnvironmentUrbanPlanningData(section.questions, chartYear);
-  const urbanPlanning2024 = getEnvironmentUrbanPlanningData(section.questions, '2024');
+  const urbanPlanning2024 = getEnvironmentUrbanPlanningData(section.questions, compareYears[0]);
 
   return (
     <div className="main-content main-content-education">
@@ -522,14 +524,14 @@ function EnvironmentCharts({ section, viewMode, selectedYear }: PillarChartsProp
   );
 }
 
-function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : '2025';
+function InfrastructureCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const topIssues = getInfrastructureTopIssuesData(section.questions, chartYear);
   const neededFacilities = getInfrastructureNeededFacilitiesData(section.questions, chartYear);
   const mentalHealth = getInfrastructureMentalHealthServicesData(section.questions, chartYear);
-  const mentalHealth2024 = getInfrastructureMentalHealthServicesData(section.questions, '2024');
+  const mentalHealth2024 = getInfrastructureMentalHealthServicesData(section.questions, compareYears[0]);
   const sportsFacilities = getInfrastructureSportsFacilitiesData(section.questions, chartYear);
-  const sportsFacilities2024 = getInfrastructureSportsFacilitiesData(section.questions, '2024');
+  const sportsFacilities2024 = getInfrastructureSportsFacilitiesData(section.questions, compareYears[0]);
 
   return (
     <div className="main-content main-content-education">
@@ -587,9 +589,9 @@ function InfrastructureCharts({ section, viewMode, selectedYear }: PillarChartsP
   );
 }
 
-export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+export function PillarCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
   if (section.id === 'demographics') {
-    return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (!section.score) {
@@ -597,31 +599,31 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
   }
 
   if (section.id === 'income') {
-    return <IncomeCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <IncomeCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'work') {
-    return <WorkCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <WorkCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'education') {
-    return <EducationCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <EducationCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'security') {
-    return <SecurityCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <SecurityCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'health') {
-    return <HealthCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <HealthCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'environment') {
-    return <EnvironmentCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <EnvironmentCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'infrastructure') {
-    return <InfrastructureCharts section={section} viewMode={viewMode} selectedYear={selectedYear} />;
+    return <InfrastructureCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   const { score, questions } = section;
@@ -635,7 +637,7 @@ export function PillarCharts({ section, viewMode, selectedYear }: PillarChartsPr
     value:
       viewMode === 'current'
         ? pickYearValue(q.data['2024']?.agreement ?? 0, q.data['2025']?.agreement ?? 0, selectedYear)
-        : (q.data['2025']?.agreement ?? 0) - (q.data['2024']?.agreement ?? 0),
+        : getYearDelta(q.data['2024']?.agreement ?? 0, q.data['2025']?.agreement ?? 0, compareYears),
   }));
 
   const categoricalQuestions = [...new Set(questions.filter(isCategory).map((q) => q.code))];

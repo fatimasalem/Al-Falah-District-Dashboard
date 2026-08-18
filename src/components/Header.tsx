@@ -1,31 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import type { SurveyYear, ViewMode } from '../types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { CompareYears, SurveyYear, TabStatus, ViewMode } from '../types';
+import { TAB_STATUS_TOOLTIPS } from '../types';
+import { formatCompareYearsLabel, normalizeCompareYears } from '../utils';
 
 interface HeaderProps {
   viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
+  compareYears: CompareYears;
+  onCompareYearsChange: (years: CompareYears) => void;
   selectedYear: SurveyYear;
   onSelectedYearChange: (year: SurveyYear) => void;
   availableYears: readonly SurveyYear[];
   updatedAt: string;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  tabs: readonly { id: string; label: string; icon: string; reviewReady?: boolean }[];
-}
-
-function IconSparkle() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 2l1.2 4.4L17 8l-3.8 1.2L12 14l-1.2-4.8L7 8l3.8-1.6L12 2z"
-        fill="currentColor"
-      />
-      <path
-        d="M5 18l.6 1.8L7.4 20l-1.8.6L5 22.4l-.6-1.8L2.6 20l1.8-.6L5 18zM19 16l.4 1.2L20.6 17l-1.2.4L19 18.6l-.4-1.2L17.4 17l1.2-.4L19 16z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  tabs: readonly { id: string; label: string; icon: string; status: TabStatus }[];
 }
 
 function IconShare() {
@@ -145,9 +134,77 @@ function TabIcon({ name }: { name: string }) {
   }
 }
 
+function TabStatusBadge({ status }: { status: TabStatus }) {
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, placement: 'top' as 'top' | 'bottom' });
+
+  const tooltip = TAB_STATUS_TOOLTIPS[status];
+
+  const updatePosition = useCallback(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const gap = 8;
+    const tooltipHeight = 32;
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placement = spaceAbove >= tooltipHeight + gap || spaceAbove >= spaceBelow ? 'top' : 'bottom';
+
+    setPosition({
+      top: placement === 'top' ? rect.top - gap : rect.bottom + gap,
+      left: rect.left + rect.width / 2,
+      placement,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [visible, updatePosition]);
+
+  return (
+    <>
+      <span
+        ref={wrapRef}
+        className="tab-status-badge-wrap"
+        aria-label={tooltip}
+        onMouseEnter={() => {
+          updatePosition();
+          setVisible(true);
+        }}
+        onMouseLeave={() => setVisible(false)}
+      >
+        <span className={`tab-status-badge tab-status-badge-${status.toLowerCase()}`}>
+          {status}
+        </span>
+      </span>
+      {visible && createPortal(
+        <span
+          className={`tab-status-tooltip tab-status-tooltip-${position.placement}`}
+          role="tooltip"
+          style={{ top: position.top, left: position.left }}
+        >
+          {tooltip}
+        </span>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 export function Header({
   viewMode,
-  onViewModeChange,
+  compareYears,
+  onCompareYearsChange,
   selectedYear,
   onSelectedYearChange,
   availableYears,
@@ -157,8 +214,10 @@ export function Header({
   tabs,
 }: HeaderProps) {
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
+  const [compareMenuOpen, setCompareMenuOpen] = useState(false);
+  const [pendingCompareYears, setPendingCompareYears] = useState<SurveyYear[]>(() => [...compareYears]);
   const yearDropdownRef = useRef<HTMLDivElement>(null);
-  const yoyDisabled = selectedYear === '2024';
+  const compareDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!yearMenuOpen) return;
@@ -181,10 +240,55 @@ export function Header({
     };
   }, [yearMenuOpen]);
 
+  useEffect(() => {
+    if (!compareMenuOpen) return;
+
+    setPendingCompareYears([...compareYears]);
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!compareDropdownRef.current?.contains(event.target as Node)) {
+        setCompareMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCompareMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [compareMenuOpen, compareYears]);
+
   const handleYearSelect = (year: SurveyYear) => {
     onSelectedYearChange(year);
     setYearMenuOpen(false);
   };
+
+  const handleCompareYearToggle = (year: SurveyYear) => {
+    setPendingCompareYears((current) => {
+      const isSelected = current.includes(year);
+      if (isSelected) {
+        return current.filter((value) => value !== year);
+      }
+      if (current.length >= 2) return current;
+      return [...current, year];
+    });
+  };
+
+  const handleCompareApply = () => {
+    const normalized = normalizeCompareYears(pendingCompareYears);
+    if (!normalized) return;
+    onCompareYearsChange(normalized);
+    setCompareMenuOpen(false);
+  };
+
+  const compareLabel = viewMode === 'yoy'
+    ? formatCompareYearsLabel(compareYears)
+    : 'YoY';
 
   return (
     <>
@@ -195,9 +299,9 @@ export function Header({
               <h1 className="header-title">
                 Al Falah District Dashboard
               </h1>
-              <button type="button" className="header-ai-btn" aria-label="Ask AI">
+              {/* <button type="button" className="header-ai-btn" aria-label="Ask AI">
                 <IconSparkle />
-              </button>
+              </button> */}
             </div>
             <p className="header-subtitle">
               Updated: {updatedAt} | District — Al Falah, Abu Dhabi
@@ -233,16 +337,51 @@ export function Header({
                   </ul>
                 )}
               </div>
-              <button
-                type="button"
-                className={`filter-pill ${viewMode === 'yoy' ? 'active' : ''}`}
-                onClick={() => onViewModeChange('yoy')}
-                disabled={yoyDisabled}
-                title={yoyDisabled ? 'Year-over-year comparison requires 2025 data' : undefined}
-                aria-disabled={yoyDisabled}
-              >
-                YoY
-              </button>
+              <div className="year-dropdown compare-dropdown" ref={compareDropdownRef}>
+                <button
+                  type="button"
+                  className={`filter-pill year-dropdown-trigger compare-dropdown-trigger ${viewMode === 'yoy' ? 'active' : ''}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={compareMenuOpen}
+                  aria-label={`Compare years, currently ${viewMode === 'yoy' ? formatCompareYearsLabel(compareYears) : 'year over year'}`}
+                  onClick={() => setCompareMenuOpen((open) => !open)}
+                >
+                  <span>{compareLabel}</span>
+                  <IconChevronDown />
+                </button>
+                {compareMenuOpen && (
+                  <div className="compare-dropdown-panel" role="dialog" aria-label="Select two years to compare">
+                    <p className="compare-dropdown-hint">Select exactly 2 years</p>
+                    <ul className="compare-dropdown-list">
+                      {availableYears.map((year) => {
+                        const isChecked = pendingCompareYears.includes(year);
+                        const isDisabled = !isChecked && pendingCompareYears.length >= 2;
+                        return (
+                          <li key={year}>
+                            <label className={`compare-dropdown-option ${isDisabled ? 'disabled' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isDisabled}
+                                onChange={() => handleCompareYearToggle(year)}
+                              />
+                              <span>{year}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <button
+                      type="button"
+                      className="compare-dropdown-apply"
+                      disabled={pendingCompareYears.length !== 2}
+                      onClick={handleCompareApply}
+                    >
+                      Compare
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="header-actions-separator" aria-hidden="true" />
             <button type="button" className="action-btn action-btn-ghost">
@@ -270,9 +409,7 @@ export function Header({
             >
               <span className="tab-icon"><TabIcon name={tab.icon} /></span>
               {tab.label}
-              {tab.reviewReady && (
-                <span className="tab-review-badge">RR</span>
-              )}
+              <TabStatusBadge status={tab.status} />
             </button>
           ))}
         </div>

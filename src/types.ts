@@ -1,7 +1,9 @@
 export type ViewMode = 'current' | 'yoy';
 export type SurveyYear = '2024' | '2025';
+export type CompareYears = readonly [SurveyYear, SurveyYear];
 
 export const SURVEY_YEARS: SurveyYear[] = ['2024', '2025'];
+export const DEFAULT_COMPARE_YEARS: CompareYears = ['2024', '2025'];
 
 export interface SectionScore {
   sectionId: string;
@@ -76,17 +78,25 @@ export interface SurveyData {
   sections: Record<string, Section>;
 }
 
+export type TabStatus = 'RR' | 'DEV' | 'AP';
+
+export const TAB_STATUS_TOOLTIPS: Record<TabStatus, string> = {
+  RR: 'RR: Review Ready',
+  DEV: 'DEV: In Development',
+  AP: 'AP: Approved',
+};
+
 export const PILLAR_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'grid', reviewReady: true },
-  { id: 'income', label: 'Income & Living', icon: 'wallet', reviewReady: true },
-  { id: 'work', label: 'Work', icon: 'briefcase', reviewReady: true },
-  { id: 'education', label: 'Education', icon: 'book', reviewReady: true },
-  { id: 'security', label: 'Security & Safety', icon: 'shield', reviewReady: true },
-  { id: 'health', label: 'Health', icon: 'heart', reviewReady: true },
-  { id: 'environment', label: 'Environment', icon: 'leaf', reviewReady: true },
-  { id: 'infrastructure', label: 'Infrastructure', icon: 'building', reviewReady: true },
-  { id: 'demographics', label: 'Demographics', icon: 'users', reviewReady: true },
-  { id: 'housing', label: 'Housing', icon: 'home' },
+  { id: 'overview', label: 'Overview', icon: 'grid', status: 'RR' },
+  { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'RR' },
+  { id: 'work', label: 'Work', icon: 'briefcase', status: 'RR' },
+  { id: 'education', label: 'Education', icon: 'book', status: 'RR' },
+  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'RR' },
+  { id: 'health', label: 'Health', icon: 'heart', status: 'RR' },
+  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'RR' },
+  { id: 'infrastructure', label: 'Infrastructure', icon: 'building', status: 'RR' },
+  { id: 'demographics', label: 'Demographics', icon: 'users', status: 'RR' },
+  { id: 'housing', label: 'Housing', icon: 'home', status: 'DEV' },
 ] as const;
 
 export type TabId = (typeof PILLAR_TABS)[number]['id'];

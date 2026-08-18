@@ -1,7 +1,10 @@
 import type { ReactElement, ReactNode } from 'react';
-import type { ViewMode, SurveyData, SurveyYear, Section } from '../types';
+import type { ViewMode, SurveyData, SurveyYear, Section, CompareYears } from '../types';
+import { DEFAULT_COMPARE_YEARS } from '../types';
 import {
   formatDelta,
+  formatCompareYearsLabel,
+  getYearDelta,
   getIncomeComfortPercent,
   getEmploymentPercent,
   getSafetyPercent,
@@ -10,6 +13,7 @@ import {
   pickYearValue,
   getAverageMonthlyIncome,
   getTopMultiSelectCategory,
+  getKpiCategoryShortLabel,
   INCOME_DEBT_EXCLUSIONS,
   getAverageWeeklyHours,
   getWorkLifeBalancePercent,
@@ -299,9 +303,11 @@ function CategoryIcon({ name, size = 'default' }: { name: CategoryIconName; size
 interface KpiCardsProps {
   items: KpiItem[];
   viewMode?: ViewMode;
+  compareYears?: CompareYears;
 }
 
-export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
+export function KpiCards({ items, viewMode = 'current', compareYears = DEFAULT_COMPARE_YEARS }: KpiCardsProps) {
+  const deltaLabel = formatCompareYearsLabel(compareYears);
   return (
     <div className="kpi-row">
       {items.slice(0, 4).map((item) => {
@@ -330,7 +336,7 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
             {viewMode === 'yoy' && item.delta !== undefined && (
               <div className={`kpi-delta${item.tone ? ` ${item.tone}` : ''}`}>
                 <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
-                {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? 'YoY'}
+                {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? deltaLabel}
               </div>
             )}
             {item.subtext && <div className="kpi-subtext">{item.subtext}</div>}
@@ -341,7 +347,12 @@ export function KpiCards({ items, viewMode = 'current' }: KpiCardsProps) {
   );
 }
 
-export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: SurveyYear = '2025'): KpiItem[] {
+export function buildOverviewKpis(
+  data: SurveyData,
+  mode: ViewMode,
+  year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
+): KpiItem[] {
   const { overview } = data;
   const satisfaction = pickYearValue(overview.overallScore2024, overview.overallScore2025, year);
   const incomeComfort = getIncomeComfortPercent(data, year);
@@ -356,7 +367,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getOverviewKpiSentence('satisfaction', satisfaction),
-      delta: overview.overallYoyChange,
+      delta: getYearDelta(overview.overallScore2024, overview.overallScore2025, compareYears),
     },
     {
       label: 'Income Comfort',
@@ -365,7 +376,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       suffix: '%',
       valueCaption: 'are comfortable',
       subtext: getOverviewKpiSentence('income', incomeComfort),
-      delta: incomeComfort - getIncomeComfortPercent(data, '2024'),
+      delta: getIncomeComfortPercent(data, compareYears[1]) - getIncomeComfortPercent(data, compareYears[0]),
     },
     {
       label: 'Employment',
@@ -374,7 +385,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       suffix: '%',
       valueCaption: 'are employed',
       subtext: getOverviewKpiSentence('employment', employment),
-      delta: employment - getEmploymentPercent(data, '2024'),
+      delta: getEmploymentPercent(data, compareYears[1]) - getEmploymentPercent(data, compareYears[0]),
     },
     {
       label: 'Safety',
@@ -383,7 +394,7 @@ export function buildOverviewKpis(data: SurveyData, mode: ViewMode, year: Survey
       suffix: '%',
       valueCaption: 'feel safe',
       subtext: getOverviewKpiSentence('safety', safety),
-      delta: safety - getSafetyPercent(data, '2024'),
+      delta: getSafetyPercent(data, compareYears[1]) - getSafetyPercent(data, compareYears[0]),
     },
   ];
 
@@ -419,6 +430,7 @@ export function buildDemographicsKpis(
   section: import('../types').Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const questions = section.questions;
   const familySize2024 = getDemographicsMeanValue(questions, 'Q914', '2024');
@@ -450,25 +462,29 @@ export function buildDemographicsKpis(
       suffix: ' members',
       valueCaption: 'per household',
       subtext: getDemographicsKpiSentence('familySize', familySize),
-      delta: familySize2025 - familySize2024,
+      delta: getYearDelta(familySize2024, familySize2025, compareYears),
     },
     {
       label: 'Largest Age Group',
       icon: 'briefcase',
-      value: topAge?.name ?? '—',
+      value: topAge ? `${topAge.name} —` : '—',
+      suffix: topAge ? `${topAge.value.toFixed(1)}%` : undefined,
+      valueCaption: topAge ? 'in this age group' : undefined,
       subtext: topAge
-        ? getDemographicsKpiSentence('ageGroup', topAge.value, topAge.name)
+        ? getDemographicsKpiSentence('ageGroup', topAge.value)
         : 'No age group data available.',
-      delta: topAge ? topAge.value2025 - topAge.value2024 : undefined,
+      delta: topAge ? getYearDelta(topAge.value2024, topAge.value2025, compareYears) : undefined,
     },
     {
       label: 'Highest-Represented Education Level',
       icon: 'education',
-      value: topEducation?.name ?? '—',
+      value: topEducation ? `${topEducation.name} —` : '—',
+      suffix: topEducation ? `${topEducation.value.toFixed(1)}%` : undefined,
+      valueCaption: topEducation ? 'hold this qualification' : undefined,
       subtext: topEducation
-        ? getDemographicsKpiSentence('education', topEducation.value, topEducation.name)
+        ? getDemographicsKpiSentence('education', topEducation.value)
         : 'No education level data available.',
-      delta: topEducation ? topEducation.value2025 - topEducation.value2024 : undefined,
+      delta: topEducation ? getYearDelta(topEducation.value2024, topEducation.value2025, compareYears) : undefined,
     },
     {
       label: 'Avg Number of Working Family Members',
@@ -477,7 +493,7 @@ export function buildDemographicsKpis(
       suffix: ' members',
       valueCaption: 'per household',
       subtext: getDemographicsKpiSentence('workingMembers', workingMembers),
-      delta: workingMembers2025 - workingMembers2024,
+      delta: getYearDelta(workingMembers2024, workingMembers2025, compareYears),
     },
   ];
 
@@ -493,20 +509,24 @@ export function buildPillarKpis(
   score: import('../types').SectionScore | null,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   if (!score) return [];
+  const scoreDelta = getYearDelta(score.score2024, score.score2025, compareYears);
+  const positiveDelta = getYearDelta(score.positive2024, score.positive2025, compareYears);
+  const negativeDelta = getYearDelta(score.negative2024, score.negative2025, compareYears);
   if (mode === 'current') {
     const sectionScore = pickYearValue(score.score2024, score.score2025, year);
     const positiveSentiment = pickYearValue(score.positive2024, score.positive2025, year);
     const negativeSentiment = pickYearValue(score.negative2024, score.negative2025, year);
-    const comparisonScore = year === '2025' ? score.score2024 : score.score2025;
+    const comparisonScore = year === compareYears[1] ? pickYearValue(score.score2024, score.score2025, compareYears[0]) : pickYearValue(score.score2024, score.score2025, compareYears[1]);
     return finalizeKpiCards(
       [
-        { label: 'Section Score', value: `${sectionScore}`, suffix: '%', delta: score.yoyChange },
-        { label: 'Positive Sentiment', value: `${positiveSentiment}`, suffix: '%', delta: score.positive2025 - score.positive2024 },
-        { label: 'Negative Sentiment', value: `${negativeSentiment}`, suffix: '%', delta: score.negative2025 - score.negative2024 },
-        { label: year === '2025' ? '2024 Baseline' : '2025 Score', value: `${comparisonScore}`, suffix: '%' },
-        { label: 'Top Partner', value: score.sectionNameEn, subtext: 'Current pillar', delta: score.yoyChange },
+        { label: 'Section Score', value: `${sectionScore}`, suffix: '%', delta: scoreDelta },
+        { label: 'Positive Sentiment', value: `${positiveSentiment}`, suffix: '%', delta: positiveDelta },
+        { label: 'Negative Sentiment', value: `${negativeSentiment}`, suffix: '%', delta: negativeDelta },
+        { label: year === compareYears[1] ? `${compareYears[0]} Baseline` : `${compareYears[1]} Score`, value: `${comparisonScore}`, suffix: '%' },
+        { label: 'Top Partner', value: score.sectionNameEn, subtext: 'Current pillar', delta: scoreDelta },
       ],
       mode,
       [
@@ -518,11 +538,11 @@ export function buildPillarKpis(
     );
   }
   return [
-    { label: 'Score Change', value: formatDelta(score.yoyChange) },
-    { label: 'Positive Δ', value: formatDelta(score.positive2025 - score.positive2024) },
-    { label: 'Negative Δ', value: formatDelta(score.negative2025 - score.negative2024) },
-    { label: '2024 Score', value: `${score.score2024}`, suffix: '%' },
-    { label: '2025 Score', value: `${score.score2025}`, suffix: '%', delta: score.yoyChange },
+    { label: 'Score Change', value: formatDelta(scoreDelta) },
+    { label: 'Positive Δ', value: formatDelta(positiveDelta) },
+    { label: 'Negative Δ', value: formatDelta(negativeDelta) },
+    { label: `${compareYears[0]} Score`, value: `${pickYearValue(score.score2024, score.score2025, compareYears[0])}`, suffix: '%' },
+    { label: `${compareYears[1]} Score`, value: `${pickYearValue(score.score2024, score.score2025, compareYears[1])}`, suffix: '%', delta: scoreDelta },
   ];
 }
 
@@ -535,19 +555,20 @@ export function buildIncomeKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const avgIncome2024 = getAverageMonthlyIncome(data, '2024');
-  const avgIncome2025 = getAverageMonthlyIncome(data, '2025');
+  const avgIncome2024 = getAverageMonthlyIncome(data, compareYears[0]);
+  const avgIncome2025 = getAverageMonthlyIncome(data, compareYears[1]);
   const avgIncome = pickYearValue(avgIncome2024, avgIncome2025, year);
   const topExpense = getTopMultiSelectCategory(section.questions, 'Q102', year);
   const topDebt = getTopMultiSelectCategory(section.questions, 'Q103', year, INCOME_DEBT_EXCLUSIONS);
 
-  const expenseDelta = topExpense ? topExpense.value2025 - topExpense.value2024 : 0;
-  const debtDelta = topDebt ? topDebt.value2025 - topDebt.value2024 : 0;
+  const expenseDelta = topExpense ? getYearDelta(topExpense.value2024, topExpense.value2025, compareYears) : 0;
+  const debtDelta = topDebt ? getYearDelta(topDebt.value2024, topDebt.value2025, compareYears) : 0;
   const incomePctChange =
     avgIncome2024 > 0 ? ((avgIncome2025 - avgIncome2024) / avgIncome2024) * 100 : 0;
 
@@ -559,7 +580,7 @@ export function buildIncomeKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getIncomeKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Avg Monthly Income',
@@ -572,21 +593,27 @@ export function buildIncomeKpis(
     {
       label: 'Top Living Expense',
       icon: 'receipt',
-      value: topExpense ? `${topExpense.value.toFixed(1)}` : '—',
-      suffix: topExpense ? '%' : undefined,
-      valueCaption: topExpense ? 'report spending on' : undefined,
-      // valueIcon: topExpense ? getCategoryIcon(topExpense.categoryEn) : undefined,
-      subtext: getIncomeKpiSentence('expense', topExpense?.value ?? 0, topExpense?.categoryEn, topExpense?.name),
+      value: topExpense
+        ? `${getKpiCategoryShortLabel(topExpense.categoryEn, topExpense.name)} —`
+        : '—',
+      suffix: topExpense ? `${topExpense.value.toFixed(1)}%` : undefined,
+      valueCaption: topExpense ? 'report this expense' : undefined,
+      subtext: getIncomeKpiSentence(
+        'expense',
+        topExpense?.value ?? 0,
+        topExpense?.categoryEn,
+      ),
       delta: topExpense ? expenseDelta : undefined,
     },
     {
       label: 'Top Debt Obligation',
       icon: 'credit-card',
-      value: topDebt ? `${topDebt.value.toFixed(1)}` : '—',
-      suffix: topDebt ? '%' : undefined,
+      value: topDebt
+        ? `${getKpiCategoryShortLabel(topDebt.categoryEn, topDebt.name)} —`
+        : '—',
+      suffix: topDebt ? `${topDebt.value.toFixed(1)}%` : undefined,
       valueCaption: topDebt ? 'report this debt' : undefined,
-      // valueIcon: topDebt ? getCategoryIcon(topDebt.categoryEn) : undefined,
-      subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn, topDebt?.name),
+      subtext: getIncomeKpiSentence('debt', topDebt?.value ?? 0, topDebt?.categoryEn),
       delta: topDebt ? debtDelta : undefined,
     },
   ];
@@ -603,20 +630,21 @@ export function buildWorkKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const avgHours2024 = getAverageWeeklyHours(questions, '2024');
-  const avgHours2025 = getAverageWeeklyHours(questions, '2025');
+  const avgHours2024 = getAverageWeeklyHours(questions, compareYears[0]);
+  const avgHours2025 = getAverageWeeklyHours(questions, compareYears[1]);
   const avgHours = pickYearValue(avgHours2024, avgHours2025, year);
-  const balance2024 = getWorkLifeBalancePercent(questions, '2024');
-  const balance2025 = getWorkLifeBalancePercent(questions, '2025');
+  const balance2024 = getWorkLifeBalancePercent(questions, compareYears[0]);
+  const balance2025 = getWorkLifeBalancePercent(questions, compareYears[1]);
   const balance = pickYearValue(balance2024, balance2025, year);
-  const assistance2024 = getGovernmentAssistancePercent(questions, '2024');
-  const assistance2025 = getGovernmentAssistancePercent(questions, '2025');
+  const assistance2024 = getGovernmentAssistancePercent(questions, compareYears[0]);
+  const assistance2025 = getGovernmentAssistancePercent(questions, compareYears[1]);
   const assistance = pickYearValue(assistance2024, assistance2025, year);
 
   const cards: KpiItem[] = [
@@ -627,7 +655,7 @@ export function buildWorkKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getWorkKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Avg Weekly Working Hours',
@@ -636,7 +664,7 @@ export function buildWorkKpis(
       suffix: ' hrs',
       valueCaption: 'per week',
       subtext: getWorkKpiSentence('hours', avgHours),
-      delta: avgHours2025 - avgHours2024,
+      delta: getYearDelta(avgHours2024, avgHours2025, compareYears),
     },
     {
       label: 'Work-Life Balance Security',
@@ -645,7 +673,7 @@ export function buildWorkKpis(
       suffix: '%',
       valueCaption: 'feel secure',
       subtext: getWorkKpiSentence('balance', balance),
-      delta: balance2025 - balance2024,
+      delta: getYearDelta(balance2024, balance2025, compareYears),
     },
     {
       label: 'Government Assistance Recipients',
@@ -654,7 +682,7 @@ export function buildWorkKpis(
       suffix: '%',
       valueCaption: 'receive assistance',
       subtext: getWorkKpiSentence('assistance', assistance),
-      delta: assistance2025 - assistance2024,
+      delta: getYearDelta(assistance2024, assistance2025, compareYears),
     },
   ];
 
@@ -670,20 +698,21 @@ export function buildEducationKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const safety2024 = getEducationChildSafetyPercent(questions, '2024');
-  const safety2025 = getEducationChildSafetyPercent(questions, '2025');
+  const safety2024 = getEducationChildSafetyPercent(questions, compareYears[0]);
+  const safety2025 = getEducationChildSafetyPercent(questions, compareYears[1]);
   const safety = pickYearValue(safety2024, safety2025, year);
-  const lifeSkills2024 = getEducationLifeSkillsPercent(questions, '2024');
-  const lifeSkills2025 = getEducationLifeSkillsPercent(questions, '2025');
+  const lifeSkills2024 = getEducationLifeSkillsPercent(questions, compareYears[0]);
+  const lifeSkills2025 = getEducationLifeSkillsPercent(questions, compareYears[1]);
   const lifeSkills = pickYearValue(lifeSkills2024, lifeSkills2025, year);
-  const university2024 = getEducationUniversitySatisfactionPercent(questions, '2024');
-  const university2025 = getEducationUniversitySatisfactionPercent(questions, '2025');
+  const university2024 = getEducationUniversitySatisfactionPercent(questions, compareYears[0]);
+  const university2025 = getEducationUniversitySatisfactionPercent(questions, compareYears[1]);
   const university = pickYearValue(university2024, university2025, year);
 
   const cards: KpiItem[] = [
@@ -694,7 +723,7 @@ export function buildEducationKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEducationKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Kids\' Physical Safety at School',
@@ -703,7 +732,7 @@ export function buildEducationKpis(
       suffix: '%',
       valueCaption: 'feel kids are safe',
       subtext: getEducationKpiSentence('safety', safety),
-      delta: safety2025 - safety2024,
+      delta: getYearDelta(safety2024, safety2025, compareYears),
     },
     {
       label: 'Life Skills & Creativity',
@@ -712,7 +741,7 @@ export function buildEducationKpis(
       suffix: '%',
       valueCaption: 'value life skills',
       subtext: getEducationKpiSentence('lifeSkills', lifeSkills),
-      delta: lifeSkills2025 - lifeSkills2024,
+      delta: getYearDelta(lifeSkills2024, lifeSkills2025, compareYears),
     },
     {
       label: 'University Education Satisfaction',
@@ -721,7 +750,7 @@ export function buildEducationKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEducationKpiSentence('university', university),
-      delta: university2025 - university2024,
+      delta: getYearDelta(university2024, university2025, compareYears),
     },
   ];
 
@@ -737,20 +766,21 @@ export function buildSecurityKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const movingSafe2024 = getSecurityMovingSafePercent(questions, '2024');
-  const movingSafe2025 = getSecurityMovingSafePercent(questions, '2025');
+  const movingSafe2024 = getSecurityMovingSafePercent(questions, compareYears[0]);
+  const movingSafe2025 = getSecurityMovingSafePercent(questions, compareYears[1]);
   const movingSafe = pickYearValue(movingSafe2024, movingSafe2025, year);
-  const policeTrust2024 = getSecurityPoliceTrustPercent(questions, '2024');
-  const policeTrust2025 = getSecurityPoliceTrustPercent(questions, '2025');
+  const policeTrust2024 = getSecurityPoliceTrustPercent(questions, compareYears[0]);
+  const policeTrust2025 = getSecurityPoliceTrustPercent(questions, compareYears[1]);
   const policeTrust = pickYearValue(policeTrust2024, policeTrust2025, year);
-  const jobSecurity2024 = getSecurityJobSecurityPercent(questions, '2024');
-  const jobSecurity2025 = getSecurityJobSecurityPercent(questions, '2025');
+  const jobSecurity2024 = getSecurityJobSecurityPercent(questions, compareYears[0]);
+  const jobSecurity2025 = getSecurityJobSecurityPercent(questions, compareYears[1]);
   const jobSecurity = pickYearValue(jobSecurity2024, jobSecurity2025, year);
 
   const cards: KpiItem[] = [
@@ -761,7 +791,7 @@ export function buildSecurityKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getSecurityKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Safe Moving Around Day & Night',
@@ -770,7 +800,7 @@ export function buildSecurityKpis(
       suffix: '%',
       valueCaption: 'feel safe',
       subtext: getSecurityKpiSentence('movingSafe', movingSafe),
-      delta: movingSafe2025 - movingSafe2024,
+      delta: getYearDelta(movingSafe2024, movingSafe2025, compareYears),
     },
     {
       label: 'Trust in Abu Dhabi Police',
@@ -779,7 +809,7 @@ export function buildSecurityKpis(
       suffix: '%',
       valueCaption: 'trust police ability',
       subtext: getSecurityKpiSentence('policeTrust', policeTrust),
-      delta: policeTrust2025 - policeTrust2024,
+      delta: getYearDelta(policeTrust2024, policeTrust2025, compareYears),
     },
     {
       label: 'Job Security in Abu Dhabi',
@@ -788,7 +818,7 @@ export function buildSecurityKpis(
       suffix: '%',
       valueCaption: 'feel job security',
       subtext: getSecurityKpiSentence('jobSecurity', jobSecurity),
-      delta: jobSecurity2025 - jobSecurity2024,
+      delta: getYearDelta(jobSecurity2024, jobSecurity2025, compareYears),
     },
   ];
 
@@ -804,20 +834,21 @@ export function buildHealthKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const currentHealth2024 = getHealthCurrentHealthGoodPercent(questions, '2024');
-  const currentHealth2025 = getHealthCurrentHealthGoodPercent(questions, '2025');
+  const currentHealth2024 = getHealthCurrentHealthGoodPercent(questions, compareYears[0]);
+  const currentHealth2025 = getHealthCurrentHealthGoodPercent(questions, compareYears[1]);
   const currentHealth = pickYearValue(currentHealth2024, currentHealth2025, year);
-  const activity2024 = getHealthPhysicalActivityHours(questions, '2024');
-  const activity2025 = getHealthPhysicalActivityHours(questions, '2025');
+  const activity2024 = getHealthPhysicalActivityHours(questions, compareYears[0]);
+  const activity2025 = getHealthPhysicalActivityHours(questions, compareYears[1]);
   const activity = pickYearValue(activity2024, activity2025, year);
-  const sleep2024 = getHealthSleepQualityGoodPercent(questions, '2024');
-  const sleep2025 = getHealthSleepQualityGoodPercent(questions, '2025');
+  const sleep2024 = getHealthSleepQualityGoodPercent(questions, compareYears[0]);
+  const sleep2025 = getHealthSleepQualityGoodPercent(questions, compareYears[1]);
   const sleep = pickYearValue(sleep2024, sleep2025, year);
 
   const cards: KpiItem[] = [
@@ -828,7 +859,7 @@ export function buildHealthKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getHealthKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Current Health Rated Good',
@@ -837,7 +868,7 @@ export function buildHealthKpis(
       suffix: '%',
       valueCaption: 'rate health as good',
       subtext: getHealthKpiSentence('currentHealth', currentHealth),
-      delta: currentHealth2025 - currentHealth2024,
+      delta: getYearDelta(currentHealth2024, currentHealth2025, compareYears),
     },
     {
       label: 'Avg Daily Physical Activity',
@@ -846,7 +877,7 @@ export function buildHealthKpis(
       suffix: ' hrs',
       valueCaption: 'per day',
       subtext: getHealthKpiSentence('activity', activity),
-      delta: activity2025 - activity2024,
+      delta: getYearDelta(activity2024, activity2025, compareYears),
     },
     {
       label: 'Sleep Quality Rated Good',
@@ -855,7 +886,7 @@ export function buildHealthKpis(
       suffix: '%',
       valueCaption: 'rate sleep as good',
       subtext: getHealthKpiSentence('sleep', sleep),
-      delta: sleep2025 - sleep2024,
+      delta: getYearDelta(sleep2024, sleep2025, compareYears),
     },
   ];
 
@@ -871,20 +902,21 @@ export function buildEnvironmentKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const cleanliness2024 = getEnvironmentCleanlinessPercent(questions, '2024');
-  const cleanliness2025 = getEnvironmentCleanlinessPercent(questions, '2025');
+  const cleanliness2024 = getEnvironmentCleanlinessPercent(questions, compareYears[0]);
+  const cleanliness2025 = getEnvironmentCleanlinessPercent(questions, compareYears[1]);
   const cleanliness = pickYearValue(cleanliness2024, cleanliness2025, year);
-  const airQuality2024 = getEnvironmentAirQualityPercent(questions, '2024');
-  const airQuality2025 = getEnvironmentAirQualityPercent(questions, '2025');
+  const airQuality2024 = getEnvironmentAirQualityPercent(questions, compareYears[0]);
+  const airQuality2025 = getEnvironmentAirQualityPercent(questions, compareYears[1]);
   const airQuality = pickYearValue(airQuality2024, airQuality2025, year);
-  const noiseLevel2024 = getEnvironmentNoiseLevelPercent(questions, '2024');
-  const noiseLevel2025 = getEnvironmentNoiseLevelPercent(questions, '2025');
+  const noiseLevel2024 = getEnvironmentNoiseLevelPercent(questions, compareYears[0]);
+  const noiseLevel2025 = getEnvironmentNoiseLevelPercent(questions, compareYears[1]);
   const noiseLevel = pickYearValue(noiseLevel2024, noiseLevel2025, year);
 
   const cards: KpiItem[] = [
@@ -895,7 +927,7 @@ export function buildEnvironmentKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEnvironmentKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Neighborhood Cleanliness Satisfaction',
@@ -904,7 +936,7 @@ export function buildEnvironmentKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEnvironmentKpiSentence('cleanliness', cleanliness),
-      delta: cleanliness2025 - cleanliness2024,
+      delta: getYearDelta(cleanliness2024, cleanliness2025, compareYears),
     },
     {
       label: 'Satisfaction with Air Quality',
@@ -913,7 +945,7 @@ export function buildEnvironmentKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEnvironmentKpiSentence('airQuality', airQuality),
-      delta: airQuality2025 - airQuality2024,
+      delta: getYearDelta(airQuality2024, airQuality2025, compareYears),
     },
     {
       label: 'Satisfaction with Neighborhood Noise Level',
@@ -922,7 +954,7 @@ export function buildEnvironmentKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getEnvironmentKpiSentence('noiseLevel', noiseLevel),
-      delta: noiseLevel2025 - noiseLevel2024,
+      delta: getYearDelta(noiseLevel2024, noiseLevel2025, compareYears),
     },
   ];
 
@@ -938,20 +970,21 @@ export function buildInfrastructureKpis(
   section: Section,
   mode: ViewMode,
   year: SurveyYear = '2025',
+  compareYears: CompareYears = DEFAULT_COMPARE_YEARS,
 ): KpiItem[] {
   const score = section.score;
   if (!score) return [];
 
   const questions = section.questions;
   const sectionScore = pickYearValue(score.score2024, score.score2025, year);
-  const waterElectricity2024 = getInfrastructureWaterElectricityPercent(questions, '2024');
-  const waterElectricity2025 = getInfrastructureWaterElectricityPercent(questions, '2025');
+  const waterElectricity2024 = getInfrastructureWaterElectricityPercent(questions, compareYears[0]);
+  const waterElectricity2025 = getInfrastructureWaterElectricityPercent(questions, compareYears[1]);
   const waterElectricity = pickYearValue(waterElectricity2024, waterElectricity2025, year);
-  const gasStations2024 = getInfrastructureGasStationsPercent(questions, '2024');
-  const gasStations2025 = getInfrastructureGasStationsPercent(questions, '2025');
+  const gasStations2024 = getInfrastructureGasStationsPercent(questions, compareYears[0]);
+  const gasStations2025 = getInfrastructureGasStationsPercent(questions, compareYears[1]);
   const gasStations = pickYearValue(gasStations2024, gasStations2025, year);
-  const shopping2024 = getInfrastructureShoppingPercent(questions, '2024');
-  const shopping2025 = getInfrastructureShoppingPercent(questions, '2025');
+  const shopping2024 = getInfrastructureShoppingPercent(questions, compareYears[0]);
+  const shopping2025 = getInfrastructureShoppingPercent(questions, compareYears[1]);
   const shopping = pickYearValue(shopping2024, shopping2025, year);
 
   const cards: KpiItem[] = [
@@ -962,7 +995,7 @@ export function buildInfrastructureKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getInfrastructureKpiSentence('score', sectionScore),
-      delta: score.yoyChange,
+      delta: getYearDelta(score.score2024, score.score2025, compareYears),
     },
     {
       label: 'Water and Electricity Services Satisfaction',
@@ -971,7 +1004,7 @@ export function buildInfrastructureKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getInfrastructureKpiSentence('waterElectricity', waterElectricity),
-      delta: waterElectricity2025 - waterElectricity2024,
+      delta: getYearDelta(waterElectricity2024, waterElectricity2025, compareYears),
     },
     {
       label: 'Satisfaction on Gas Stations Availability',
@@ -980,7 +1013,7 @@ export function buildInfrastructureKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getInfrastructureKpiSentence('gasStations', gasStations),
-      delta: gasStations2025 - gasStations2024,
+      delta: getYearDelta(gasStations2024, gasStations2025, compareYears),
     },
     {
       label: 'Shops & Shopping Centers Satisfaction',
@@ -989,7 +1022,7 @@ export function buildInfrastructureKpis(
       suffix: '%',
       valueCaption: 'are satisfied',
       subtext: getInfrastructureKpiSentence('shopping', shopping),
-      delta: shopping2025 - shopping2024,
+      delta: getYearDelta(shopping2024, shopping2025, compareYears),
     },
   ];
 

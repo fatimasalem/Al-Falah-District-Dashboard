@@ -1,4 +1,4 @@
-import type { SurveyData, SurveyYear, ViewMode } from '../types';
+import type { CompareYears, SurveyData, SurveyYear, ViewMode } from '../types';
 import {
   PartnerChart,
   DataTable,
@@ -11,6 +11,7 @@ import {
   getEnvironmentChartData,
   getHealthHeatmapData,
   getScoreValue,
+  getYearDelta,
   pickYearValue,
 } from '../utils';
 
@@ -18,9 +19,10 @@ interface OverviewChartsProps {
   data: SurveyData;
   viewMode: ViewMode;
   selectedYear: SurveyYear;
+  compareYears: CompareYears;
 }
 
-export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsProps) {
+export function OverviewCharts({ data, viewMode, selectedYear, compareYears }: OverviewChartsProps) {
   const scores = Object.values(data.sectionScores)
     .map((s) => ({
       name: s.sectionNameEn,
@@ -31,7 +33,7 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
       value2025: s.score2025,
       value: viewMode === 'current'
         ? pickYearValue(s.score2024, s.score2025, selectedYear)
-        : s.yoyChange,
+        : getYearDelta(s.score2024, s.score2025, compareYears),
       satisfied: pickYearValue(s.positive2024, s.positive2025, selectedYear),
       unsatisfied: pickYearValue(s.negative2024, s.negative2025, selectedYear),
     }))
@@ -42,7 +44,7 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
     fullName: s.fullName,
     value: viewMode === 'current'
       ? pickYearValue(s.value2024, s.value2025, selectedYear)
-      : s.value2025 - s.value2024,
+      : getYearDelta(s.value2024, s.value2025, compareYears),
     value2024: s.score2024,
     value2025: s.score2025,
   }));
@@ -66,19 +68,19 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
   const educationScore = data.sectionScores.education!;
   const environmentScore = data.sectionScores.environment!;
 
-  const chartYear = viewMode === 'yoy' ? '2025' : selectedYear;
+  const chartYear = viewMode === 'yoy' ? compareYears[1] : selectedYear;
 
   const educationData = educationSection
     ? getEducationChartData(educationSection, chartYear, chartYear)
     : [];
   const educationData2024 = educationSection
-    ? getEducationChartData(educationSection, '2024', chartYear)
+    ? getEducationChartData(educationSection, compareYears[0], chartYear)
     : [];
   const environmentData = environmentSection
     ? getEnvironmentChartData(environmentSection, chartYear, chartYear)
     : [];
   const environmentData2024 = environmentSection
-    ? getEnvironmentChartData(environmentSection, '2024', chartYear)
+    ? getEnvironmentChartData(environmentSection, compareYears[0], chartYear)
     : [];
   const healthHeatmapData = healthSection
     ? getHealthHeatmapData(healthSection)
@@ -94,7 +96,7 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
           badgeScore={
             viewMode === 'current'
               ? pickYearValue(data.overview.overallScore2024, data.overview.overallScore2025, selectedYear)
-              : data.overview.overallYoyChange
+              : getYearDelta(data.overview.overallScore2024, data.overview.overallScore2025, compareYears)
           }
         />
         {educationData.length > 0 && (
@@ -103,7 +105,7 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
             data2024={educationData2024}
             mode={viewMode}
             year={selectedYear}
-            score={getScoreValue(educationScore, viewMode, selectedYear)}
+            score={getScoreValue(educationScore, viewMode, selectedYear, compareYears)}
           />
         )}
         {environmentData.length > 0 && (
@@ -112,7 +114,7 @@ export function OverviewCharts({ data, viewMode, selectedYear }: OverviewChartsP
             data2024={environmentData2024}
             mode={viewMode}
             year={selectedYear}
-            score={getScoreValue(environmentScore, viewMode, selectedYear)}
+            score={getScoreValue(environmentScore, viewMode, selectedYear, compareYears)}
           />
         )}
         {healthHeatmapData.length > 0 && healthScore && (
