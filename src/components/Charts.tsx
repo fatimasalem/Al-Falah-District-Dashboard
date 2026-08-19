@@ -579,7 +579,35 @@ export type ChartCardIconName =
   | 'work'
   | 'income'
   | 'statements'
-  | 'table';
+  | 'table'
+  | 'money-bill'
+  | 'wallet'
+  | 'briefcase'
+  | 'dart'
+  | 'investment'
+  | 'government-building'
+  | 'sports'
+  | 'bullying'
+  | 'awareness'
+  | 'discipline'
+  | 'speaking'
+  | 'whisper'
+  | 'power-outage'
+  | 'drug-prevention'
+  | 'food'
+  | 'disease'
+  | 'insect'
+  | 'quality'
+  | 'road'
+  | 'buildings'
+  | 'facilities'
+  | 'gender'
+  | 'passport'
+  | 'marital-status'
+  | 'accessibility'
+  | 'ventilation'
+  | 'light'
+  | 'home-purchase';
 
 function ChartCardIcon({ name }: { name: ChartCardIconName }) {
   const props = {
@@ -713,9 +741,250 @@ function ChartCardIcon({ name }: { name: ChartCardIconName }) {
         <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
       </svg>
     ),
+    'money-bill': (
+      <svg {...props}>
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2" />
+        <path d="M6 12h.01M18 12h.01" />
+      </svg>
+    ),
+    wallet: (
+      <svg {...props}>
+        <path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" />
+        <path d="M16 11h.01" />
+        <path d="M3 10h18" />
+      </svg>
+    ),
+    briefcase: (
+      <svg {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    ),
+    dart: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+      </svg>
+    ),
+    investment: (
+      <svg {...props}>
+        <path d="M3 17l6-6 4 4 8-8" />
+        <path d="M17 7h4v4" />
+        <path d="M3 21h18" />
+      </svg>
+    ),
+    'government-building': (
+      <svg {...props}>
+        <path d="M3 21h18" />
+        <path d="M5 21V7l8-4v18" />
+        <path d="M19 21V11l-6-4" />
+        <path d="M9 9v0M9 12v0M9 15v0M9 18v0" />
+      </svg>
+    ),
+    sports: (
+      <svg {...props}>
+        <circle cx="14" cy="4" r="2" />
+        <path d="M18 11l-3-2-2 4-3-1-4 5" />
+        <path d="M8 21l2-6" />
+        <path d="M16 21l-1-5" />
+      </svg>
+    ),
+    bullying: (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+        <path d="M20 8l2 2-2 2" />
+      </svg>
+    ),
+    awareness: (
+      <svg {...props}>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+    discipline: (
+      <svg {...props}>
+        <path d="M14 3l7 7-11 11H3v-7L14 3z" />
+        <path d="M14 3l4 4" />
+        <path d="M3 21h18" />
+      </svg>
+    ),
+    speaking: (
+      <svg {...props}>
+        <path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z" />
+        <path d="M19 10v2a7 7 0 01-14 0v-2" />
+        <path d="M12 19v3" />
+        <path d="M8 22h8" />
+      </svg>
+    ),
+    whisper: (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+        <path d="M19 10c1 1 1.5 2 1.5 3" />
+        <path d="M21 9c1.5 1.5 2 3.5 2 5" />
+      </svg>
+    ),
+    'power-outage': (
+      <svg {...props}>
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        <path d="M2 2l20 20" />
+      </svg>
+    ),
+    'drug-prevention': (
+      <svg {...props}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+    food: (
+      <svg {...props}>
+        <path d="M18 8h1a4 4 0 010 8h-1" />
+        <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" />
+        <path d="M6 2v4M10 2v4M14 2v4" />
+      </svg>
+    ),
+    disease: (
+      <svg {...props}>
+        <path d="M12 2v20M2 12h20" />
+        <circle cx="12" cy="12" r="4" />
+      </svg>
+    ),
+    insect: (
+      <svg {...props}>
+        <ellipse cx="12" cy="14" rx="5" ry="6" />
+        <path d="M12 8V4M9 5l-3-2M15 5l3-2" />
+        <path d="M7 12l-4-2M17 12l4-2M7 16l-3 3M17 16l3 3" />
+        <circle cx="12" cy="12" r="1" />
+      </svg>
+    ),
+    quality: (
+      <svg {...props}>
+        <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.8 7.2 16.9l.9-5.4L4.2 7.7l5.4-.8L12 2z" />
+      </svg>
+    ),
+    road: (
+      <svg {...props}>
+        <path d="M4 19l4-14M20 19l-4-14" />
+        <path d="M12 5v14" strokeDasharray="3 3" />
+        <path d="M8 19h8" />
+      </svg>
+    ),
+    buildings: (
+      <svg {...props}>
+        <path d="M3 21h18" />
+        <path d="M5 21V9l6-3v15" />
+        <path d="M11 21V5l8-3v19" />
+        <path d="M7 12h1M7 16h1M15 10h1M15 14h1M15 18h1" />
+      </svg>
+    ),
+    facilities: (
+      <svg {...props}>
+        <path d="M3 21h18" />
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M9 21v-4h6v4" />
+        <path d="M12 7v3" />
+        <circle cx="12" cy="5" r="1" />
+      </svg>
+    ),
+    gender: (
+      <svg {...props}>
+        <circle cx="9" cy="9" r="4" />
+        <path d="M9 13v8M6 18h6" />
+        <path d="M16 3h5v5" />
+        <path d="M21 3l-7 7" />
+      </svg>
+    ),
+    passport: (
+      <svg {...props}>
+        <rect x="4" y="2" width="16" height="20" rx="2" />
+        <circle cx="12" cy="10" r="3" />
+        <path d="M8 17c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+      </svg>
+    ),
+    'marital-status': (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    accessibility: (
+      <svg {...props}>
+        <circle cx="12" cy="4" r="2" />
+        <path d="M12 6v5" />
+        <path d="M8 9h8" />
+        <circle cx="7" cy="18" r="3" />
+        <circle cx="17" cy="18" r="3" />
+        <path d="M12 11l-2 7M12 11l2 7" />
+      </svg>
+    ),
+    ventilation: (
+      <svg {...props}>
+        <path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2" />
+      </svg>
+    ),
+    light: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      </svg>
+    ),
+    'home-purchase': (
+      <svg {...props}>
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5" />
+        <path d="M9 21V12h6v9" />
+        <rect x="15" y="14" width="7" height="5" rx="1" />
+        <circle cx="18.5" cy="16.5" r="1" />
+      </svg>
+    ),
   };
 
   return icons[name];
+}
+
+const CHART_CARD_TITLE_ICONS: Record<string, ChartCardIconName> = {
+  'Expected Monthly Spending': 'money-bill',
+  'Saving from Monthly Income': 'wallet',
+  'Active Jobseekers': 'briefcase',
+  'Challenges to Finding Employment': 'dart',
+  'Private Business or Investment': 'investment',
+  'Expected Government Employment Support': 'government-building',
+  'Sports Facilities Availability': 'sports',
+  "Children's Reported Experience of Bullying": 'bullying',
+  'Awareness of Bullying Incidents': 'awareness',
+  'Fairness of Student Discipline': 'discipline',
+  'Safety Through Freedom of Expression': 'speaking',
+  'Concern About Negative Peer Influence': 'whisper',
+  'Safety from Power Outages': 'power-outage',
+  'Confidence in Drug Prevention': 'drug-prevention',
+  'Residents Healthy Eating Frequency': 'food',
+  'Chronic Diseases or Health Problems': 'disease',
+  'Insects and Rodents in Living Areas': 'insect',
+  'Service Facilities Quality': 'quality',
+  'Satisfaction with Internal Road Services': 'road',
+  'Satisfaction with Urban Planning': 'buildings',
+  'Satisfaction with Sports Facilities Availability': 'sports',
+  'Most Needed Facilities in Residential Areas': 'facilities',
+  Gender: 'gender',
+  Citizenship: 'passport',
+  'Marital Status': 'marital-status',
+  'Accessibility Features in Current Residences': 'accessibility',
+  'Housing Ventilation': 'ventilation',
+  'Natural Lighting': 'light',
+  'Homeownership Price Satisfaction': 'home-purchase',
+};
+
+function resolveChartCardIcon(title: string, fallback: ChartCardIconName): ChartCardIconName {
+  return CHART_CARD_TITLE_ICONS[title] ?? fallback;
 }
 
 interface ChartCardHeaderCopyProps {
@@ -3444,11 +3713,13 @@ function IncomeChartCard({
   singleLineInsight = false,
   className,
 }: IncomeChartCardProps) {
+  const resolvedIcon = resolveChartCardIcon(title, icon);
+
   return (
     <div className={['chart-card chart-card-fill', className].filter(Boolean).join(' ')}>
       <div className="chart-card-header">
         <ChartCardHeaderCopy
-          icon={icon}
+          icon={resolvedIcon}
           title={title}
           subtitle={description}
           singleLineSubtitle={singleLineDescription}

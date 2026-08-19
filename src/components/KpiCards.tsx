@@ -62,7 +62,24 @@ export type KpiIconName =
   | 'receipt'
   | 'credit-card'
   | 'education'
-  | 'spark';
+  | 'spark'
+  | 'money-bill'
+  | 'clock'
+  | 'government-building'
+  | 'police-building'
+  | 'health'
+  | 'running'
+  | 'sleep'
+  | 'wind'
+  | 'noise'
+  | 'utilities'
+  | 'gas-station'
+  | 'shopping-bag'
+  | 'family'
+  | 'community'
+  | 'house'
+  | 'repair'
+  | 'home-purchase';
 
 export type CategoryIconName =
   | 'car'
@@ -195,6 +212,126 @@ function KpiIcon({ name }: { name: KpiIconName }) {
       <svg {...props}>
         <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
         <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" />
+      </svg>
+    ),
+    'money-bill': (
+      <svg {...props}>
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2" />
+        <path d="M6 12h.01M18 12h.01" />
+      </svg>
+    ),
+    clock: (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+    'government-building': (
+      <svg {...props}>
+        <path d="M3 21h18" />
+        <path d="M5 21V7l8-4v18" />
+        <path d="M19 21V11l-6-4" />
+        <path d="M9 9v0M9 12v0M9 15v0M9 18v0" />
+      </svg>
+    ),
+    'police-building': (
+      <svg {...props}>
+        <path d="M3 21h18" />
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M9 21v-4h6v4" />
+        <path d="M12 7v3" />
+        <circle cx="12" cy="5" r="1" />
+      </svg>
+    ),
+    health: (
+      <svg {...props}>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+    running: (
+      <svg {...props}>
+        <circle cx="14" cy="4" r="2" />
+        <path d="M18 11l-3-2-2 4-3-1-4 5" />
+        <path d="M8 21l2-6" />
+        <path d="M16 21l-1-5" />
+      </svg>
+    ),
+    sleep: (
+      <svg {...props} fill="currentColor" stroke="none">
+        <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="600" fontStyle="italic">
+          Zz
+        </text>
+      </svg>
+    ),
+    wind: (
+      <svg {...props}>
+        <path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2" />
+      </svg>
+    ),
+    noise: (
+      <svg {...props}>
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+        <path d="M15.54 8.46a5 5 0 010 7.07" />
+        <path d="M19.07 4.93a10 10 0 010 14.14" />
+      </svg>
+    ),
+    utilities: (
+      <svg {...props}>
+        <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0L12 2.69z" />
+        <path d="M17 14l-3 6h-2l-3-6" />
+        <path d="M14 20h2" />
+      </svg>
+    ),
+    'gas-station': (
+      <svg {...props}>
+        <path d="M3 21V5a2 2 0 012-2h6a2 2 0 012 2v16" />
+        <path d="M3 21h10" />
+        <path d="M15 7h2a2 2 0 012 2v6a2 2 0 01-2 2h-2" />
+        <path d="M15 11h4" />
+        <path d="M7 9v0M7 13v0" />
+      </svg>
+    ),
+    'shopping-bag': (
+      <svg {...props}>
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <path d="M16 10a4 4 0 01-8 0" />
+      </svg>
+    ),
+    family: (
+      <svg {...props}>
+        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    community: (
+      <svg {...props}>
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+    house: (
+      <svg {...props}>
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+        <path d="M9 21V12h6v9" />
+      </svg>
+    ),
+    repair: (
+      <svg {...props}>
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+      </svg>
+    ),
+    'home-purchase': (
+      <svg {...props}>
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5" />
+        <path d="M9 21V12h6v9" />
+        <path d="M16 19h6v2a1 1 0 01-1 1h-4a1 1 0 01-1-1v-2z" />
+        <path d="M19 16v3" />
       </svg>
     ),
   };
@@ -467,7 +604,7 @@ export function buildDemographicsKpis(
   const cards: KpiItem[] = [
     {
       label: 'Average Number of Family Members',
-      icon: 'spark',
+      icon: 'family',
       value: `${familySize.toFixed(1)}`,
       suffix: ' members',
       valueCaption: 'per household',
@@ -476,7 +613,7 @@ export function buildDemographicsKpis(
     },
     {
       label: 'Largest Age Group',
-      icon: 'briefcase',
+      icon: 'community',
       value: topAge ? `${topAge.name} —` : '—',
       suffix: topAge ? `${topAge.value.toFixed(1)}%` : undefined,
       valueCaption: topAge ? 'in this age group' : undefined,
@@ -498,7 +635,7 @@ export function buildDemographicsKpis(
     },
     {
       label: 'Avg Number of Working Family Members',
-      icon: 'wallet',
+      icon: 'briefcase',
       value: `${workingMembers.toFixed(1)}`,
       suffix: ' members',
       valueCaption: 'per household',
@@ -594,7 +731,7 @@ export function buildIncomeKpis(
     },
     {
       label: 'Avg Monthly Income',
-      icon: 'wallet',
+      icon: 'money-bill',
       value: formatAverageIncome(avgIncome),
       valueCaption: 'per month',
       subtext: getIncomeKpiSentence('income', avgIncome),
@@ -669,7 +806,7 @@ export function buildWorkKpis(
     },
     {
       label: 'Avg Weekly Working Hours',
-      icon: 'briefcase',
+      icon: 'clock',
       value: `${avgHours.toFixed(1)}`,
       suffix: ' hrs',
       valueCaption: 'per week',
@@ -687,7 +824,7 @@ export function buildWorkKpis(
     },
     {
       label: 'Government Assistance Recipients',
-      icon: 'wallet',
+      icon: 'government-building',
       value: `${assistance.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'receive assistance',
@@ -814,7 +951,7 @@ export function buildSecurityKpis(
     },
     {
       label: 'Trust in Abu Dhabi Police',
-      icon: 'shield',
+      icon: 'police-building',
       value: `${policeTrust.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'trust police ability',
@@ -873,7 +1010,7 @@ export function buildHealthKpis(
     },
     {
       label: 'Current Health Rated Good',
-      icon: 'shield',
+      icon: 'health',
       value: `${currentHealth.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'rate health as good',
@@ -882,7 +1019,7 @@ export function buildHealthKpis(
     },
     {
       label: 'Avg Daily Physical Activity',
-      icon: 'spark',
+      icon: 'running',
       value: `${activity.toFixed(1)}`,
       suffix: ' hrs',
       valueCaption: 'per day',
@@ -891,7 +1028,7 @@ export function buildHealthKpis(
     },
     {
       label: 'Sleep Quality Rated Good',
-      icon: 'shield',
+      icon: 'sleep',
       value: `${sleep.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'rate sleep as good',
@@ -941,7 +1078,7 @@ export function buildEnvironmentKpis(
     },
     {
       label: 'Neighborhood Cleanliness Satisfaction',
-      icon: 'shield',
+      icon: 'spark',
       value: `${cleanliness.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -950,7 +1087,7 @@ export function buildEnvironmentKpis(
     },
     {
       label: 'Satisfaction with Air Quality',
-      icon: 'spark',
+      icon: 'wind',
       value: `${airQuality.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -959,7 +1096,7 @@ export function buildEnvironmentKpis(
     },
     {
       label: 'Satisfaction with Neighborhood Noise Level',
-      icon: 'shield',
+      icon: 'noise',
       value: `${noiseLevel.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -1009,7 +1146,7 @@ export function buildInfrastructureKpis(
     },
     {
       label: 'Water and Electricity Services Satisfaction',
-      icon: 'shield',
+      icon: 'utilities',
       value: `${waterElectricity.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -1018,7 +1155,7 @@ export function buildInfrastructureKpis(
     },
     {
       label: 'Satisfaction on Gas Stations Availability',
-      icon: 'spark',
+      icon: 'gas-station',
       value: `${gasStations.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -1027,7 +1164,7 @@ export function buildInfrastructureKpis(
     },
     {
       label: 'Shops & Shopping Centers Satisfaction',
-      icon: 'shield',
+      icon: 'shopping-bag',
       value: `${shopping.toFixed(1)}`,
       suffix: '%',
       valueCaption: 'are satisfied',
@@ -1107,7 +1244,7 @@ export function buildHousingKpis(
     },
     {
       label: 'Housing Space Adequacy',
-      icon: 'shield',
+      icon: 'house',
       value: `${space.value.toFixed(1)}`,
       suffix: '%',
       valueCaption: getHousingSpaceValueCaption(space),
@@ -1121,7 +1258,7 @@ export function buildHousingKpis(
     },
     {
       label: 'Housing Maintenance Needs',
-      icon: 'spark',
+      icon: 'repair',
       value: `${maintenance.value.toFixed(1)}`,
       suffix: '%',
       valueCaption: getHousingMaintenanceValueCaption(maintenance),
@@ -1135,7 +1272,7 @@ export function buildHousingKpis(
     },
     {
       label: 'Homeownership Intention',
-      icon: 'briefcase',
+      icon: 'home-purchase',
       value: `${homeownership.value.toFixed(1)}`,
       suffix: '%',
       valueCaption: getHousingHomeownershipValueCaption(homeownership),
