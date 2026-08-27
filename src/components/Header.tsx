@@ -19,7 +19,7 @@ interface HeaderProps {
 
 function IconShare() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
     </svg>
   );
@@ -27,7 +27,7 @@ function IconShare() {
 
 function IconExport() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
     </svg>
   );
@@ -42,16 +42,25 @@ function IconExport() {
 //   );
 // }
 
+function IconCalendar() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
 function IconChevronDown() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path d="M6 9l6 6 6-6" />
     </svg>
   );
 }
 
 function TabIcon({ name }: { name: string }) {
-  const props = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, 'aria-hidden': true as const };
+  const props = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true as const };
 
   switch (name) {
     case 'grid':
@@ -290,6 +299,10 @@ export function Header({
     ? formatCompareYearsLabel(compareYears)
     : 'YoY';
 
+  const periodBadgeLabel = viewMode === 'current'
+    ? selectedYear
+    : formatCompareYearsLabel(compareYears);
+
   return (
     <>
       <header className="dashboard-header">
@@ -299,6 +312,10 @@ export function Header({
               <h1 className="header-title">
                 Al Falah District Dashboard
               </h1>
+              <span className="header-period-badge">
+                <span className="header-period-badge-dot" aria-hidden="true" />
+                {periodBadgeLabel}
+              </span>
               {/* <button type="button" className="header-ai-btn" aria-label="Ask AI">
                 <IconSparkle />
               </button> */}
@@ -318,8 +335,9 @@ export function Header({
                   aria-label={`Select survey year, currently ${selectedYear}`}
                   onClick={() => setYearMenuOpen((open) => !open)}
                 >
+                  <span className="filter-dropdown-icon"><IconCalendar /></span>
                   <span>{selectedYear}</span>
-                  <IconChevronDown />
+                  <span className="filter-dropdown-chevron"><IconChevronDown /></span>
                 </button>
                 {yearMenuOpen && (
                   <ul className="year-dropdown-menu" role="listbox" aria-label="Survey year">
@@ -346,8 +364,9 @@ export function Header({
                   aria-label={`Compare years, currently ${viewMode === 'yoy' ? formatCompareYearsLabel(compareYears) : 'year over year'}`}
                   onClick={() => setCompareMenuOpen((open) => !open)}
                 >
+                  <span className="filter-dropdown-icon"><IconCalendar /></span>
                   <span>{compareLabel}</span>
-                  <IconChevronDown />
+                  <span className="filter-dropdown-chevron"><IconChevronDown /></span>
                 </button>
                 {compareMenuOpen && (
                   <div className="compare-dropdown-panel" role="dialog" aria-label="Select two years to compare">
@@ -384,15 +403,12 @@ export function Header({
               </div>
             </div>
             <div className="header-actions-separator" aria-hidden="true" />
-            <button type="button" className="action-btn action-btn-ghost">
-              <IconShare /> Share
+            <button type="button" className="action-btn action-btn-share" aria-label="Share">
+              <IconShare />
             </button>
-            <button type="button" className="action-btn action-btn-ghost">
+            <button type="button" className="action-btn action-btn-primary">
               <IconExport /> Export
             </button>
-            {/* <button type="button" className="action-btn action-btn-primary">
-              <IconRefresh /> Refresh
-            </button> */}
           </div>
         </div>
       </header>

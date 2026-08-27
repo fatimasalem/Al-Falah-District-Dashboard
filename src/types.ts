@@ -87,16 +87,16 @@ export const TAB_STATUS_TOOLTIPS: Record<TabStatus, string> = {
 };
 
 export const PILLAR_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'grid', status: 'RR' },
-  { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'RR' },
-  { id: 'work', label: 'Work', icon: 'briefcase', status: 'RR' },
-  { id: 'education', label: 'Education', icon: 'book', status: 'RR' },
-  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'RR' },
-  { id: 'health', label: 'Health', icon: 'heart', status: 'RR' },
-  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'RR' },
-  { id: 'infrastructure', label: 'Infrastructure', icon: 'building', status: 'RR' },
-  { id: 'demographics', label: 'Demographics', icon: 'users', status: 'RR' },
-  { id: 'housing', label: 'Housing', icon: 'home', status: 'RR' },
+  { id: 'overview', label: 'Overview', icon: 'grid', status: 'DEV' },
+  { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'DEV' },
+  { id: 'work', label: 'Work', icon: 'briefcase', status: 'DEV' },
+  { id: 'education', label: 'Education', icon: 'book', status: 'DEV' },
+  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'DEV' },
+  { id: 'health', label: 'Health', icon: 'heart', status: 'DEV' },
+  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'DEV' },
+  { id: 'infrastructure', label: 'Infrastructure', icon: 'building', status: 'DEV' },
+  { id: 'demographics', label: 'Demographics', icon: 'users', status: 'DEV' },
+  { id: 'housing', label: 'Housing', icon: 'home', status: 'DEV' },
 ] as const;
 
 export type TabId = (typeof PILLAR_TABS)[number]['id'];

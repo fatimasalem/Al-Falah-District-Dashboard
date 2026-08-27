@@ -10,7 +10,7 @@ interface InsightsPanelProps {
 
 function InsightsSparkleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M12 2l1.2 4.4L17 8l-3.8 1.2L12 14l-1.2-4.8L7 8l3.8-1.6L12 2z"
         fill="currentColor"
@@ -50,12 +50,11 @@ export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
     <aside className="insights-panel">
       <div className="insights-header">
         <div className="insights-title-row">
-          <span className="insights-sparkle" aria-hidden="true">
-            <InsightsSparkleIcon />
-          </span>
           <h2 className="insights-title">AI Insights</h2>
         </div>
-        <span className="insights-badge">Bayaan AI</span>
+        <span className="insights-ai-sparkle" aria-label="Bayaan AI">
+          <InsightsSparkleIcon />
+        </span>
       </div>
       <p className="insights-text">
         Al Falah district resident survey data for {data.years.join(' and ')} shows overall satisfaction
@@ -76,7 +75,9 @@ export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
             <p>{followUp.question}</p>
           </div>
           <div className="insights-follow-up-answer">
-            <span className="insights-badge">Bayaan AI</span>
+            <span className="insights-ai-sparkle" aria-label="Bayaan AI">
+              <InsightsSparkleIcon />
+            </span>
             <p>{followUp.answer}</p>
           </div>
         </div>

@@ -526,6 +526,21 @@ function ChartInsightChatIcon() {
   );
 }
 
+function ChartInsightSparkleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2l1.2 4.4L17 8l-3.8 1.2L12 14l-1.2-4.8L7 8l3.8-1.6L12 2z"
+        fill="currentColor"
+      />
+      <path
+        d="M5 18l.6 1.8L7.4 20l-1.8.6L5 22.4l-.6-1.8L2.6 20l1.8-.6L5 18zM19 16l.4 1.2L20.6 17l-1.2.4L19 18.6l-.4-1.2L17.4 17l1.2-.4L19 16z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function ChartInsightFooter({
   chartTitle,
   insight,
@@ -542,8 +557,10 @@ function ChartInsightFooter({
       <hr className="chart-insight-separator" />
       <div className="chart-insight-row">
         <p className={`chart-insight-text${singleLine ? ' chart-insight-text-single-line' : ''}`.trim()}>
-          <span className="chart-insight-icon" aria-hidden="true">
-            <span className="insights-badge">AI Insight</span>
+          <span className="chart-insight-icon" aria-label="AI Insight">
+            <span className="insights-ai-sparkle">
+              <ChartInsightSparkleIcon />
+            </span>
           </span>
           <span className="chart-insight-copy">{renderInsight(insight)}</span>
         </p>

@@ -154,8 +154,8 @@ function finalizeKpiCards(
 
 function KpiIcon({ name }: { name: KpiIconName }) {
   const props = {
-    width: 13,
-    height: 13,
+    width: 18,
+    height: 18,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
@@ -459,34 +459,37 @@ export function KpiCards({ items, viewMode = 'current', compareYears = DEFAULT_C
     <div className="kpi-row">
       {items.slice(0, 4).map((item) => {
         return (
-          <div key={item.label} className="kpi-card">
-            <div className="kpi-label">
-              {item.icon && (
-                <span className="kpi-label-icon">
-                  <KpiIcon name={item.icon} />
-                </span>
-              )}
-              {item.label}
-            </div>
-            <div className={`kpi-value${item.tone ? ` ${item.tone}` : ''}`}>
-              {item.valueIcon && (
-                <span className="kpi-value-icon">
-                  <CategoryIcon name={item.valueIcon} size="value" />
-                </span>
-              )}
-              <span className="kpi-value-text">
-                {item.value}
-                {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
-                {item.valueCaption && <span className="kpi-value-caption">{item.valueCaption}</span>}
+          <div key={item.label} className={`kpi-card${item.icon ? ' has-icon' : ''}`}>
+            {item.icon && (
+              <span className="kpi-card-icon">
+                <KpiIcon name={item.icon} />
               </span>
-            </div>
-            {viewMode === 'yoy' && item.delta !== undefined && (
-              <div className={`kpi-delta${item.tone ? ` ${item.tone}` : ''}`}>
-                <span className="kpi-delta-icon">{item.delta >= 0 ? '▲' : '▼'}</span>
-                {formatDelta(Math.abs(item.delta))} {item.deltaLabel ?? deltaLabel}
-              </div>
             )}
-            {item.subtext && <div className="kpi-subtext">{item.subtext}</div>}
+            <div className="kpi-card-content">
+              <div className="kpi-label">{item.label}</div>
+              <div className="kpi-value">
+                {item.valueIcon && (
+                  <span className="kpi-value-icon">
+                    <CategoryIcon name={item.valueIcon} size="value" />
+                  </span>
+                )}
+                <span className="kpi-value-text">
+                  {item.value}
+                  {item.suffix && <span className="kpi-suffix">{item.suffix}</span>}
+                  {item.valueCaption && <span className="kpi-value-caption">{item.valueCaption}</span>}
+                </span>
+              </div>
+              {viewMode === 'yoy' && item.delta !== undefined && (
+                <div className={`kpi-delta${item.delta >= 0 ? ' positive' : ' negative'}`}>
+                  <span className="kpi-delta-change">
+                    <span className="kpi-delta-icon">{item.delta >= 0 ? '↑' : '↓'}</span>
+                    {formatDelta(Math.abs(item.delta))}
+                  </span>
+                  <span className="kpi-delta-label">{item.deltaLabel ?? deltaLabel}</span>
+                </div>
+              )}
+              {item.subtext && <div className="kpi-subtext">{item.subtext}</div>}
+            </div>
           </div>
         );
       })}
