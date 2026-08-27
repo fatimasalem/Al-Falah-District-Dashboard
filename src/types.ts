@@ -82,7 +82,7 @@ export type TabStatus = 'RR' | 'DEV' | 'AP';
 
 export const TAB_STATUS_TOOLTIPS: Record<TabStatus, string> = {
   RR: 'RR: Review Ready',
-  DEV: 'DEV: In Development',
+  DEV: 'DEV: Under Development',
   AP: 'AP: Approved',
 };
 

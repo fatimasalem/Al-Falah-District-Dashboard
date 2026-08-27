@@ -21,6 +21,7 @@ import {
 } from 'recharts';
 import type { SectionScore, SurveyYear, ViewMode } from '../types';
 import { CHART_COLORS, DESIGN } from '../types';
+import { TrendArrowDownIcon, TrendArrowIcon, TrendArrowUpIcon, type TrendDirection } from './TrendArrowIcons';
 import {
   generatePartnerChartInsight,
   generateEducationChartInsight,
@@ -314,8 +315,6 @@ type StatementComparisonRow = {
   satisfied2025: number;
 };
 
-type TrendDirection = 'up' | 'down' | 'same';
-
 function getTrend(previous: number, current: number): { direction: TrendDirection; className: string } {
   const change = current - previous;
   if (change > 0) return { direction: 'up', className: 'growth-positive' };
@@ -325,11 +324,12 @@ function getTrend(previous: number, current: number): { direction: TrendDirectio
 
 function ChangeIndicator({ change, className = '' }: { change: number; className?: string }) {
   const { direction, className: trendClass } = getTrend(0, change);
-  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
 
   return (
     <span className={`chart-change-indicator trend-value ${trendClass} ${className}`.trim()}>
-      <span className="trend-arrow" aria-hidden="true">{arrow}</span>
+      <span className="trend-arrow" aria-hidden="true">
+        <TrendArrowIcon direction={direction} />
+      </span>
       {formatDelta(change)}
     </span>
   );
@@ -362,17 +362,19 @@ function HeatmapCellValue({
 function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
   if (mode === 'current') {
     return (
-      <span className="chart-badge chart-badge-compact">
+      <span className={`chart-badge chart-badge-compact${score < 50 ? ' chart-badge-negative' : ''}`}>
         <strong>{score.toFixed(1)}%</strong> Score
       </span>
     );
   }
 
-  const arrow = score >= 0 ? '▲' : '▼';
   return (
-    <span className={`chart-badge chart-badge-compact ${score < 0 ? 'chart-badge-negative' : 'chart-badge-yoy'}`}>
+    <span className={`chart-badge chart-badge-compact${score < 0 ? ' chart-badge-negative' : ''}`}>
       <strong>{formatDelta(score)}</strong>
-      <span className="chart-badge-arrow" aria-hidden="true">{arrow}</span> YoY
+      <span className="chart-badge-arrow" aria-hidden="true">
+        {score >= 0 ? <TrendArrowUpIcon /> : <TrendArrowDownIcon />}
+      </span>{' '}
+      YoY
     </span>
   );
 }
@@ -1168,12 +1170,13 @@ function PartnerBarChange({ previous, current }: { previous: number; current: nu
   const change = current - previous;
   const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
   const className = direction === 'up' ? 'growth-positive' : direction === 'down' ? 'growth-negative' : 'growth-neutral';
-  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
   const prefix = change > 0 ? '+' : '';
 
   return (
     <span className={`partner-bar-change trend-value ${className}`}>
-      <span className="trend-arrow" aria-hidden="true">{arrow}</span>
+      <span className="trend-arrow" aria-hidden="true">
+        <TrendArrowIcon direction={direction} />
+      </span>
       {prefix}{change.toFixed(1)}%
     </span>
   );
@@ -1351,11 +1354,12 @@ interface DataTableProps {
 
 function TrendValue({ previous, current }: { previous: number; current: number }) {
   const { direction, className } = getTrend(previous, current);
-  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
 
   return (
     <span className={`trend-value ${className}`}>
-      <span className="trend-arrow" aria-hidden="true">{arrow}</span>
+      <span className="trend-arrow" aria-hidden="true">
+        <TrendArrowIcon direction={direction} />
+      </span>
       {current.toFixed(1)}%
     </span>
   );
@@ -1402,8 +1406,8 @@ export function DataTable({ rows, mode, year = '2025' }: DataTableProps) {
       </div>
       {!isCurrent && (
         <div className="data-table-legend">
-          <span className="trend-value growth-positive"><span className="trend-arrow">▲</span> Increased</span>
-          <span className="trend-value growth-negative"><span className="trend-arrow">▼</span> Decreased</span>
+          <span className="trend-value growth-positive"><span className="trend-arrow"><TrendArrowUpIcon /></span> Increased</span>
+          <span className="trend-value growth-negative"><span className="trend-arrow"><TrendArrowDownIcon /></span> Decreased</span>
           <span className="trend-value growth-neutral"><span className="trend-arrow">●</span> Unchanged</span>
         </div>
       )}

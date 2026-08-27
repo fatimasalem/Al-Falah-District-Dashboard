@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { ViewMode, SurveyData, SurveyYear, Section, CompareYears } from '../types';
+import { TrendArrowDownIcon, TrendArrowUpIcon } from './TrendArrowIcons';
 import { DEFAULT_COMPARE_YEARS } from '../types';
 import {
   formatDelta,
@@ -482,7 +483,9 @@ export function KpiCards({ items, viewMode = 'current', compareYears = DEFAULT_C
               {viewMode === 'yoy' && item.delta !== undefined && (
                 <div className={`kpi-delta${item.delta >= 0 ? ' positive' : ' negative'}`}>
                   <span className="kpi-delta-change">
-                    <span className="kpi-delta-icon">{item.delta >= 0 ? '↑' : '↓'}</span>
+                    <span className="kpi-delta-icon" aria-hidden="true">
+                      {item.delta >= 0 ? <TrendArrowUpIcon /> : <TrendArrowDownIcon />}
+                    </span>
                     {formatDelta(Math.abs(item.delta))}
                   </span>
                   <span className="kpi-delta-label">{item.deltaLabel ?? deltaLabel}</span>

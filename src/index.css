@@ -838,8 +838,15 @@ button {
 }
 
 .kpi-delta-icon {
-  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
+}
+
+.kpi-delta-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
 }
 
 .kpi-subtext {
@@ -1977,8 +1984,9 @@ button {
   gap: 4px;
 }
 
-.health-heatmap-cell-change .trend-arrow {
-  font-size: 0.6875rem;
+.health-heatmap-cell-change .trend-arrow svg {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .health-heatmap-cell-change-invert.growth-positive {
@@ -2387,8 +2395,15 @@ button {
 }
 
 .chart-badge-arrow {
-  font-size: 0.5625rem;
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
+}
+
+.chart-badge-arrow svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
 }
 
 .chart-badge strong {
@@ -2404,7 +2419,7 @@ button {
 .chart-badge-negative {
   background: #fef2f2;
   color: var(--negative);
-  border-color: #fecaca;
+  border-color: #fef2f2;
 }
 
 .chart-toggle {
@@ -2882,8 +2897,16 @@ button {
 }
 
 .trend-arrow {
-  font-size: 0.5625rem;
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
+  font-size: 0.5625rem;
+}
+
+.trend-arrow svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
 }
 
 .data-table {
