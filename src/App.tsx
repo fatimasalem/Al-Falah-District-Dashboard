@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import type { SurveyData, TabId, ViewMode, SurveyYear, CompareYears } from './types';
-import { PILLAR_TABS, SURVEY_YEARS, DEFAULT_COMPARE_YEARS } from './types';
-import { normalizeCompareYears } from './utils';
+import { PILLAR_TABS, SURVEY_YEARS, DEFAULT_COMPARE_YEARS, isTabAccessible } from './types';
+import { generateActionAgenda, normalizeCompareYears } from './utils';
+import { ActionAgenda } from './components/executive/ActionAgenda';
 import { Header } from './components/Header';
+import { SidebarNav } from './components/SidebarNav';
+import { EvidenceCoverageStrip } from './components/governance/EvidenceCoverageStrip';
+import { SurveyBriefSection } from './components/governance/SurveyBriefSection';
+import { HowToReadDrawer } from './components/governance/HowToReadDrawer';
 import { InsightsPanel } from './components/InsightsPanel';
 import { OverviewCharts } from './components/OverviewTab';
 import { PillarCharts } from './components/PillarTab';
-import { KpiCards, buildOverviewKpis, buildPillarKpis, buildDemographicsKpis, buildIncomeKpis, buildWorkKpis, buildEducationKpis, buildSecurityKpis, buildHealthKpis, buildEnvironmentKpis, buildInfrastructureKpis, buildHousingKpis } from './components/KpiCards';
+import { KpiCards, KPI_SECTION_META, buildOverviewKpis, buildPillarKpis, buildIncomeKpis, buildWorkEducationKpis, buildSecurityKpis, buildHealthKpis, buildEnvironmentKpis, buildHousingInfrastructureKpis } from './components/KpiCards';
 
 const VIEW_MODE_STORAGE_KEY = 'alfalah-view-mode';
 const SELECTED_YEAR_STORAGE_KEY = 'alfalah-selected-year';
@@ -27,6 +32,13 @@ function isSurveyYear(value: string | null): value is SurveyYear {
 
 function isTabId(value: string | null): value is TabId {
   return PILLAR_TABS.some((tab) => tab.id === value);
+}
+
+function normalizeStoredTabId(value: string | null): TabId | null {
+  if (!value) return null;
+  if (value === 'work' || value === 'education') return 'work-education';
+  if (value === 'infrastructure' || value === 'housing') return 'housing-infrastructure';
+  return isTabId(value) ? value : null;
 }
 
 function readViewModeFromUrl(): ViewMode | null {
@@ -181,13 +193,13 @@ function persistFilters(mode: ViewMode, year: SurveyYear, compareYears: CompareY
 
 function readActiveTabFromUrl(): TabId | null {
   const value = new URLSearchParams(window.location.search).get(TAB_PARAM);
-  return isTabId(value) ? value : null;
+  return normalizeStoredTabId(value);
 }
 
 function readActiveTabFromSession(): TabId | null {
   try {
     const stored = sessionStorage.getItem(TAB_STORAGE_KEY);
-    return isTabId(stored) ? stored : null;
+    return normalizeStoredTabId(stored);
   } catch {
     return null;
   }
@@ -216,7 +228,8 @@ function writeActiveTabToUrl(tab: TabId) {
 }
 
 function getInitialActiveTab(): TabId {
-  return readActiveTabFromUrl() ?? readActiveTabFromSession() ?? 'overview';
+  const tab = readActiveTabFromUrl() ?? readActiveTabFromSession() ?? 'overview';
+  return isTabAccessible(tab) ? tab : 'overview';
 }
 
 function persistActiveTab(tab: TabId) {
@@ -232,6 +245,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(() => getInitialViewMode());
   const [selectedYear, setSelectedYear] = useState<SurveyYear>(() => getInitialSelectedYear());
   const [compareYears, setCompareYears] = useState<CompareYears>(() => getInitialCompareYears());
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/survey-data.json`)
@@ -257,7 +271,7 @@ export default function App() {
       if (mode) setViewMode(mode);
       if (year) setSelectedYear(year);
       if (years) setCompareYears(years);
-      if (tab) setActiveTab(tab);
+      if (tab && isTabAccessible(tab)) setActiveTab(tab);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -276,6 +290,7 @@ export default function App() {
   };
 
   const handleTabChange = (tab: TabId) => {
+    if (!isTabAccessible(tab)) return;
     persistActiveTab(tab);
     setActiveTab(tab);
   };
@@ -288,62 +303,113 @@ export default function App() {
     return <div className="loading">Loading dashboard…</div>;
   }
 
-  const activeSection = activeTab !== 'overview' ? data.sections[activeTab] : null;
+  const activeTabMeta = PILLAR_TABS.find((tab) => tab.id === activeTab);
+  const pageTitle = activeTabMeta?.label ?? 'Overview';
+  const activeSection = activeTab !== 'overview' && activeTab !== 'work-education' && activeTab !== 'housing-infrastructure'
+    ? data.sections[activeTab]
+    : null;
+  const workSection = data.sections.work;
+  const educationSection = data.sections.education;
+  const infrastructureSection = data.sections.infrastructure;
+  const housingSection = data.sections.housing;
   const kpiItems =
     activeTab === 'overview'
       ? buildOverviewKpis(data, viewMode, selectedYear, compareYears)
-      : activeTab === 'demographics' && activeSection
-        ? buildDemographicsKpis(activeSection, viewMode, selectedYear, compareYears)
-        : activeTab === 'income' && activeSection
+      : activeTab === 'work-education' && workSection && educationSection
+        ? buildWorkEducationKpis(workSection, educationSection, viewMode, selectedYear, compareYears)
+        : activeTab === 'housing-infrastructure' && infrastructureSection && housingSection
+          ? buildHousingInfrastructureKpis(infrastructureSection, housingSection, viewMode, selectedYear, compareYears)
+          : activeTab === 'income' && activeSection
           ? buildIncomeKpis(data, activeSection, viewMode, selectedYear, compareYears)
-          : activeTab === 'work' && activeSection
-            ? buildWorkKpis(activeSection, viewMode, selectedYear, compareYears)
-            : activeTab === 'education' && activeSection
-              ? buildEducationKpis(activeSection, viewMode, selectedYear, compareYears)
-              : activeTab === 'security' && activeSection
+          : activeTab === 'security' && activeSection
                 ? buildSecurityKpis(activeSection, viewMode, selectedYear, compareYears)
                 : activeTab === 'health' && activeSection
                   ? buildHealthKpis(activeSection, viewMode, selectedYear, compareYears)
                   : activeTab === 'environment' && activeSection
                     ? buildEnvironmentKpis(activeSection, viewMode, selectedYear, compareYears)
-                    : activeTab === 'infrastructure' && activeSection
-                      ? buildInfrastructureKpis(activeSection, viewMode, selectedYear, compareYears)
-                      : activeTab === 'housing' && activeSection
-                        ? buildHousingKpis(activeSection, viewMode, selectedYear, compareYears)
-                        : activeSection?.score
+                    : activeSection?.score
                 ? buildPillarKpis(activeSection.score, viewMode, selectedYear, compareYears)
                 : [];
+  const chartYear = viewMode === 'yoy' ? compareYears[1] : selectedYear;
+  const kpiSampleBase = data.sampleBase?.[chartYear] ?? kpiItems.find((item) => item.sampleBase != null)?.sampleBase ?? null;
+  const kpiSectionMeta = KPI_SECTION_META[activeTab] ?? {
+    title: `${pageTitle} at a Glance`,
+    subtitle: `Key indicators for ${pageTitle.toLowerCase()}`,
+  };
 
   return (
     <div className="dashboard">
       {data.isDemoData && (
         <div className="demo-banner">
-          This is a demo dashboard.
+          <strong>Demo dashboard</strong>
+          <span className="demo-banner-detail">
+            Figures are illustrative pending formal data.
+          </span>
         </div>
       )}
-      <Header
-        viewMode={viewMode}
-        compareYears={compareYears}
-        onCompareYearsChange={handleCompareYearsChange}
-        selectedYear={selectedYear}
-        onSelectedYearChange={handleSelectedYearChange}
-        availableYears={SURVEY_YEARS}
-        updatedAt={data.updatedAt}
-        activeTab={activeTab}
-        onTabChange={(tab) => handleTabChange(tab as TabId)}
-        tabs={PILLAR_TABS}
-      />
-      <div className="dashboard-content">
-        <KpiCards items={kpiItems} viewMode={viewMode} compareYears={compareYears} />
-        <div className="dashboard-split">
-          {activeTab === 'overview' ? (
-            <OverviewCharts data={data} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />
-          ) : activeSection ? (
-            <PillarCharts section={activeSection} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />
-          ) : (
-            <div className="error-state">Section not found</div>
-          )}
-          <InsightsPanel data={data} activeTab={activeTab} />
+      <div className="dashboard-body">
+        <div className="dashboard-sidebar-spacer" aria-hidden="true" />
+        <SidebarNav
+          activeTab={activeTab}
+          onTabChange={(tab) => handleTabChange(tab as TabId)}
+          tabs={PILLAR_TABS}
+        />
+        <div className="dashboard-main">
+          <Header
+            pageTitle={pageTitle}
+            data={data}
+            viewMode={viewMode}
+            compareYears={compareYears}
+            onCompareYearsChange={handleCompareYearsChange}
+            selectedYear={selectedYear}
+            onSelectedYearChange={handleSelectedYearChange}
+            availableYears={SURVEY_YEARS}
+            onOpenMethodology={() => setMethodologyOpen(true)}
+          />
+          <HowToReadDrawer open={methodologyOpen} onClose={() => setMethodologyOpen(false)} />
+          <div className="dashboard-content">
+            {activeTab === 'overview' && <EvidenceCoverageStrip data={data} />}
+            {activeTab === 'overview' && <SurveyBriefSection data={data} />}
+            <KpiCards
+              items={kpiItems}
+              sectionTitle={kpiSectionMeta.title}
+              sectionSubtitle={kpiSectionMeta.subtitle}
+              sampleBase={kpiSampleBase}
+              selectedYear={selectedYear}
+              viewMode={viewMode}
+              compareYears={compareYears}
+              maxItems={activeTab === 'overview' || activeTab === 'health' || activeTab === 'work-education' || activeTab === 'housing-infrastructure' ? 5 : 4}
+            />
+            {activeTab === 'overview' && (
+              <ActionAgenda agenda={generateActionAgenda(data, compareYears)} />
+            )}
+            <div className="dashboard-split">
+              {activeTab === 'overview' ? (
+                <OverviewCharts data={data} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />
+              ) : activeTab === 'work-education' && workSection && educationSection ? (
+                <PillarCharts
+                  workSection={workSection}
+                  educationSection={educationSection}
+                  viewMode={viewMode}
+                  selectedYear={selectedYear}
+                  compareYears={compareYears}
+                />
+              ) : activeTab === 'housing-infrastructure' && infrastructureSection && housingSection ? (
+                <PillarCharts
+                  infrastructureSection={infrastructureSection}
+                  housingSection={housingSection}
+                  viewMode={viewMode}
+                  selectedYear={selectedYear}
+                  compareYears={compareYears}
+                />
+              ) : activeSection ? (
+                <PillarCharts section={activeSection} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />
+              ) : (
+                <div className="error-state">Section not found</div>
+              )}
+            </div>
+            <InsightsPanel data={data} activeTab={activeTab} />
+          </div>
         </div>
       </div>
     </div>

@@ -1,20 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import type { CompareYears, SurveyYear, TabStatus, ViewMode } from '../types';
-import { TAB_STATUS_TOOLTIPS } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { CompareYears, SurveyData, SurveyYear, ViewMode } from '../types';
 import { formatCompareYearsLabel, normalizeCompareYears } from '../utils';
+import { ReportingControlStrip } from './governance/ReportingControlStrip';
 
 interface HeaderProps {
+  pageTitle: string;
+  data: SurveyData;
   viewMode: ViewMode;
   compareYears: CompareYears;
   onCompareYearsChange: (years: CompareYears) => void;
   selectedYear: SurveyYear;
   onSelectedYearChange: (year: SurveyYear) => void;
   availableYears: readonly SurveyYear[];
-  updatedAt: string;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  tabs: readonly { id: string; label: string; icon: string; status: TabStatus }[];
+  onOpenMethodology: () => void;
 }
 
 function IconShare() {
@@ -59,168 +57,36 @@ function IconChevronDown() {
   );
 }
 
-function TabIcon({ name }: { name: string }) {
-  const props = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true as const };
-
-  switch (name) {
-    case 'grid':
-      return (
-        <svg {...props}>
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <rect x="14" y="14" width="7" height="7" rx="1" />
-        </svg>
-      );
-    case 'wallet':
-      return (
-        <svg {...props}>
-          <path d="M19 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2z" />
-          <path d="M16 11h.01" />
-          <path d="M3 10h18" />
-        </svg>
-      );
-    case 'briefcase':
-      return (
-        <svg {...props}>
-          <rect x="2" y="7" width="20" height="14" rx="2" />
-          <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-        </svg>
-      );
-    case 'book':
-      return (
-        <svg {...props}>
-          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-        </svg>
-      );
-    case 'shield':
-      return (
-        <svg {...props}>
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-      );
-    case 'heart':
-      return (
-        <svg {...props}>
-          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-        </svg>
-      );
-    case 'leaf':
-      return (
-        <svg {...props}>
-          <path d="M11 20A7 7 0 019.5 6.5c.5-2 2-3.5 4.5-4 0 3 1 5.5 2.5 7.5S20 14 20 16a7 7 0 01-9 4z" />
-          <path d="M11 20c-2-1-3-3-3-5" />
-        </svg>
-      );
-    case 'building':
-      return (
-        <svg {...props}>
-          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4M9 9h.01M15 9h.01M9 13h.01M15 13h.01" />
-        </svg>
-      );
-    case 'users':
-      return (
-        <svg {...props}>
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-        </svg>
-      );
-    case 'home':
-      return (
-        <svg {...props}>
-          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      );
-  }
-}
-
-function TabStatusBadge({ status }: { status: TabStatus }) {
-  const wrapRef = useRef<HTMLSpanElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0, placement: 'top' as 'top' | 'bottom' });
-
-  const tooltip = TAB_STATUS_TOOLTIPS[status];
-
-  const updatePosition = useCallback(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const gap = 8;
-    const tooltipHeight = 32;
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const placement = spaceAbove >= tooltipHeight + gap || spaceAbove >= spaceBelow ? 'top' : 'bottom';
-
-    setPosition({
-      top: placement === 'top' ? rect.top - gap : rect.bottom + gap,
-      left: rect.left + rect.width / 2,
-      placement,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [visible, updatePosition]);
-
+function IconInfo() {
   return (
-    <>
-      <span
-        ref={wrapRef}
-        className="tab-status-badge-wrap"
-        aria-label={tooltip}
-        onMouseEnter={() => {
-          updatePosition();
-          setVisible(true);
-        }}
-        onMouseLeave={() => setVisible(false)}
-      >
-        <span className={`tab-status-badge tab-status-badge-${status.toLowerCase()}`}>
-          {status}
-        </span>
-      </span>
-      {visible && createPortal(
-        <span
-          className={`tab-status-tooltip tab-status-tooltip-${position.placement}`}
-          role="tooltip"
-          style={{ top: position.top, left: position.left }}
-        >
-          {tooltip}
-        </span>,
-        document.body,
-      )}
-    </>
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </svg>
   );
 }
 
 export function Header({
+  pageTitle,
+  data,
   viewMode,
   compareYears,
   onCompareYearsChange,
   selectedYear,
   onSelectedYearChange,
   availableYears,
-  updatedAt,
-  activeTab,
-  onTabChange,
-  tabs,
+  onOpenMethodology,
 }: HeaderProps) {
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
   const [compareMenuOpen, setCompareMenuOpen] = useState(false);
@@ -299,31 +165,19 @@ export function Header({
     ? formatCompareYearsLabel(compareYears)
     : 'YoY';
 
-  const periodBadgeLabel = viewMode === 'current'
-    ? selectedYear
-    : formatCompareYearsLabel(compareYears);
-
   return (
-    <>
-      <header className="dashboard-header">
-        <div className="header-inner">
-          <div className="header-left">
-            <div className="header-title-row">
-              <h1 className="header-title">
-                Al Falah District Dashboard
-              </h1>
-              <span className="header-period-badge">
-                <span className="header-period-badge-dot" aria-hidden="true" />
-                {periodBadgeLabel}
-              </span>
-              {/* <button type="button" className="header-ai-btn" aria-label="Ask AI">
-                <IconSparkle />
-              </button> */}
-            </div>
-            <p className="header-subtitle">
-              Updated: {updatedAt} | District — Al Falah, Abu Dhabi
-            </p>
-          </div>
+    <header className="dashboard-header">
+      <div className="header-inner">
+        <div className="header-left">
+          <h1 className="header-title">{pageTitle}</h1>
+          <ReportingControlStrip
+            data={data}
+            viewMode={viewMode}
+            selectedYear={selectedYear}
+            compareYears={compareYears}
+            variant="subtitle"
+          />
+        </div>
           <div className="header-actions">
             <div className="filter-pills" role="group" aria-label="View mode">
               <div className="year-dropdown" ref={yearDropdownRef}>
@@ -403,33 +257,22 @@ export function Header({
               </div>
             </div>
             <div className="header-actions-separator" aria-hidden="true" />
+            <button
+              type="button"
+              className="action-btn action-btn-share"
+              aria-label="How to read this dashboard"
+              onClick={onOpenMethodology}
+            >
+              <IconInfo />
+            </button>
             <button type="button" className="action-btn action-btn-share" aria-label="Share">
               <IconShare />
             </button>
             <button type="button" className="action-btn action-btn-primary">
-              <IconExport /> Export
+              <IconExport /> Download
             </button>
           </div>
-        </div>
-      </header>
-      <nav className="tab-bar" role="tablist">
-        <div className="tab-bar-inner">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => onTabChange(tab.id)}
-            >
-              <span className="tab-icon"><TabIcon name={tab.icon} /></span>
-              {tab.label}
-              <TabStatusBadge status={tab.status} />
-            </button>
-          ))}
-        </div>
-      </nav>
-    </>
+      </div>
+    </header>
   );
 }

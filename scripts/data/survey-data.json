@@ -6,6 +6,30 @@
     2025
   ],
   "updatedAt": "Aug 2025",
+  "surveyPeriod": "2024–2025",
+  "interfaceReleaseDate": "Aug 2025",
+  "sampleBase": {
+    "2024": 412,
+    "2025": 438
+  },
+  "pillarScoreCoverage": [
+    { "sectionId": "work", "sectionNameEn": "Work", "status": "approved" },
+    { "sectionId": "education", "sectionNameEn": "Education", "status": "approved" },
+    { "sectionId": "security", "sectionNameEn": "Security & Safety", "status": "approved" },
+    { "sectionId": "health", "sectionNameEn": "Health", "status": "approved" },
+    { "sectionId": "environment", "sectionNameEn": "Environment", "status": "approved" },
+    { "sectionId": "housing", "sectionNameEn": "Housing", "status": "approved" },
+    { "sectionId": "infrastructure", "sectionNameEn": "Infrastructure", "status": "approved" },
+    { "sectionId": "income", "sectionNameEn": "Income & Living", "status": "pending" }
+  ],
+  "surveyBrief": {
+    "objective": "Measure resident satisfaction and quality-of-life outcomes across Al Falah district pillars.",
+    "scope": "Al Falah District, Abu Dhabi",
+    "fieldworkPeriod": "2024–2025",
+    "plannedSample": null,
+    "achievedResponses": 438,
+    "responseRate": null
+  },
   "overview": {
     "overallScore2024": 69.7,
     "overallScore2025": 72.3,
@@ -4603,6 +4627,7 @@
           "type": "likert",
           "labelAr": "الى أي مدى توافق على العبارات أدناه (البيئة المحيطة)",
           "statementAr": "تظهر الحشرات وبعض القوارض بشكل مستمر في منطقة السكن",
+          "polarity": "negative",
           "data": {
             "2024": {
               "agreement": 75.8,

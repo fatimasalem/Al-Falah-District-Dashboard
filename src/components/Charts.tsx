@@ -359,22 +359,36 @@ function HeatmapCellValue({
   );
 }
 
-function ChartScoreBadge({ score, mode }: { score: number; mode: ViewMode }) {
+function ChartScoreBadge({
+  score,
+  mode,
+  label = 'Score',
+  variant = 'default',
+}: {
+  score: number;
+  mode: ViewMode;
+  label?: string;
+  variant?: 'default' | 'risk';
+}) {
+  const riskClass = variant === 'risk' ? ' chart-badge-risk' : '';
+
   if (mode === 'current') {
+    const negativeClass = variant === 'risk' ? '' : score < 50 ? ' chart-badge-negative' : '';
     return (
-      <span className={`chart-badge chart-badge-compact${score < 50 ? ' chart-badge-negative' : ''}`}>
-        <strong>{score.toFixed(1)}%</strong> Score
+      <span className={`chart-badge chart-badge-compact${negativeClass}${riskClass}`}>
+        <strong>{score.toFixed(1)}%</strong> {label}
       </span>
     );
   }
 
+  const negativeClass = variant === 'risk' ? '' : score < 0 ? ' chart-badge-negative' : '';
   return (
-    <span className={`chart-badge chart-badge-compact${score < 0 ? ' chart-badge-negative' : ''}`}>
+    <span className={`chart-badge chart-badge-compact${negativeClass}${riskClass}`}>
       <strong>{formatDelta(score)}</strong>
       <span className="chart-badge-arrow" aria-hidden="true">
         {score >= 0 ? <TrendArrowUpIcon /> : <TrendArrowDownIcon />}
       </span>{' '}
-      YoY
+      {variant === 'risk' ? 'YoY concern' : 'YoY'}
     </span>
   );
 }
@@ -1347,6 +1361,8 @@ interface DataTableProps {
     satisfied2025: number;
     unsatisfied2024: number;
     unsatisfied2025: number;
+    scoresAvailable?: boolean;
+    unsatisfiedAvailable?: boolean;
   }[];
   mode: ViewMode;
   year?: SurveyYear;
@@ -1367,6 +1383,10 @@ function TrendValue({ previous, current }: { previous: number; current: number }
 
 function getScoreTone(score: number): 'positive' | 'negative' {
   return score >= 70 ? 'positive' : 'negative';
+}
+
+function UnavailableValue() {
+  return <span className="table-unavailable">-</span>;
 }
 
 function CurrentValue({ value, tone }: { value: number; tone?: 'positive' | 'negative' }) {
@@ -1423,38 +1443,63 @@ export function DataTable({ rows, mode, year = '2025' }: DataTableProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.pillar}>
-              <td>{row.pillar}</td>
-              {!isCurrent && (
-                <td>
-                  <span className="table-score table-score-2024">{row.score2024.toFixed(1)}%</span>
-                </td>
-              )}
-              <td>
-                <CurrentValue value={row[currentScoreKey]} tone={getScoreTone(row[currentScoreKey])} />
-              </td>
-              {!isCurrent && (
-                <td>
-                  <ChangeValue change={row.score2025 - row.score2024} />
-                </td>
-              )}
-              <td>
-                {isCurrent ? (
-                  <CurrentValue value={row[currentSatisfiedKey]} tone="positive" />
-                ) : (
-                  <TrendValue previous={row.satisfied2024} current={row.satisfied2025} />
+          {rows.map((row) => {
+            const scoresAvailable = row.scoresAvailable ?? true;
+            const unsatisfiedAvailable = row.unsatisfiedAvailable ?? true;
+
+            return (
+              <tr key={row.pillar}>
+                <td>{row.pillar}</td>
+                {!isCurrent && (
+                  <td>
+                    {scoresAvailable ? (
+                      <span className="table-score table-score-2024">{row.score2024.toFixed(1)}%</span>
+                    ) : (
+                      <UnavailableValue />
+                    )}
+                  </td>
                 )}
-              </td>
-              <td>
-                {isCurrent ? (
-                  <CurrentValue value={row[currentUnsatisfiedKey]} tone="negative" />
-                ) : (
-                  <TrendValue previous={row.unsatisfied2024} current={row.unsatisfied2025} />
+                <td>
+                  {scoresAvailable ? (
+                    <CurrentValue value={row[currentScoreKey]} tone={getScoreTone(row[currentScoreKey])} />
+                  ) : (
+                    <UnavailableValue />
+                  )}
+                </td>
+                {!isCurrent && (
+                  <td>
+                    {scoresAvailable ? (
+                      <ChangeValue change={row.score2025 - row.score2024} />
+                    ) : (
+                      <UnavailableValue />
+                    )}
+                  </td>
                 )}
-              </td>
-            </tr>
-          ))}
+                <td>
+                  {scoresAvailable ? (
+                    isCurrent ? (
+                      <CurrentValue value={row[currentSatisfiedKey]} tone="positive" />
+                    ) : (
+                      <TrendValue previous={row.satisfied2024} current={row.satisfied2025} />
+                    )
+                  ) : (
+                    <UnavailableValue />
+                  )}
+                </td>
+                <td>
+                  {unsatisfiedAvailable ? (
+                    isCurrent ? (
+                      <CurrentValue value={row[currentUnsatisfiedKey]} tone="negative" />
+                    ) : (
+                      <TrendValue previous={row.unsatisfied2024} current={row.unsatisfied2025} />
+                    )
+                  ) : (
+                    <UnavailableValue />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <ChartInsightFooter chartTitle="Annual Pillar Data" insight={insight} />
@@ -2633,6 +2678,7 @@ interface EducationDisciplineDonutCardProps {
   legendKeys?: SentimentKey[];
   compact?: boolean;
   insight?: InsightPart[];
+  riskFraming?: boolean;
 }
 
 export function EducationDisciplineDonutCard({
@@ -2649,6 +2695,7 @@ export function EducationDisciplineDonutCard({
   legendKeys = SENTIMENT_LEGEND_ORDER,
   compact = false,
   insight: insightOverride,
+  riskFraming = false,
 }: EducationDisciplineDonutCardProps) {
   const isCurrent = mode === 'current';
   const row = data[0];
@@ -2667,6 +2714,7 @@ export function EducationDisciplineDonutCard({
         insight={[emptyMessage]}
         icon="donut"
         className="chart-card-education-tab"
+        riskFraming={riskFraming}
       >
         <div className="chart-card-body-education-tab" />
       </IncomeChartCard>
@@ -2682,6 +2730,7 @@ export function EducationDisciplineDonutCard({
       insight={insight}
       icon="donut"
       className="chart-card-education-tab"
+      riskFraming={riskFraming}
     >
       <div className="chart-card-body-education-tab chart-card-body-education-donut">
         {isCurrent ? (
@@ -3720,6 +3769,7 @@ interface IncomeChartCardProps {
   singleLineDescription?: boolean;
   singleLineInsight?: boolean;
   className?: string;
+  riskFraming?: boolean;
 }
 
 function IncomeChartCard({
@@ -3733,6 +3783,7 @@ function IncomeChartCard({
   singleLineDescription = false,
   singleLineInsight = false,
   className,
+  riskFraming = false,
 }: IncomeChartCardProps) {
   const resolvedIcon = resolveChartCardIcon(title, icon);
 
@@ -3746,7 +3797,12 @@ function IncomeChartCard({
           singleLineSubtitle={singleLineDescription}
         />
         <div className="chart-header-actions">
-          <ChartScoreBadge score={badgeScore} mode={mode} />
+          <ChartScoreBadge
+            score={badgeScore}
+            mode={mode}
+            label={riskFraming ? 'Reported concern' : 'Score'}
+            variant={riskFraming ? 'risk' : 'default'}
+          />
         </div>
       </div>
       <div className="chart-card-body">{children}</div>
@@ -5269,8 +5325,8 @@ export function HealthAssessmentBarChartCard({
               aria-label="Healthcare assessment type"
               onChange={(event) => setFilter(event.target.value as HealthAssessmentFilter)}
             >
-              <option value="service">Healthcare service assessment</option>
-              <option value="system">Healthcare system service assessment</option>
+              <option value="service">Q502 — Healthcare system quality</option>
+              <option value="system">Q501 — Health center satisfaction</option>
             </select>
           </label>
         </div>

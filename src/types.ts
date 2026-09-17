@@ -5,6 +5,14 @@ export type CompareYears = readonly [SurveyYear, SurveyYear];
 export const SURVEY_YEARS: SurveyYear[] = ['2024', '2025'];
 export const DEFAULT_COMPARE_YEARS: CompareYears = ['2024', '2025'];
 
+export type ScoreStatus = 'approved' | 'pending' | 'unavailable';
+
+export interface PillarScoreCoverage {
+  sectionId: string;
+  sectionNameEn: string;
+  status: ScoreStatus;
+}
+
 export interface SectionScore {
   sectionId: string;
   sectionNameEn: string;
@@ -18,6 +26,8 @@ export interface SectionScore {
   negative2025: number;
 }
 
+export type IndicatorPolarity = 'positive' | 'negative';
+
 export interface LikertQuestion {
   code: string;
   type: 'likert' | 'rating';
@@ -25,6 +35,7 @@ export interface LikertQuestion {
   labelEn?: string;
   statementAr: string;
   statementEn?: string;
+  polarity?: IndicatorPolarity;
   data: Record<string, { agreement: number | null; breakdown: Record<string, number> }>;
 }
 
@@ -50,13 +61,31 @@ export interface MeanQuestion {
 
 export type Question = LikertQuestion | CategoryQuestion | MeanQuestion;
 
+export interface DataReadiness {
+  status: ScoreStatus;
+  expectedGroups: string[];
+  sourceOwner: string;
+  targetDate: string;
+}
+
 export interface Section {
   id: string;
   nameEn: string;
   nameAr: string;
   order: number;
   score: SectionScore | null;
+  scoreStatus?: ScoreStatus;
+  dataReadiness?: DataReadiness;
   questions: Question[];
+}
+
+export interface SurveyBrief {
+  objective: string;
+  scope: string;
+  fieldworkPeriod: string;
+  plannedSample: number | null;
+  achievedResponses: number;
+  responseRate: number | null;
 }
 
 export interface SurveyData {
@@ -64,6 +93,11 @@ export interface SurveyData {
   districtAr: string;
   years: number[];
   updatedAt: string;
+  surveyPeriod?: string;
+  interfaceReleaseDate?: string;
+  sampleBase?: Partial<Record<SurveyYear, number>>;
+  pillarScoreCoverage?: PillarScoreCoverage[];
+  surveyBrief?: SurveyBrief;
   isDemoData: boolean;
   overview: {
     overallScore2024: number;
@@ -78,28 +112,33 @@ export interface SurveyData {
   sections: Record<string, Section>;
 }
 
-export type TabStatus = 'RR' | 'DEV' | 'AP';
+export type TabStatus = 'RR' | 'DEV' | 'AP' | 'PSA';
 
 export const TAB_STATUS_TOOLTIPS: Record<TabStatus, string> = {
   RR: 'RR: Review Ready',
   DEV: 'DEV: Under Development',
   AP: 'AP: Approved',
+  PSA: 'PSA: Pending Score Approval',
 };
 
 export const PILLAR_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'grid', status: 'DEV' },
-  { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'DEV' },
-  { id: 'work', label: 'Work', icon: 'briefcase', status: 'DEV' },
-  { id: 'education', label: 'Education', icon: 'book', status: 'DEV' },
-  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'DEV' },
-  { id: 'health', label: 'Health', icon: 'heart', status: 'DEV' },
-  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'DEV' },
-  { id: 'infrastructure', label: 'Infrastructure', icon: 'building', status: 'DEV' },
-  { id: 'demographics', label: 'Demographics', icon: 'users', status: 'DEV' },
-  { id: 'housing', label: 'Housing', icon: 'home', status: 'DEV' },
+  { id: 'overview', label: 'Overview', icon: 'grid', status: 'RR' },
+  { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'PSA' },
+  { id: 'work-education', label: 'Work & Education', icon: 'briefcase', status: 'RR' },
+  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'RR' },
+  { id: 'health', label: 'Health', icon: 'heart', status: 'RR' },
+  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'RR' },
+  { id: 'housing-infrastructure', label: 'Housing & Infrastructure', icon: 'home', status: 'RR' },
 ] as const;
 
 export type TabId = (typeof PILLAR_TABS)[number]['id'];
+
+/** Tabs blocked until score approval or other release criteria are met. */
+export const DISABLED_TABS: readonly TabId[] = ['income'];
+
+export function isTabAccessible(tabId: TabId): boolean {
+  return !DISABLED_TABS.includes(tabId);
+}
 
 /** Design tokens matched to Foreign Trade Dashboard reference */
 export const DESIGN = {

@@ -9,26 +9,36 @@ export interface ChartFollowUp {
 
 interface InsightsContextValue {
   followUp: ChartFollowUp | null;
+  isPanelOpen: boolean;
   askChartFollowUp: (chartTitle: string, insight: InsightPart[]) => void;
   clearFollowUp: () => void;
+  closePanel: () => void;
 }
 
 const InsightsContext = createContext<InsightsContextValue | null>(null);
 
 export function InsightsProvider({ children }: { children: ReactNode }) {
   const [followUp, setFollowUp] = useState<ChartFollowUp | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const askChartFollowUp = useCallback((chartTitle: string, insight: InsightPart[]) => {
     setFollowUp(generateChartFollowUpDetails(chartTitle, insight));
+    setIsPanelOpen(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setFollowUp(null);
   }, []);
 
   const clearFollowUp = useCallback(() => {
     setFollowUp(null);
+    setIsPanelOpen(false);
   }, []);
 
   const value = useMemo(
-    () => ({ followUp, askChartFollowUp, clearFollowUp }),
-    [followUp, askChartFollowUp, clearFollowUp],
+    () => ({ followUp, isPanelOpen, askChartFollowUp, clearFollowUp, closePanel }),
+    [followUp, isPanelOpen, askChartFollowUp, clearFollowUp, closePanel],
   );
 
   return <InsightsContext.Provider value={value}>{children}</InsightsContext.Provider>;

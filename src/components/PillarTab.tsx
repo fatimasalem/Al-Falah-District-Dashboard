@@ -9,24 +9,13 @@ import {
   IncomePieChartCard,
   IncomeBarriersHeatmap,
   IncomeFeelingTreemapCard,
-  WorkPieChartCard,
-  WorkHorizontalBarChartCard,
-  WorkColumnBarChartCard,
-  WorkSupportHeatmap,
-  EducationLikertStackedCard,
-  EducationSportsLikertGaugeCard,
   EducationDisciplineDonutCard,
   DemographicsGenderHubCard,
   DemographicsIncomeBarChartCard,
   DemographicsMaritalBarChartCard,
   DEMOGRAPHICS_CITIZENSHIP_LABELS,
-  SecurityDivergingLikertBarCard,
   SecuritySentimentTreemapCard,
-  HealthAssessmentBarChartCard,
-  InfrastructureRankedBarChartCard,
-  HousingAccessibilityBarChartCard,
   HEALTH_STRESS_LABELS,
-  HEALTH_EATING_LABELS,
   HEALTH_BINARY_LABELS,
 } from './Charts';
 import {
@@ -37,39 +26,11 @@ import {
   getIncomeDistributionData,
   getIncomeBarrierHeatmapData,
   getIncomeChartBadgeScore,
-  getWorkJobseekerChartData,
-  getWorkChallengeChartData,
-  getWorkBusinessChartData,
-  getWorkSupportHeatmapData,
-  getWorkChartBadgeScore,
-  getEducationSportsFacilitiesData,
-  getEducationBullyingExperienceData,
-  getEducationBullyingAwarenessData,
-  getEducationDisciplineFairnessData,
-  getEducationTabChartBadgeScore,
-  getEducationLikertScaleBadgeScore,
-  getSecurityFreedomExpressionData,
-  getSecurityPeerInfluenceData,
-  getSecurityPowerOutagesData,
-  getSecurityDrugPreventionData,
-  getHealthServiceAssessmentData,
-  getHealthSystemAssessmentData,
   getHealthEmotionalStressData,
-  getHealthHealthyEatingData,
   getHealthChronicDiseaseData,
   getHealthTabChartBadgeScore,
-  getEnvironmentInsectsRodentsData,
-  getEnvironmentServiceFacilitiesData,
-  getEnvironmentInternalRoadServicesData,
-  getEnvironmentUrbanPlanningData,
-  getInfrastructureTopIssuesData,
-  getInfrastructureNeededFacilitiesData,
-  getInfrastructureMentalHealthServicesData,
-  getInfrastructureSportsFacilitiesData,
-  getHousingAccessibilityData,
-  getHousingVentilationData,
-  getHousingNaturalLightingData,
-  getHousingHomeownershipPriceData,
+  getInfrastructureStatementChanges,
+  getInfrastructureServiceScorecard,
   isCategory,
   isMean,
   pickYearValue,
@@ -82,11 +43,44 @@ import {
   getDemographicsDistributionBadgeScore,
   getDemographicsIncomeBadgeScore,
   generateDemographicsBinaryInsight,
+  getStatementRegisterData,
+  getSecurityConfidenceStatements,
+  getSecurityConcernStatements,
+  getHealthCentresAssessmentStatements,
+  getHealthSystemQualityStatements,
+  getHealthWellbeingContext,
+  getCalculatedHealthScore,
+  getHealthCentresOverallSatisfaction,
+  getHealthcareSystemOverallSatisfaction,
+  getEnvironmentPositiveStatements,
+  getEnvironmentInsectsRiskStatement,
+  getEnvironmentDomainHeatmap,
+  getHousingPositiveStatements,
+  getHousingConditionRiskMatrix,
 } from '../utils';
 import { translateLabel } from '../translations';
+import { StatementRegister } from './registers/StatementRegister';
+import { WorkEducationStatementRegisterSection } from './charts/WorkEducationStatementRegisterSection';
+import { WorkEducationStatementsSection } from './charts/WorkEducationStatementsSection';
+import { TwoLaneDotPlot } from './charts/TwoLaneDotPlot';
+import { HealthAssessmentCard } from './charts/HealthAssessmentCard';
+import { EnvironmentAssessmentCard } from './charts/EnvironmentAssessmentCard';
+import { HousingAssessmentCard } from './charts/HousingAssessmentCard';
+import { InfrastructureAssessmentCard } from './charts/InfrastructureAssessmentCard';
+
+interface SectionChartsProps {
+  section: Section;
+  viewMode: ViewMode;
+  selectedYear: SurveyYear;
+  compareYears: CompareYears;
+}
 
 interface PillarChartsProps {
-  section: Section;
+  section?: Section;
+  workSection?: Section;
+  educationSection?: Section;
+  infrastructureSection?: Section;
+  housingSection?: Section;
   viewMode: ViewMode;
   selectedYear: SurveyYear;
   compareYears: CompareYears;
@@ -96,7 +90,7 @@ function truncate(str: string, max = 36): string {
   return str.length > max ? str.slice(0, max - 1) + '…' : str;
 }
 
-function DemographicsCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+function DemographicsCharts({ section, viewMode, selectedYear, compareYears }: SectionChartsProps) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const gender = getDemographicsGenderData(section.questions, chartYear);
   const gender2024 = getDemographicsGenderData(section.questions, compareYears[0]);
@@ -170,7 +164,7 @@ function DemographicsCharts({ section, viewMode, selectedYear, compareYears }: P
   );
 }
 
-function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
+function IncomeCharts({ section, viewMode, selectedYear }: SectionChartsProps) {
   const spendingExpectation = getIncomeDistributionData(section.questions, 'Q108', selectedYear, 6);
   const savingBehaviour = getIncomeDistributionData(section.questions, 'Q105', selectedYear, 4);
   const savingBarriers = getIncomeBarrierHeatmapData(section.questions, selectedYear);
@@ -219,203 +213,104 @@ function IncomeCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
   );
 }
 
-function WorkCharts({ section, viewMode, selectedYear }: PillarChartsProps) {
-  const jobseekers = getWorkJobseekerChartData(section.questions, selectedYear);
-  const challenges = getWorkChallengeChartData(section.questions, selectedYear);
-  const business = getWorkBusinessChartData(section.questions, selectedYear);
-  const support = getWorkSupportHeatmapData(section.questions, selectedYear);
-
+function WorkEducationCharts({
+  workSection,
+  educationSection,
+  viewMode,
+  selectedYear,
+  compareYears,
+}: {
+  workSection: Section;
+  educationSection: Section;
+  viewMode: ViewMode;
+  selectedYear: SurveyYear;
+  compareYears: CompareYears;
+}) {
   return (
-    <div className="main-content main-content-work">
-      <div className="chart-grid-top chart-grid-work-top">
-        <WorkPieChartCard
-          data={jobseekers}
-          title="Active Jobseekers"
-          description="Share of residents who looked for paid work in the past four weeks."
-          badgeScore={getWorkChartBadgeScore(jobseekers, selectedYear, 'jobseekers', viewMode)}
-          singleLineDescription
-          mode={viewMode}
-          year={selectedYear}
-        />
-        <WorkHorizontalBarChartCard
-          data={challenges}
-          title="Challenges to Finding Employment"
-          description="Most common barriers preventing residents from obtaining a job opportunity."
-          badgeScore={getWorkChartBadgeScore(challenges, selectedYear, 'challenges', viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-work-bottom">
-        <WorkColumnBarChartCard
-          data={business}
-          title="Private Business or Investment"
-          description="Where residents hold a private project or investment, inside or outside the UAE."
-          badgeScore={getWorkChartBadgeScore(business, selectedYear, 'business', viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-        />
-        <WorkSupportHeatmap
-          data={support}
-          title="Expected Government Employment Support"
-          description="Types of support residents expect from government entities in the field of employment."
-          badgeScore={getWorkChartBadgeScore(support, selectedYear, 'support', viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-        />
-      </div>
+    <div className="main-content main-content-education pillar-viz-layout">
+      <WorkEducationStatementsSection
+        workSection={workSection}
+        educationSection={educationSection}
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        compareYears={compareYears}
+      />
+      <WorkEducationStatementRegisterSection
+        workSection={workSection}
+        educationSection={educationSection}
+        compareYears={compareYears}
+      />
     </div>
   );
 }
 
-function EducationCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+function SecurityCharts({ section, viewMode, selectedYear, compareYears }: SectionChartsProps) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const sports = getEducationSportsFacilitiesData(section.questions, chartYear);
-  const sports2024 = getEducationSportsFacilitiesData(section.questions, compareYears[0]);
-  const bullying = getEducationBullyingExperienceData(section.questions, chartYear);
-  const bullying2024 = getEducationBullyingExperienceData(section.questions, compareYears[0]);
-  const awareness = getEducationBullyingAwarenessData(section.questions, chartYear);
-  const awareness2024 = getEducationBullyingAwarenessData(section.questions, compareYears[0]);
-  const discipline = getEducationDisciplineFairnessData(section.questions, chartYear);
-  const discipline2024 = getEducationDisciplineFairnessData(section.questions, compareYears[0]);
+  const confidenceItems = getSecurityConfidenceStatements(section.questions, compareYears);
+  const concernItems = getSecurityConcernStatements(section.questions, compareYears);
+  const statementRegister = getStatementRegisterData(section.questions, compareYears, 'Q401');
+  const confidenceRegister = statementRegister.filter((row) => row.polarity === 'positive');
+  const concernRegister = statementRegister.filter((row) => row.polarity === 'negative');
 
   return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education">
-        <EducationSportsLikertGaugeCard
-          data={sports}
-          data2024={sports2024}
-          title="Sports Facilities Availability"
-          description="Residents' perception of sports facilities for students and the community."
-          badgeScore={getEducationLikertScaleBadgeScore(sports, sports2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-        />
-        <EducationLikertStackedCard
-          data={bullying}
-          data2024={bullying2024}
-          title="Children's Reported Experience of Bullying"
-          description="Parents' reports of repeated bullying at neighborhood schools."
-          badgeScore={getEducationTabChartBadgeScore(bullying, bullying2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topic="bullying"
-          singleLineDescription
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education">
-        <EducationLikertStackedCard
-          data={awareness}
-          data2024={awareness2024}
-          title="Awareness of Bullying Incidents"
-          description="Whether residents have heard or seen bullying involving students in their neighborhood."
-          badgeScore={getEducationTabChartBadgeScore(awareness, awareness2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topic="awareness"
-        />
-        <EducationDisciplineDonutCard
-          data={discipline}
-          data2024={discipline2024}
-          title="Fairness of Student Discipline"
-          description="Residents' perception of school disciplinary practices on a Likert scale."
-          badgeScore={getEducationTabChartBadgeScore(discipline, discipline2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-        />
-      </div>
+    <div className="main-content main-content-education pillar-viz-layout">
+      <TwoLaneDotPlot
+        confidenceItems={confidenceItems}
+        concernItems={concernItems}
+        compareYears={compareYears}
+        year={chartYear}
+        viewMode={viewMode}
+        title="Q401 confidence vs concern"
+        maxBodyHeight={320}
+      />
+      <StatementRegister
+        title="Q401 statement register"
+        subtitle="Review Security pillar statements with agreement, disagreement, and movement."
+        tabs={[
+          {
+            id: 'confidence',
+            label: 'Confidence statements',
+            rows: confidenceRegister,
+            subtitle: 'Statements where higher agreement reflects stronger perceived security and safety.',
+          },
+          {
+            id: 'concern',
+            label: 'Reported concern',
+            rows: concernRegister,
+            subtitle: 'Risk-framed indicators where higher agreement means more reported concern.',
+          },
+        ]}
+      />
     </div>
   );
 }
 
-function SecurityCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+function HealthCharts({ section, viewMode, selectedYear, compareYears }: SectionChartsProps) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const freedom = getSecurityFreedomExpressionData(section.questions, chartYear);
-  const freedom2024 = getSecurityFreedomExpressionData(section.questions, compareYears[0]);
-  const peerInfluence = getSecurityPeerInfluenceData(section.questions, chartYear);
-  const peerInfluence2024 = getSecurityPeerInfluenceData(section.questions, compareYears[0]);
-  const powerOutages = getSecurityPowerOutagesData(section.questions, chartYear);
-  const powerOutages2024 = getSecurityPowerOutagesData(section.questions, compareYears[0]);
-  const drugPrevention = getSecurityDrugPreventionData(section.questions, chartYear);
-  const drugPrevention2024 = getSecurityDrugPreventionData(section.questions, compareYears[0]);
-
-  return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education">
-        <EducationSportsLikertGaugeCard
-          data={freedom}
-          data2024={freedom2024}
-          title="Safety Through Freedom of Expression"
-          description="Residents' perceptions of whether they feel safe expressing their views in their community."
-          badgeScore={getEducationLikertScaleBadgeScore(freedom, freedom2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="freedom of expression safety"
-          emptyMessage="No freedom of expression data available."
-        />
-        <EducationDisciplineDonutCard
-          data={peerInfluence}
-          data2024={peerInfluence2024}
-          title="Concern About Negative Peer Influence"
-          description="Residents worried about their children's exposure to negative peer groups."
-          badgeScore={getEducationTabChartBadgeScore(peerInfluence, peerInfluence2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="negative peer influence concern"
-          emptyMessage="No peer influence data available."
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education">
-        <SecurityDivergingLikertBarCard
-          data={powerOutages}
-          data2024={powerOutages2024}
-          title="Safety from Power Outages"
-          description="Residents' perception of electricity reliability and security."
-          badgeScore={getEducationTabChartBadgeScore(powerOutages, powerOutages2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="power outage safety"
-          emptyMessage="No power outage safety data available."
-        />
-        <SecuritySentimentTreemapCard
-          data={drugPrevention}
-          data2024={drugPrevention2024}
-          title="Confidence in Drug Prevention"
-          description="Residents' confidence in Abu Dhabi Police's ability to combat drugs in their residential area."
-          badgeScore={getEducationTabChartBadgeScore(drugPrevention, drugPrevention2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="drug prevention confidence"
-          emptyMessage="No drug prevention confidence data available."
-        />
-      </div>
-    </div>
-  );
-}
-
-function HealthCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const serviceAssessment = getHealthServiceAssessmentData(section.questions, chartYear);
-  const systemAssessment = getHealthSystemAssessmentData(section.questions, chartYear);
+  const centresItems = getHealthCentresAssessmentStatements(section.questions, compareYears);
+  const systemItems = getHealthSystemQualityStatements(section.questions, compareYears);
+  const wellbeingRows = getHealthWellbeingContext(section.questions, compareYears);
+  const calculatedScore = getCalculatedHealthScore(section.questions, chartYear);
+  const q501Score = getHealthCentresOverallSatisfaction(section.questions, chartYear);
+  const q502Score = getHealthcareSystemOverallSatisfaction(section.questions, chartYear);
   const emotionalStress = getHealthEmotionalStressData(section.questions, chartYear);
   const emotionalStress2024 = getHealthEmotionalStressData(section.questions, compareYears[0]);
-  const healthyEating = getHealthHealthyEatingData(section.questions, chartYear);
-  const healthyEating2024 = getHealthHealthyEatingData(section.questions, compareYears[0]);
   const chronicDisease = getHealthChronicDiseaseData(section.questions, chartYear);
   const chronicDisease2024 = getHealthChronicDiseaseData(section.questions, compareYears[0]);
-
   return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
-        <HealthAssessmentBarChartCard
-          serviceData={serviceAssessment}
-          systemData={systemAssessment}
-          title="Healthcare Assessment"
-          description="Healthcare service and system ratings (good 60%+, acceptable 50–59%, bad below 50%)."
-          mode={viewMode}
-          year={selectedYear}
-          compact
-        />
+    <div className="main-content main-content-education pillar-viz-layout">
+      <HealthAssessmentCard
+        centresItems={centresItems}
+        systemItems={systemItems}
+        wellbeingRows={wellbeingRows}
+        compareYears={compareYears}
+        year={chartYear}
+        viewMode={viewMode}
+        calculatedScore={calculatedScore}
+        q501Score={q501Score}
+        q502Score={q502Score}
+      />
+      <div className="chart-grid-bottom chart-grid-education chart-grid-compact pillar-viz-detail-grid">
         <SecuritySentimentTreemapCard
           data={emotionalStress}
           data2024={emotionalStress2024}
@@ -428,20 +323,6 @@ function HealthCharts({ section, viewMode, selectedYear, compareYears }: PillarC
           emptyMessage="No emotional stress data available."
           sentimentLabels={HEALTH_STRESS_LABELS}
           compact
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education">
-        <SecurityDivergingLikertBarCard
-          data={healthyEating}
-          data2024={healthyEating2024}
-          title="Residents Healthy Eating Frequency"
-          description="How often residents believe they eat healthy meals."
-          badgeScore={getHealthTabChartBadgeScore(healthyEating, healthyEating2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="healthy eating frequency"
-          emptyMessage="No healthy eating data available."
-          sentimentLabels={HEALTH_EATING_LABELS}
         />
         <EducationDisciplineDonutCard
           data={chronicDisease}
@@ -461,220 +342,134 @@ function HealthCharts({ section, viewMode, selectedYear, compareYears }: PillarC
   );
 }
 
-function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: SectionChartsProps) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const insectsRodents = getEnvironmentInsectsRodentsData(section.questions, chartYear);
-  const insectsRodents2024 = getEnvironmentInsectsRodentsData(section.questions, compareYears[0]);
-  const serviceFacilities = getEnvironmentServiceFacilitiesData(section.questions, chartYear);
-  const serviceFacilities2024 = getEnvironmentServiceFacilitiesData(section.questions, compareYears[0]);
-  const internalRoadServices = getEnvironmentInternalRoadServicesData(section.questions, chartYear);
-  const internalRoadServices2024 = getEnvironmentInternalRoadServicesData(section.questions, compareYears[0]);
-  const urbanPlanning = getEnvironmentUrbanPlanningData(section.questions, chartYear);
-  const urbanPlanning2024 = getEnvironmentUrbanPlanningData(section.questions, compareYears[0]);
+  const statementRegister = getStatementRegisterData(section.questions, compareYears, 'Q601');
+  const positiveRegister = statementRegister.filter((row) => row.polarity === 'positive');
+  const riskRegister = statementRegister.filter((row) => row.polarity === 'negative');
+  const positiveItems = getEnvironmentPositiveStatements(section.questions, compareYears);
+  const insectsRisk = getEnvironmentInsectsRiskStatement(section.questions, compareYears);
+  const domainRows = getEnvironmentDomainHeatmap(section.questions, compareYears);
 
   return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education">
-        <EducationDisciplineDonutCard
-          data={insectsRodents}
-          data2024={insectsRodents2024}
-          title="Insects and Rodents in Living Areas"
-          description="Residents' perception on whether insects and rodents keep showing up in the living area."
-          badgeScore={getEducationTabChartBadgeScore(insectsRodents, insectsRodents2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="insects and rodents presence"
-          emptyMessage="No insects and rodents data available."
-        />
-        <SecurityDivergingLikertBarCard
-          data={serviceFacilities}
-          data2024={serviceFacilities2024}
-          title="Service Facilities Quality"
-          description="Resident satisfaction with parks, playgrounds, and public amenities."
-          badgeScore={getEducationTabChartBadgeScore(serviceFacilities, serviceFacilities2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="service facilities quality"
-          singleLineDescription
-          emptyMessage="No service facilities data available."
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education">
-        <SecuritySentimentTreemapCard
-          data={internalRoadServices}
-          data2024={internalRoadServices2024}
-          title="Satisfaction with Internal Road Services"
-          description="Resident satisfaction with sidewalks, street lighting, parking, and walkways."
-          badgeScore={getEducationTabChartBadgeScore(internalRoadServices, internalRoadServices2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="internal road services"
-          singleLineDescription
-          emptyMessage="No internal road services data available."
-        />
-        <EducationSportsLikertGaugeCard
-          data={urbanPlanning}
-          data2024={urbanPlanning2024}
-          title="Satisfaction with Urban Planning"
-          description="Resident satisfaction with urban planning of streets, parking, sidewalks, and area access."
-          badgeScore={getEducationLikertScaleBadgeScore(urbanPlanning, urbanPlanning2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="urban planning satisfaction"
-          singleLineDescription
-          emptyMessage="No urban planning data available."
-        />
-      </div>
+    <div className="main-content main-content-education pillar-viz-layout">
+      <EnvironmentAssessmentCard
+        positiveItems={positiveItems}
+        insectsRisk={insectsRisk}
+        domainRows={domainRows}
+        compareYears={compareYears}
+        year={chartYear}
+        viewMode={viewMode}
+      />
+      <StatementRegister
+        title="Q601 statement register"
+        subtitle="Review Environment pillar statements with agreement, disagreement, and movement."
+        tabs={[
+          {
+            id: 'positive',
+            label: 'Positive statements',
+            rows: positiveRegister,
+            subtitle: 'Satisfaction statements behind the Environment pillar.',
+          },
+          {
+            id: 'risk',
+            label: 'Reported concern',
+            rows: riskRegister,
+            subtitle: 'Insects and rodents — higher agreement means more reported concern.',
+          },
+        ]}
+      />
     </div>
   );
 }
 
-function InfrastructureCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
+function HousingInfrastructureCharts({
+  infrastructureSection,
+  housingSection,
+  viewMode,
+  selectedYear,
+  compareYears,
+}: {
+  infrastructureSection: Section;
+  housingSection: Section;
+  viewMode: ViewMode;
+  selectedYear: SurveyYear;
+  compareYears: CompareYears;
+}) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const topIssues = getInfrastructureTopIssuesData(section.questions, chartYear);
-  const neededFacilities = getInfrastructureNeededFacilitiesData(section.questions, chartYear);
-  const mentalHealth = getInfrastructureMentalHealthServicesData(section.questions, chartYear);
-  const mentalHealth2024 = getInfrastructureMentalHealthServicesData(section.questions, compareYears[0]);
-  const sportsFacilities = getInfrastructureSportsFacilitiesData(section.questions, chartYear);
-  const sportsFacilities2024 = getInfrastructureSportsFacilitiesData(section.questions, compareYears[0]);
+  const statementChanges = getInfrastructureStatementChanges(infrastructureSection.questions, compareYears);
+  const serviceScorecard = getInfrastructureServiceScorecard(infrastructureSection.questions, compareYears);
+  const positiveItems = getHousingPositiveStatements(housingSection.questions, compareYears);
+  const riskMatrixItems = getHousingConditionRiskMatrix(housingSection.questions, compareYears);
 
   return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
-        <InfrastructureRankedBarChartCard
-          data={topIssues}
-          title="Top Issues Affecting Families and Communities"
-          description="Residents' perception of issues with the biggest negative impact on families and communities."
-          mode={viewMode}
-          year={selectedYear}
-          insightTopic="issue"
-          labelIconVariant="issues"
-          compact
-        />
-        <SecuritySentimentTreemapCard
-          data={mentalHealth}
-          data2024={mentalHealth2024}
-          title="Satisfaction with Mental Health and Addiction Services"
-          description="Residents' satisfaction with mental health and addiction service availability."
-          badgeScore={getEducationTabChartBadgeScore(mentalHealth, mentalHealth2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="mental health and addiction services"
-          emptyMessage="No mental health services data available."
-          singleLineDescription
-          compact
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
-        <EducationDisciplineDonutCard
-          data={sportsFacilities}
-          data2024={sportsFacilities2024}
-          title="Satisfaction with Sports Facilities Availability"
-          description="Residents' satisfaction with availability of fields for practicing various sports."
-          badgeScore={getEducationTabChartBadgeScore(sportsFacilities, sportsFacilities2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="sports facilities availability"
-          emptyMessage="No sports facilities data available."
-          compact
-        />
-        <InfrastructureRankedBarChartCard
-          data={neededFacilities}
-          title="Most Needed Facilities in Residential Areas"
-          description="Residents' perception of the most important facilities not available in their residential area."
-          mode={viewMode}
-          year={selectedYear}
-          insightTopic="facility need"
-          singleLineDescription
-          labelIconVariant="facilities"
-          compact
-        />
-      </div>
+    <div className="main-content main-content-education pillar-viz-layout">
+      <InfrastructureAssessmentCard
+        statementItems={statementChanges}
+        serviceRows={serviceScorecard}
+        compareYears={compareYears}
+        year={chartYear}
+        viewMode={viewMode}
+      />
+      <HousingAssessmentCard
+        positiveItems={positiveItems}
+        riskMatrixItems={riskMatrixItems}
+        compareYears={compareYears}
+        year={chartYear}
+        viewMode={viewMode}
+      />
     </div>
   );
 }
 
-function HousingCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
-  const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const ventilation = getHousingVentilationData(section.questions, chartYear);
-  const ventilation2024 = getHousingVentilationData(section.questions, compareYears[0]);
-  const naturalLighting = getHousingNaturalLightingData(section.questions, chartYear);
-  const naturalLighting2024 = getHousingNaturalLightingData(section.questions, compareYears[0]);
-  const homeownershipPrice = getHousingHomeownershipPriceData(section.questions, chartYear);
-  const homeownershipPrice2024 = getHousingHomeownershipPriceData(section.questions, compareYears[0]);
-
-  return (
-    <div className="main-content main-content-education">
-      <div className="chart-grid-bottom chart-grid-education chart-grid-compact">
-        <HousingAccessibilityBarChartCard
-          getCategoryData={(category) => getHousingAccessibilityData(section.questions, category, chartYear)}
-          title="Accessibility Features in Current Residences"
-          description="Share of residents reporting accessibility features present in their current residence."
-          mode={viewMode}
-          year={selectedYear}
-          singleLineDescription
-        />
-        <SecuritySentimentTreemapCard
-          data={ventilation}
-          data2024={ventilation2024}
-          title="Housing Ventilation"
-          description="Resident responses on whether the ventilation system in their housing is suitable."
-          badgeScore={getEducationTabChartBadgeScore(ventilation, ventilation2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="ventilation suitability"
-          singleLineDescription
-          emptyMessage="No ventilation data available."
-        />
-      </div>
-      <div className="chart-grid-bottom chart-grid-education">
-        <EducationDisciplineDonutCard
-          data={naturalLighting}
-          data2024={naturalLighting2024}
-          title="Natural Lighting"
-          description="Resident responses on whether sunlight enters most parts of their house daily."
-          badgeScore={getEducationTabChartBadgeScore(naturalLighting, naturalLighting2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="natural lighting"
-          emptyMessage="No natural lighting data available."
-        />
-        <SecurityDivergingLikertBarCard
-          data={homeownershipPrice}
-          data2024={homeownershipPrice2024}
-          title="Homeownership Price Satisfaction"
-          description="Resident responses on satisfaction with home ownership prices in their residential area."
-          badgeScore={getEducationTabChartBadgeScore(homeownershipPrice, homeownershipPrice2024, viewMode)}
-          mode={viewMode}
-          year={selectedYear}
-          topicLabel="homeownership price satisfaction"
-          singleLineDescription
-          emptyMessage="No homeownership price satisfaction data available."
-        />
-      </div>
-    </div>
-  );
-}
-
-export function PillarCharts({ section, viewMode, selectedYear, compareYears }: PillarChartsProps) {
-  if (section.id === 'demographics') {
-    return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
+export function PillarCharts({
+  section,
+  workSection,
+  educationSection,
+  infrastructureSection,
+  housingSection,
+  viewMode,
+  selectedYear,
+  compareYears,
+}: PillarChartsProps) {
+  if (workSection && educationSection) {
+    return (
+      <WorkEducationCharts
+        workSection={workSection}
+        educationSection={educationSection}
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        compareYears={compareYears}
+      />
+    );
   }
 
-  if (!section.score) {
+  if (infrastructureSection && housingSection) {
+    return (
+      <HousingInfrastructureCharts
+        infrastructureSection={infrastructureSection}
+        housingSection={housingSection}
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        compareYears={compareYears}
+      />
+    );
+  }
+
+  if (!section) {
     return null;
+  }
+
+  if (section.id === 'demographics') {
+    return <DemographicsCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   if (section.id === 'income') {
     return <IncomeCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
-  if (section.id === 'work') {
-    return <WorkCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
-  }
-
-  if (section.id === 'education') {
-    return <EducationCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
+  if (!section.score) {
+    return null;
   }
 
   if (section.id === 'security') {
@@ -687,14 +482,6 @@ export function PillarCharts({ section, viewMode, selectedYear, compareYears }: 
 
   if (section.id === 'environment') {
     return <EnvironmentCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
-  }
-
-  if (section.id === 'infrastructure') {
-    return <InfrastructureCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
-  }
-
-  if (section.id === 'housing') {
-    return <HousingCharts section={section} viewMode={viewMode} selectedYear={selectedYear} compareYears={compareYears} />;
   }
 
   const { score, questions } = section;

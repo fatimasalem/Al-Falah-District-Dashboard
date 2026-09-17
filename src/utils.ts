@@ -1,4 +1,4 @@
-import type { CompareYears, SectionScore, SurveyData, SurveyYear, ViewMode } from './types';
+import type { CompareYears, PillarScoreCoverage, ScoreStatus, SectionScore, SurveyData, SurveyYear, ViewMode } from './types';
 import { DEFAULT_COMPARE_YEARS } from './types';
 import { translateLabel } from './translations';
 
@@ -1780,6 +1780,43 @@ const SECURITY_CHART_STATEMENTS = {
   },
 } as const;
 
+const SECURITY_CONCERN_MATCHERS = [
+  /fear for my children/i,
+  /physical violence or threats/i,
+  /exposed to an incident/i,
+];
+
+const SECURITY_Q401_SHORT_LABELS: Array<{ match: RegExp; label: string }> = [
+  { match: /availability of housing/i, label: 'Housing availability' },
+  { match: /uninterrupted power services/i, label: 'Power reliability' },
+  { match: /drinking water services/i, label: 'Drinking water supply' },
+  { match: /general cleanliness/i, label: 'General cleanliness' },
+  { match: /constant availability of food/i, label: 'Food availability' },
+  { match: /control over the food/i, label: 'Food quality control' },
+  { match: /easy access to food/i, label: 'Food access' },
+  { match: /provide food/i, label: 'Ability to provide food' },
+  { match: /job security in the Emirate/i, label: 'Job security' },
+  { match: /freedom of expression/i, label: 'Freedom of expression' },
+  { match: /communicate on social media/i, label: 'Social media freedom' },
+  { match: /communication with their families/i, label: 'Family communication' },
+  { match: /effective laws that apply to everyone/i, label: 'Fair laws' },
+  { match: /moving around during the day and night/i, label: 'Day & night mobility' },
+  { match: /practice religious rituals/i, label: 'Religious practice' },
+  { match: /justice, equality between religions/i, label: 'Justice & equality' },
+  { match: /safe and protected in a residential area/i, label: 'Area protection' },
+  { match: /security and safety in their residential area/i, label: 'Area security level' },
+  { match: /Abu Dhabi Police General Command to deal with accidents/i, label: 'Police incident response' },
+  { match: /combat drugs in a residential area/i, label: 'Drug prevention confidence' },
+  { match: /police preventive measures to reduce crime/i, label: 'Crime prevention measures' },
+  { match: /fear for my children from bad company/i, label: 'Negative peer influence' },
+  { match: /physical violence or threats/i, label: 'Violence or threats' },
+];
+
+function getSecurityQ401ShortLabel(statement: string): string {
+  const match = SECURITY_Q401_SHORT_LABELS.find((entry) => entry.match.test(statement));
+  return match?.label ?? truncateStatementLabel(statement, 28);
+}
+
 export function getSecurityMovingSafePercent(
   questions: import('./types').Question[],
   year: '2024' | '2025',
@@ -1827,6 +1864,74 @@ export function getSecurityDrugPreventionData(
   year: '2024' | '2025',
 ): EducationSentimentRow[] {
   return getEducationSentimentRows(questions, year, [SECURITY_CHART_STATEMENTS.drugPrevention]);
+}
+
+export function getSecurityConfidenceStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q401')
+    .filter((question) => resolveStatementPolarity(question, SECURITY_CONCERN_MATCHERS) === 'positive')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getSecurityQ401ShortLabel(statement), fullName: statement };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getSecurityConcernStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q401')
+    .filter((question) => resolveStatementPolarity(question, SECURITY_CONCERN_MATCHERS) === 'negative')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getSecurityQ401ShortLabel(statement), fullName: statement };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getSecurityNegativeScoreDelta(
+  score: import('./types').SectionScore,
+  compareYears: import('./types').CompareYears,
+): number {
+  return getYearDelta(score.negative2024, score.negative2025, compareYears);
+}
+
+export function generateSecurityDotPlotInsight(
+  confidenceItems: StatementComparisonItem[],
+  concernItems: StatementComparisonItem[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  const topConcern = concernItems[0];
+  const topConfidence = confidenceItems[0];
+
+  if (topConcern && topConcern.value2025 >= 55) {
+    return [
+      { bold: topConcern.name },
+      ' is the leading reported concern in ',
+      { bold: year },
+      ' at ',
+      { bold: `${topConcern.value2025.toFixed(1)}%`, tone: 'negative' },
+      ' agreement.',
+    ];
+  }
+
+  if (topConfidence) {
+    return [
+      { bold: topConfidence.name },
+      ' is the strongest confidence signal in ',
+      { bold: year },
+      ' at ',
+      { bold: `${topConfidence.value2025.toFixed(1)}%`, tone: 'positive' },
+      ' agreement.',
+    ];
+  }
+
+  return ['No Q401 security statements are available for this view.'];
 }
 
 export function getSecurityKpiSentence(
@@ -2434,6 +2539,149 @@ export function generateInfrastructureRankedBarInsight(
   ];
 }
 
+const INFRASTRUCTURE_Q801_SHORT_LABELS: Array<{ match: RegExp; label: string }> = [
+  { match: /places of worship/i, label: 'Places of worship' },
+  { match: /public squares and parks/i, label: 'Parks & public squares' },
+  { match: /recreational areas/i, label: 'Recreational areas' },
+  { match: /security and safety standards in children/i, label: 'Playground safety standards' },
+  { match: /playgrounds for practicing different types of sports/i, label: 'Sports facilities' },
+  { match: /satisfied with the level of water and electricity/i, label: 'Water & electricity' },
+  { match: /availability of gas stations/i, label: 'Gas stations' },
+  { match: /commercial stores and shopping centers/i, label: 'Shops & shopping centers' },
+  { match: /government service centers/i, label: 'Government service centers' },
+  { match: /health facilities/i, label: 'Health facilities' },
+  { match: /educational facilities and nurseries/i, label: 'Schools & nurseries' },
+  { match: /mental health and addiction/i, label: 'Mental health services' },
+  { match: /public transportation/i, label: 'Public transportation' },
+  { match: /technological services/i, label: 'Technological services' },
+  { match: /public parking/i, label: 'Public parking' },
+  { match: /mosques and centers for memorizing/i, label: 'Mosques & Quran centers' },
+  { match: /community centers to support family/i, label: 'Family community centers' },
+  { match: /centers for social and professional/i, label: 'Social & vocational centers' },
+  { match: /planting and getting rid of insects/i, label: 'Afforestation & pest control' },
+  { match: /internal roads/i, label: 'Internal roads' },
+  { match: /street lighting/i, label: 'Street lighting' },
+  { match: /waste collection/i, label: 'Waste collection' },
+  { match: /sewage and drainage/i, label: 'Sewage & drainage' },
+];
+
+function getInfrastructureQ801ShortLabel(statement: string): string {
+  const match = INFRASTRUCTURE_Q801_SHORT_LABELS.find((entry) => entry.match.test(statement));
+  return match?.label ?? truncateStatementLabel(statement, 32);
+}
+
+export function getInfrastructureStatementChanges(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q801')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getInfrastructureQ801ShortLabel(statement) };
+    })
+    .sort((a, b) => {
+      const movementDiff = Math.abs(b.movement) - Math.abs(a.movement);
+      if (movementDiff !== 0) return movementDiff;
+      return b.value2025 - a.value2025;
+    });
+}
+
+export function getInfrastructureServiceScorecard(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): WellbeingHeatmapRow[] {
+  const services: { name: string; fullName: string; match: RegExp }[] = [
+    {
+      name: 'Water & electricity',
+      fullName: 'Water and electricity services satisfaction',
+      match: INFRASTRUCTURE_KPI_STATEMENT.waterElectricity,
+    },
+    {
+      name: 'Gas stations',
+      fullName: 'Gas station availability satisfaction',
+      match: INFRASTRUCTURE_KPI_STATEMENT.gasStations,
+    },
+    {
+      name: 'Shopping',
+      fullName: 'Shops and shopping centers availability satisfaction',
+      match: INFRASTRUCTURE_KPI_STATEMENT.shopping,
+    },
+    {
+      name: 'Mental health',
+      fullName: INFRASTRUCTURE_CHART_STATEMENTS.mentalHealthServices.short,
+      match: INFRASTRUCTURE_CHART_STATEMENTS.mentalHealthServices.match,
+    },
+    {
+      name: 'Sports facilities',
+      fullName: INFRASTRUCTURE_CHART_STATEMENTS.sportsFacilities.short,
+      match: INFRASTRUCTURE_CHART_STATEMENTS.sportsFacilities.match,
+    },
+  ];
+
+  return services.map((service) => {
+    const agreement2024 = getEducationLikertAgreement(questions, service.match, '2024');
+    const agreement2025 = getEducationLikertAgreement(questions, service.match, '2025');
+    return {
+      name: service.name,
+      fullName: service.fullName,
+      agreement2024,
+      agreement2025,
+      movement: getYearDelta(agreement2024, agreement2025, compareYears),
+    };
+  });
+}
+
+export function generateInfrastructureStatementChangesInsight(
+  items: StatementComparisonItem[],
+  compareYears: import('./types').CompareYears,
+): InsightPart[] {
+  const topMover = items[0];
+  if (!topMover) {
+    return ['No Q801 infrastructure statement movement is available.'];
+  }
+
+  return [
+    { bold: topMover.name },
+    ' moved most at ',
+    {
+      bold: formatDelta(topMover.movement),
+      tone: topMover.movement >= 0 ? 'positive' : 'negative',
+    },
+    ` between ${compareYears[0]} and ${compareYears[1]}.`,
+  ];
+}
+
+export function generateInfrastructureServiceScorecardInsight(
+  rows: WellbeingHeatmapRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['No infrastructure service-access data is available.'];
+  }
+
+  const ranked = [...rows].sort(
+    (a, b) =>
+      pickYearValue(b.agreement2024, b.agreement2025, year)
+      - pickYearValue(a.agreement2024, a.agreement2025, year),
+  );
+  const top = ranked[0];
+  const bottom = ranked[ranked.length - 1];
+  const topValue = pickYearValue(top.agreement2024, top.agreement2025, year);
+  const bottomValue = pickYearValue(bottom.agreement2024, bottom.agreement2025, year);
+
+  return [
+    { bold: top.name },
+    ' leads service access at ',
+    { bold: `${topValue.toFixed(1)}%`, tone: 'positive' },
+    '; ',
+    { bold: bottom.name },
+    ' is lowest at ',
+    { bold: `${bottomValue.toFixed(1)}%` },
+    '.',
+  ];
+}
+
 export const HOUSING_KPI_STATEMENT = {
   spaceAdequacy: /size of the house is small or insufficient/i,
   maintenance: /residence needs repairs and maintenance/i,
@@ -2899,6 +3147,184 @@ export function generatePillarTableInsight(
   ];
 }
 
+export function generatePillarCompositionInsight(
+  items: PillarDumbbellItem[],
+  mode: ViewMode,
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  const approved = items.filter(
+    (item) => item.status === 'approved' && item.value2024 != null && item.value2025 != null,
+  );
+
+  if (approved.length === 0) {
+    return ['Approved pillar scores are not yet available for this composition view.'];
+  }
+
+  const leader = [...approved].sort((a, b) => (b.value2025 ?? 0) - (a.value2025 ?? 0))[0];
+  const leaderValue = mode === 'yoy'
+    ? leader.value2025!
+    : (year === '2024' ? leader.value2024! : leader.value2025!);
+
+  if (mode === 'yoy') {
+    const improved = approved.filter((item) => (item.value2025 ?? 0) > (item.value2024 ?? 0)).length;
+    return [
+      { bold: leader.name },
+      ' leads approved sections at ',
+      { bold: `${leaderValue.toFixed(1)}%`, tone: leaderValue >= 70 ? 'positive' : undefined },
+      '; ',
+      { bold: String(improved) },
+      ' of ',
+      { bold: String(approved.length) },
+      ' sections improved year on year.',
+    ];
+  }
+
+  return [
+    { bold: leader.name },
+    ' leads at ',
+    { bold: `${leaderValue.toFixed(1)}%`, tone: leaderValue >= 70 ? 'positive' : undefined },
+    ' across ',
+    { bold: String(approved.length) },
+    ' approved sections.',
+  ];
+}
+
+export function generateMomentumMatrixInsight(
+  items: MomentumMatrixItem[],
+  viewMode: ViewMode,
+): InsightPart[] {
+  if (items.length === 0) {
+    return ['No approved pillar momentum data is available for this matrix.'];
+  }
+
+  const leader = [...items].sort((a, b) => b.score2025 - a.score2025)[0];
+  const scaleCount = items.filter((item) => item.quadrant === 'scale').length;
+  const investigateCount = items.filter((item) => item.quadrant === 'investigate').length;
+
+  if (viewMode === 'yoy') {
+    return [
+      { bold: String(scaleCount) },
+      ' pillars sit in the ',
+      { bold: 'Scale' },
+      ' quadrant, led by ',
+      { bold: leader.pillar },
+      ' at ',
+      { bold: `${leader.score2025.toFixed(1)}%` },
+      '; ',
+      { bold: String(investigateCount) },
+      ' need investigation.',
+    ];
+  }
+
+  return [
+    { bold: leader.pillar },
+    ' holds the largest approved share at ',
+    { bold: `${leader.score2025.toFixed(1)}%` },
+    ' across ',
+    { bold: String(items.length) },
+    ' pillars.',
+  ];
+}
+
+export function generateResidualRiskRegisterInsight(
+  items: RiskRegisterItem[],
+  year: import('./types').SurveyYear,
+  isYoY: boolean,
+): InsightPart[] {
+  const available = items.filter((item) => item.status === 'available');
+  if (available.length === 0) {
+    return ['Residual risk indicators are pending for approved pillars in this register.'];
+  }
+
+  const ranked = [...available]
+    .filter((item) => pickYearValue(item.negative2024, item.negative2025, year) != null)
+    .sort(
+      (left, right) =>
+        (pickYearValue(right.negative2024, right.negative2025, year) ?? 0)
+        - (pickYearValue(left.negative2024, left.negative2025, year) ?? 0),
+    );
+  const highest = ranked[0];
+
+  if (!highest) {
+    return [
+      { bold: String(available.length) },
+      ' approved pillars are tracked in the residual risk register.',
+    ];
+  }
+
+  const concern = pickYearValue(highest.negative2024, highest.negative2025, year)!;
+  const worsening = isYoY
+    ? available.filter((item) => (item.yoyChange ?? 0) > 0).length
+    : 0;
+
+  if (isYoY && worsening > 0) {
+    return [
+      { bold: highest.pillar },
+      ' shows the highest concern at ',
+      { bold: `${concern.toFixed(1)}%`, tone: concern >= 20 ? 'negative' : undefined },
+      '; ',
+      { bold: String(worsening) },
+      ' pillars show rising negative indicators.',
+    ];
+  }
+
+  return [
+    { bold: highest.pillar },
+    ' shows the highest residual concern at ',
+    { bold: `${concern.toFixed(1)}%`, tone: concern >= 20 ? 'negative' : undefined },
+    ' across ',
+    { bold: String(available.length) },
+    ' tracked pillars.',
+  ];
+}
+
+export function generateStatementRegisterInsight(
+  rows: StatementRegisterRow[],
+  questionLabel: string,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return [`No ${questionLabel} statements are available in this register.`];
+  }
+
+  const positiveRows = rows.filter((row) => row.polarity === 'positive');
+  const riskRows = rows.filter((row) => row.polarity === 'negative');
+  const topPositive = [...positiveRows].sort((left, right) => right.agreement2025 - left.agreement2025)[0];
+  const topRisk = [...riskRows].sort((left, right) => right.agreement2025 - left.agreement2025)[0];
+
+  if (topRisk && topRisk.agreement2025 >= 25) {
+    return [
+      'Highest risk signal at ',
+      { bold: `${topRisk.agreement2025.toFixed(1)}%`, tone: 'negative' },
+      ' agreement; ',
+      { bold: String(positiveRows.length) },
+      ' positive and ',
+      { bold: String(riskRows.length) },
+      ' risk statements tracked in ',
+      { bold: questionLabel },
+      '.',
+    ];
+  }
+
+  if (topPositive) {
+    return [
+      'Strongest positive signal at ',
+      { bold: `${topPositive.agreement2025.toFixed(1)}%`, tone: topPositive.agreement2025 >= 70 ? 'positive' : undefined },
+      ' agreement across ',
+      { bold: String(rows.length) },
+      ' ',
+      { bold: questionLabel },
+      ' statements.',
+    ];
+  }
+
+  return [
+    { bold: String(rows.length) },
+    ' statements are tracked in the ',
+    { bold: questionLabel },
+    ' register.',
+  ];
+}
+
 export function formatDelta(value: number): string {
   const sign = value >= 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
@@ -3347,14 +3773,37 @@ export function generateInsights(
   tabId: string,
   data: import('./types').SurveyData,
 ): string[] {
-  const { overview, sectionScores } = data;
+  const { sectionScores } = data;
 
   if (tabId === 'overview') {
+    const overall2024 = computeUnweightedOverallScore(data, '2024');
+    const overall2025 = computeUnweightedOverallScore(data, '2025');
+    const coverage = getEvidenceCoverageSummary(data);
+    const profile = getWhoAnsweredProfileData(data, '2025');
+    const approvedDumbbell = getPillarDumbbellData(data).filter((item) => item.status === 'approved');
+    const strongestMover = [...approvedDumbbell].sort(
+      (a, b) => (b.value2025! - b.value2024!) - (a.value2025! - a.value2024!),
+    )[0];
+    const genderTop = profile.find((item) => item.id === 'gender')?.segments
+      .slice()
+      .sort((a, b) => b.value - a.value)[0];
+    const employmentTop = profile.find((item) => item.id === 'employment')?.segments
+      .slice()
+      .sort((a, b) => b.value - a.value)[0];
+
     return [
-      `Overall resident satisfaction in Al Falah improved from ${overview.overallScore2024}% to ${overview.overallScore2025}% (${formatDelta(overview.overallYoyChange)}).`,
-      `${overview.bestImproved.section} showed the strongest improvement at ${formatDelta(overview.bestImproved.change)}.`,
-      `${overview.mostDeclined.section} requires attention with a change of ${formatDelta(overview.mostDeclined.change)}.`,
-      `Highest performing pillar is ${overview.highestScore.section} at ${overview.highestScore.score}%, while ${overview.lowestScore.section} has the lowest score at ${overview.lowestScore.score}%.`,
+      overall2024 != null && overall2025 != null
+        ? `The overall district score moved from ${overall2024.toFixed(1)}% to ${overall2025.toFixed(1)}% (${formatDelta(overall2025 - overall2024)}), based on ${coverage.approvedCount} approved pillars.`
+        : `Approved pillar coverage currently stands at ${coverage.approvedCount} of ${coverage.totalCount}.`,
+      strongestMover
+        ? `${strongestMover.name} recorded the largest approved score gain (${strongestMover.value2024!.toFixed(1)}% → ${strongestMover.value2025!.toFixed(1)}%).`
+        : 'Use the pillar score composition chart to compare year-over-year movement across approved sections.',
+      genderTop && employmentTop
+        ? `Respondent profile highlights: ${genderTop.label} (${genderTop.value.toFixed(1)}%) and ${employmentTop.label} (${employmentTop.value.toFixed(1)}%) are the largest groups in the overview KPI cards.`
+        : 'The overview KPI cards summarise who answered the survey across key demographic fields.',
+      coverage.pendingPillars.length > 0
+        ? `${coverage.pendingPillars.join(' and ')} remain pending approval and are shown as unavailable in the annual pillar table.`
+        : 'All pillar scores shown on this page are drawn from approved evidence coverage.',
     ];
   }
 
@@ -3365,6 +3814,19 @@ export function generateInsights(
       'Demographics provides the resident profile breakdown — gender, nationality, age, and household composition.',
       'Use this tab to understand who lives in Al Falah and how the population mix changed between 2024 and 2025.',
       'Compare categorical distributions and household metrics to align services with the district\'s resident base.',
+    ];
+  }
+
+  if (tabId === 'work-education') {
+    const work = sectionScores.work;
+    const education = sectionScores.education;
+    if (!work || !education) return ['Work and education data for Al Falah district residents.'];
+    const workDirection = work.yoyChange >= 0 ? 'improved' : 'declined';
+    const educationDirection = education.yoyChange >= 0 ? 'improved' : 'declined';
+    return [
+      `Work satisfaction ${workDirection} from ${work.score2024}% to ${work.score2025}% (${formatDelta(work.yoyChange)}), while education ${educationDirection} from ${education.score2024}% to ${education.score2025}% (${formatDelta(education.yoyChange)}).`,
+      'Employment statements and work-life balance shape how residents experience jobs and household security.',
+      'School safety, life skills, and education satisfaction indicate whether schooling meets family expectations.',
     ];
   }
 
@@ -3390,14 +3852,16 @@ export function generateInsights(
     ];
   }
 
-  if (tabId === 'infrastructure') {
-    const section = sectionScores.infrastructure;
-    if (!section) return ['Infrastructure and community facilities data for Al Falah district residents.'];
-    const direction = section.yoyChange >= 0 ? 'improved' : 'declined';
+  if (tabId === 'housing-infrastructure') {
+    const infrastructure = sectionScores.infrastructure;
+    const housing = sectionScores.housing;
+    if (!infrastructure || !housing) return ['Housing and infrastructure data for Al Falah district residents.'];
+    const infrastructureDirection = infrastructure.yoyChange >= 0 ? 'improved' : 'declined';
+    const housingDirection = housing.yoyChange >= 0 ? 'improved' : 'declined';
     return [
-      `Infrastructure satisfaction ${direction} from ${section.score2024}% to ${section.score2025}% (${formatDelta(section.yoyChange)}).`,
-      'Utility services, fuel access, and retail availability shape day-to-day convenience for households.',
-      'Community issues and missing facilities highlight where residents want stronger local infrastructure.',
+      `Infrastructure satisfaction ${infrastructureDirection} from ${infrastructure.score2024}% to ${infrastructure.score2025}% (${formatDelta(infrastructure.yoyChange)}), while housing ${housingDirection} from ${housing.score2024}% to ${housing.score2025}% (${formatDelta(housing.yoyChange)}).`,
+      'Service-access satisfaction and community facility gaps show how well district infrastructure supports daily life.',
+      'Home space, maintenance pressure, and housing condition risk indicate whether residents feel secure in their homes.',
     ];
   }
 
@@ -3412,4 +3876,1579 @@ export function generateInsights(
       ? 'Residents report progress in this area — continue current initiatives.'
       : 'This pillar shows declining satisfaction — targeted interventions are recommended.',
   ];
+}
+
+const DEFAULT_PILLAR_SCORE_COVERAGE: PillarScoreCoverage[] = [
+  { sectionId: 'work', sectionNameEn: 'Work', status: 'approved' },
+  { sectionId: 'education', sectionNameEn: 'Education', status: 'approved' },
+  { sectionId: 'security', sectionNameEn: 'Security & Safety', status: 'approved' },
+  { sectionId: 'health', sectionNameEn: 'Health', status: 'approved' },
+  { sectionId: 'environment', sectionNameEn: 'Environment', status: 'approved' },
+  { sectionId: 'housing', sectionNameEn: 'Housing', status: 'approved' },
+  { sectionId: 'infrastructure', sectionNameEn: 'Infrastructure', status: 'approved' },
+  { sectionId: 'income', sectionNameEn: 'Income & Living', status: 'approved' },
+];
+
+export function getPillarScoreCoverage(data: SurveyData): PillarScoreCoverage[] {
+  return data.pillarScoreCoverage ?? DEFAULT_PILLAR_SCORE_COVERAGE;
+}
+
+export function getSectionScoreStatus(data: SurveyData, sectionId: string): ScoreStatus {
+  const coverage = getPillarScoreCoverage(data);
+  return coverage.find((pillar) => pillar.sectionId === sectionId)?.status ?? 'approved';
+}
+
+export interface EvidenceCoverageSummary {
+  approvedCount: number;
+  totalCount: number;
+  pendingPillars: string[];
+  summaryLabel: string;
+}
+
+export function getEvidenceCoverageSummary(data: SurveyData): EvidenceCoverageSummary {
+  const coverage = getPillarScoreCoverage(data);
+  const approved = coverage.filter((pillar) => pillar.status === 'approved');
+  const pending = coverage.filter((pillar) => pillar.status !== 'approved');
+
+  return {
+    approvedCount: approved.length,
+    totalCount: coverage.length,
+    pendingPillars: pending.map((pillar) => pillar.sectionNameEn),
+    summaryLabel: `${approved.length} of ${coverage.length} pillars have approved overall scores`,
+  };
+}
+
+export interface ReportingContext {
+  district: string;
+  selectedYear: SurveyYear;
+  compareLabel: string;
+  viewMode: ViewMode;
+  sampleBase: number | null;
+  measureDefinition: string;
+}
+
+export function formatReportingContext(
+  data: SurveyData,
+  viewMode: ViewMode,
+  selectedYear: SurveyYear,
+  compareYears: CompareYears,
+): ReportingContext {
+  const sampleBase = viewMode === 'current'
+    ? data.sampleBase?.[selectedYear] ?? null
+    : data.sampleBase?.[compareYears[1]] ?? null;
+
+  const measureDefinition = viewMode === 'yoy'
+    ? `Year-over-year change (${formatCompareYearsLabel(compareYears)})`
+    : `Single-year resident satisfaction (${selectedYear})`;
+
+  return {
+    district: data.district,
+    selectedYear,
+    compareLabel: formatCompareYearsLabel(compareYears),
+    viewMode,
+    sampleBase,
+    measureDefinition,
+  };
+}
+
+export interface MethodologySection {
+  title: string;
+  body: string;
+}
+
+export const METHODOLOGY_SECTIONS: MethodologySection[] = [
+  {
+    title: 'Positive vs negative indicators',
+    body: 'Positive indicators measure satisfaction or agreement with favourable outcomes. Negative indicators measure reported problems or concerns — higher agreement means more residents report the issue.',
+  },
+  {
+    title: 'Reading negative scores',
+    body: 'For risk statements, higher agreement is not an improvement. Present these findings as reported concern, not satisfaction.',
+  },
+  {
+    title: 'Score coverage',
+    body: 'All eight pillars currently have approved overall scores in this demo dashboard. Cross-pillar averages include every pillar with an approved SCORE_1.',
+  },
+  {
+    title: 'Health overall score',
+    body: 'The Health section score is the calculated average of healthcare centres (Q501) and healthcare system quality (Q502). Wellbeing context (Q508) is shown separately.',
+  },
+  {
+    title: 'Unavailable measures',
+    body: 'Do not treat missing approved measures as zero. Show “Not available” or “Pending” instead of estimating proxy values.',
+  },
+  {
+    title: 'Demo data notice',
+    body: 'Figures shown in this dashboard are illustrative demo values pending formal data approval. Bind to the approved row-based cube before executive sign-off.',
+  },
+];
+
+const WHO_ANSWERED_COLORS = ['#2563EB', '#0D9488', '#7C3AED', '#F59E0B', '#DC2626', '#94a3b8'];
+
+export interface ProfileDistributionSegment {
+  label: string;
+  value: number;
+  color: string;
+}
+
+export interface ProfileDistribution {
+  id: string;
+  label: string;
+  sampleBase: number | null;
+  segments: ProfileDistributionSegment[];
+}
+
+export interface PillarDumbbellItem {
+  sectionId: string;
+  name: string;
+  value2024: number | null;
+  value2025: number | null;
+  status: import('./types').ScoreStatus;
+}
+
+export function getDefaultSurveyBrief(data: import('./types').SurveyData): import('./types').SurveyBrief {
+  return {
+    objective: 'Measure resident satisfaction and quality-of-life outcomes across Al Falah district pillars.',
+    scope: `${data.district} District, Abu Dhabi`,
+    fieldworkPeriod: data.surveyPeriod ?? data.years.join('–'),
+    plannedSample: null,
+    achievedResponses: data.sampleBase?.['2025'] ?? data.sampleBase?.['2024'] ?? 0,
+    responseRate: null,
+  };
+}
+
+export function formatSurveyBriefParagraph(data: import('./types').SurveyData): string {
+  const brief = data.surveyBrief ?? getDefaultSurveyBrief(data);
+  const plannedSampleText = brief.plannedSample != null && brief.plannedSample > 0
+    ? brief.plannedSample.toLocaleString()
+    : 'pending approval';
+  const responseRateText = brief.responseRate != null
+    ? `${brief.responseRate.toFixed(1)}%`
+    : 'pending denominator approval';
+
+  return [
+    brief.objective,
+    `Scope: ${brief.scope}.`,
+    `Fieldwork period: ${brief.fieldworkPeriod}.`,
+    `Planned sample: ${plannedSampleText}.`,
+    `Achieved responses: ${brief.achievedResponses.toLocaleString()}.`,
+    `Response rate: ${responseRateText}.`,
+  ].join(' ');
+}
+
+function getCategoricalDistribution(
+  questions: import('./types').Question[],
+  code: string,
+  year: import('./types').SurveyYear,
+  maxSegments = 5,
+): ProfileDistributionSegment[] {
+  const items = getCategoryByQuestion(questions, code)
+    .map((q) => ({
+      label: translateLabel(q.categoryEn ?? q.categoryAr),
+      value: q.data[year] ?? 0,
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  if (items.length === 0) return [];
+
+  const topItems = items.slice(0, maxSegments);
+  const otherValue = items.slice(maxSegments).reduce((sum, item) => sum + item.value, 0);
+  const segments = topItems.map((item, index) => ({
+    ...item,
+    color: WHO_ANSWERED_COLORS[index % WHO_ANSWERED_COLORS.length],
+  }));
+
+  if (otherValue > 0) {
+    segments.push({
+      label: 'Other',
+      value: otherValue,
+      color: WHO_ANSWERED_COLORS[segments.length % WHO_ANSWERED_COLORS.length],
+    });
+  }
+
+  return segments;
+}
+
+function getGenderDistribution(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): ProfileDistributionSegment[] {
+  const male = sumCategoryValues(questions, 'Q902', [/^male$/i, /^ذكر$/], year);
+  const female = sumCategoryValues(questions, 'Q902', [/^feminine$/i, /^female$/i, /^أنثى$/], year);
+
+  return [
+    { label: 'Male', value: male, color: WHO_ANSWERED_COLORS[0] },
+    { label: 'Female', value: female, color: WHO_ANSWERED_COLORS[1] },
+  ].filter((item) => item.value > 0);
+}
+
+export function getWhoAnsweredProfileData(
+  data: import('./types').SurveyData,
+  year: import('./types').SurveyYear,
+): ProfileDistribution[] {
+  const demographics = data.sections.demographics;
+  const work = data.sections.work;
+  const sampleBase = data.sampleBase?.[year] ?? null;
+
+  if (!demographics) return [];
+
+  const questions = demographics.questions;
+  const distributions: ProfileDistribution[] = [
+    {
+      id: 'gender',
+      label: 'Gender',
+      sampleBase,
+      segments: getGenderDistribution(questions, year),
+    },
+    {
+      id: 'age',
+      label: 'Age group',
+      sampleBase,
+      segments: getCategoricalDistribution(questions, 'Q903', year, 5),
+    },
+    {
+      id: 'household',
+      label: 'Household composition',
+      sampleBase,
+      segments: getCategoricalDistribution(questions, 'Q904', year, 4),
+    },
+    {
+      id: 'tenure',
+      label: 'Residence tenure',
+      sampleBase,
+      segments: getCategoricalDistribution(questions, 'Q911', year, 4),
+    },
+  ];
+
+  if (work) {
+    distributions.push({
+      id: 'employment',
+      label: 'Employment status',
+      sampleBase,
+      segments: getCategoricalDistribution(work.questions, 'Q201', year, 4),
+    });
+  }
+
+  return distributions.filter((item) => item.segments.length > 0);
+}
+
+export function computeUnweightedOverallScore(
+  data: import('./types').SurveyData,
+  year: import('./types').SurveyYear,
+): number | null {
+  const approvedIds = getPillarScoreCoverage(data)
+    .filter((pillar) => pillar.status === 'approved')
+    .map((pillar) => pillar.sectionId);
+
+  const scores = approvedIds
+    .map((id) => data.sectionScores[id])
+    .filter(Boolean);
+
+  if (scores.length === 0) return null;
+
+  const total = scores.reduce(
+    (sum, score) => sum + pickYearValue(score.score2024, score.score2025, year),
+    0,
+  );
+
+  return total / scores.length;
+}
+
+export function getPillarDumbbellData(data: import('./types').SurveyData): PillarDumbbellItem[] {
+  const coverage = getPillarScoreCoverage(data);
+
+  return coverage
+    .map((pillar) => {
+      const score = data.sectionScores[pillar.sectionId];
+      const isApproved = pillar.status === 'approved' && score;
+
+      return {
+        sectionId: pillar.sectionId,
+        name: pillar.sectionNameEn,
+        value2024: isApproved ? score.score2024 : null,
+        value2025: isApproved ? score.score2025 : null,
+        status: pillar.status,
+      };
+    })
+    .sort((a, b) => {
+      if (a.status !== 'approved' && b.status === 'approved') return 1;
+      if (a.status === 'approved' && b.status !== 'approved') return -1;
+      return (b.value2025 ?? 0) - (a.value2025 ?? 0);
+    });
+}
+
+const SECTIONS_WITHOUT_NEGATIVE_SCORE = new Set(['infrastructure', 'income']);
+
+export interface AnnualPillarTableRow {
+  pillar: string;
+  sectionId: string;
+  score2024: number;
+  score2025: number;
+  satisfied2024: number;
+  satisfied2025: number;
+  unsatisfied2024: number;
+  unsatisfied2025: number;
+  scoresAvailable: boolean;
+  unsatisfiedAvailable: boolean;
+}
+
+export function buildAnnualPillarTableRows(data: import('./types').SurveyData): AnnualPillarTableRow[] {
+  return getPillarScoreCoverage(data)
+    .map((pillar) => {
+      const score = data.sectionScores[pillar.sectionId];
+      if (!score) return null;
+
+      const scoresAvailable = pillar.status === 'approved';
+      const unsatisfiedAvailable = scoresAvailable && !SECTIONS_WITHOUT_NEGATIVE_SCORE.has(pillar.sectionId);
+
+      return {
+        pillar: pillar.sectionNameEn,
+        sectionId: pillar.sectionId,
+        score2024: score.score2024,
+        score2025: score.score2025,
+        satisfied2024: score.positive2024,
+        satisfied2025: score.positive2025,
+        unsatisfied2024: score.negative2024,
+        unsatisfied2025: score.negative2025,
+        scoresAvailable,
+        unsatisfiedAvailable,
+      };
+    })
+    .filter((row): row is AnnualPillarTableRow => row != null)
+    .sort((a, b) => {
+      if (a.scoresAvailable && !b.scoresAvailable) return -1;
+      if (!a.scoresAvailable && b.scoresAvailable) return 1;
+      return b.score2025 - a.score2025;
+    });
+}
+
+export function generateOverviewInsightIntro(data: import('./types').SurveyData): string {
+  const coverage = getEvidenceCoverageSummary(data);
+  const overall2025 = computeUnweightedOverallScore(data, '2025');
+  const sampleBase = data.sampleBase?.['2025'] ?? data.sampleBase?.['2024'];
+  const responses = data.surveyBrief?.achievedResponses ?? sampleBase ?? 0;
+
+  return [
+    `The Overview page summarises the ${data.surveyPeriod ?? '2024–2025'} Al Falah resident survey`,
+    `with ${responses.toLocaleString()} responses across ${coverage.approvedCount} approved pillars.`,
+    overall2025 != null
+      ? `The headline district score is ${overall2025.toFixed(1)}% (unweighted seven-pillar average).`
+      : 'Headline district scores are shown once approved pillar coverage is complete.',
+    coverage.pendingPillars.length > 0
+      ? `${coverage.pendingPillars.join(' and ')} remain outside the approved average until scores are released.`
+      : '',
+  ].filter(Boolean).join(' ');
+}
+
+export type MomentumQuadrant = 'scale' | 'protect' | 'investigate';
+
+export interface MomentumMatrixItem {
+  sectionId: string;
+  pillar: string;
+  score2025: number;
+  yoyChange: number;
+  quadrant: MomentumQuadrant;
+}
+
+export function getMomentumQuadrant(score2025: number, yoyChange: number): MomentumQuadrant {
+  const highScore = score2025 >= 75;
+  if (highScore && yoyChange >= 0) return 'scale';
+  if (highScore && yoyChange < 0) return 'protect';
+  return 'investigate';
+}
+
+export function getMomentumMatrixData(
+  data: import('./types').SurveyData,
+  compareYears: import('./types').CompareYears,
+  year: import('./types').SurveyYear = compareYears[1],
+): MomentumMatrixItem[] {
+  return getPillarScoreCoverage(data)
+    .filter((pillar) => pillar.status === 'approved')
+    .map((pillar) => {
+      const score = data.sectionScores[pillar.sectionId];
+      if (!score) return null;
+
+      const score2025 = pickYearValue(score.score2024, score.score2025, year);
+      const yoyChange = getYearDelta(score.score2024, score.score2025, compareYears);
+
+      return {
+        sectionId: pillar.sectionId,
+        pillar: pillar.sectionNameEn,
+        score2025,
+        yoyChange,
+        quadrant: getMomentumQuadrant(score2025, yoyChange),
+      };
+    })
+    .filter((item): item is MomentumMatrixItem => item != null);
+}
+
+export type RiskRegisterStatus = 'available' | 'not_applicable' | 'unavailable';
+
+export interface RiskRegisterItem {
+  sectionId: string;
+  pillar: string;
+  negative2024: number | null;
+  negative2025: number | null;
+  score2024: number | null;
+  score2025: number | null;
+  yoyChange: number | null;
+  status: RiskRegisterStatus;
+}
+
+export function getResidualRiskRegister(
+  data: import('./types').SurveyData,
+  compareYears: import('./types').CompareYears,
+  year: import('./types').SurveyYear = compareYears[1],
+): RiskRegisterItem[] {
+  return getPillarScoreCoverage(data)
+    .map((pillar) => {
+      const score = data.sectionScores[pillar.sectionId];
+
+      if (SECTIONS_WITHOUT_NEGATIVE_SCORE.has(pillar.sectionId)) {
+        return {
+          sectionId: pillar.sectionId,
+          pillar: pillar.sectionNameEn,
+          negative2024: null,
+          negative2025: null,
+          score2024: score?.score2024 ?? null,
+          score2025: score?.score2025 ?? null,
+          yoyChange: null,
+          status: pillar.status === 'approved' ? 'not_applicable' as const : 'unavailable' as const,
+        };
+      }
+
+      if (pillar.status !== 'approved') {
+        return {
+          sectionId: pillar.sectionId,
+          pillar: pillar.sectionNameEn,
+          negative2024: null,
+          negative2025: null,
+          score2024: null,
+          score2025: null,
+          yoyChange: null,
+          status: 'unavailable' as const,
+        };
+      }
+
+      if (!score) {
+        return {
+          sectionId: pillar.sectionId,
+          pillar: pillar.sectionNameEn,
+          negative2024: null,
+          negative2025: null,
+          score2024: null,
+          score2025: null,
+          yoyChange: null,
+          status: 'unavailable' as const,
+        };
+      }
+
+      return {
+        sectionId: pillar.sectionId,
+        pillar: pillar.sectionNameEn,
+        negative2024: score.negative2024,
+        negative2025: score.negative2025,
+        score2024: score.score2024,
+        score2025: score.score2025,
+        yoyChange: getYearDelta(score.negative2024, score.negative2025, compareYears),
+        status: 'available' as const,
+      };
+    })
+    .sort((a, b) => {
+      if (a.status === 'available' && b.status !== 'available') return -1;
+      if (a.status !== 'available' && b.status === 'available') return 1;
+      const aConcern = pickYearValue(a.negative2024, a.negative2025, year) ?? -1;
+      const bConcern = pickYearValue(b.negative2024, b.negative2025, year) ?? -1;
+      return bConcern - aConcern;
+    });
+}
+
+export type ActionPrompt = 'scale' | 'protect' | 'target' | 'close';
+
+export interface ActionAgendaItem {
+  prompt: ActionPrompt;
+  pillar: string;
+  summary: string;
+}
+
+const ENVIRONMENT_NEGATIVE_STATEMENT_MATCHERS = [/insects and some rodents/i];
+
+function averageLikertChartRows(rows: IncomeChartRow[], year: import('./types').SurveyYear): number {
+  if (rows.length === 0) return 0;
+  return rows.reduce((sum, row) => sum + pickYearValue(row.value2024, row.value2025, year), 0) / rows.length;
+}
+
+export function getHealthCentresOverallSatisfaction(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  return averageLikertChartRows(getHealthSystemAssessmentData(questions, year), year);
+}
+
+export function getHealthcareSystemOverallSatisfaction(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  return averageLikertChartRows(getHealthServiceAssessmentData(questions, year), year);
+}
+
+export function getHealthSubgroupDumbbellItems(
+  questions: import('./types').Question[],
+): PillarDumbbellItem[] {
+  const centres2024 = getHealthCentresOverallSatisfaction(questions, '2024');
+  const centres2025 = getHealthCentresOverallSatisfaction(questions, '2025');
+  const system2024 = getHealthcareSystemOverallSatisfaction(questions, '2024');
+  const system2025 = getHealthcareSystemOverallSatisfaction(questions, '2025');
+
+  return [
+    {
+      sectionId: 'q501',
+      name: 'Overall satisfaction of health centers',
+      value2024: centres2024,
+      value2025: centres2025,
+      status: 'approved',
+    },
+    {
+      sectionId: 'q502',
+      name: 'Overall satisfaction with healthcare system quality',
+      value2024: system2024,
+      value2025: system2025,
+      status: 'approved',
+    },
+  ];
+}
+
+export function getCalculatedHealthScore(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+): number {
+  const q501 = getHealthCentresOverallSatisfaction(questions, year);
+  const q502 = getHealthcareSystemOverallSatisfaction(questions, year);
+  return (q501 + q502) / 2;
+}
+
+function assessmentRowsToComparisonItems(
+  rows: IncomeChartRow[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return rows.map((row) => ({
+    id: row.fullName,
+    name: row.name,
+    fullName: row.fullName,
+    value2024: row.value2024,
+    value2025: row.value2025,
+    movement: getYearDelta(row.value2024, row.value2025, compareYears),
+  }));
+}
+
+export function getHealthCentresAssessmentStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return assessmentRowsToComparisonItems(
+    getHealthSystemAssessmentData(questions, compareYears[1]),
+    compareYears,
+  );
+}
+
+export function getHealthSystemQualityStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return assessmentRowsToComparisonItems(
+    getHealthServiceAssessmentData(questions, compareYears[1]),
+    compareYears,
+  );
+}
+
+export interface WellbeingHeatmapRow {
+  name: string;
+  fullName: string;
+  agreement2024: number;
+  agreement2025: number;
+  movement: number;
+}
+
+export function getHealthWellbeingContext(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): WellbeingHeatmapRow[] {
+  return getLikertStatementsByCode(questions, 'Q508')
+    .map((question) => {
+      const fullName = question.statementEn ?? question.statementAr;
+      const agreement2024 = question.data['2024']?.agreement ?? 0;
+      const agreement2025 = question.data['2025']?.agreement ?? 0;
+      return {
+        name: formatHealthHeatmapLabel(fullName),
+        fullName,
+        agreement2024,
+        agreement2025,
+        movement: getYearDelta(agreement2024, agreement2025, compareYears),
+      };
+    })
+    .sort((a, b) => b.agreement2025 - a.agreement2025);
+}
+
+export function generateHealthSubgroupInsight(
+  items: StatementComparisonItem[],
+  year: import('./types').SurveyYear,
+  subgroup: 'q501' | 'q502',
+): InsightPart[] {
+  const top = items[0];
+  if (!top) {
+    return subgroup === 'q501'
+      ? ['No Q501 health center assessment statements are available.']
+      : ['No Q502 healthcare system quality statements are available.'];
+  }
+
+  const label = subgroup === 'q501' ? 'Health centers' : 'Healthcare system quality';
+  const value = pickYearValue(top.value2024, top.value2025, year);
+
+  return [
+    { bold: label },
+    ' is led by ',
+    { bold: top.name },
+    ' at ',
+    { bold: `${value.toFixed(1)}%`, tone: value >= 70 ? 'positive' : undefined },
+    ' agreement in ',
+    { bold: year },
+    '.',
+  ];
+}
+
+export function generateHealthWellbeingInsight(
+  rows: WellbeingHeatmapRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  const top = rows[0];
+  if (!top) {
+    return ['No Q508 wellbeing context statements are available.'];
+  }
+
+  const value = pickYearValue(top.agreement2024, top.agreement2025, year);
+
+  if (value >= 60) {
+    return [
+      { bold: top.name },
+      ' leads reported wellbeing concerns in ',
+      { bold: year },
+      ' at ',
+      { bold: `${value.toFixed(1)}%`, tone: 'negative' },
+      ' agreement.',
+    ];
+  }
+
+  return [
+    { bold: top.name },
+    ' is the top wellbeing concern in ',
+    { bold: year },
+    ' at ',
+    { bold: `${value.toFixed(1)}%` },
+    '.',
+  ];
+}
+
+export function isSectionScorePending(section: import('./types').Section): boolean {
+  return section.scoreStatus === 'pending' || section.dataReadiness?.status === 'pending';
+}
+
+export interface StatementComparisonItem {
+  id: string;
+  name: string;
+  fullName: string;
+  value2024: number;
+  value2025: number;
+  movement: number;
+}
+
+export interface DivergingLikertStatementRow {
+  id: string;
+  name: string;
+  fullName: string;
+  dissatisfied: number;
+  neutral: number;
+  satisfied: number;
+}
+
+const WORK_RISK_STATEMENT_MATCHERS = [
+  /busy and stressed/i,
+  /afraid of losing my job/i,
+  /negative physical and psychological/i,
+  /barely covers family expenses/i,
+];
+
+const EDUCATION_RISK_STATEMENT_MATCHERS = [
+  /verbal abuse by other students/i,
+  /physical abuse by other students/i,
+  /physically harmed more than once/i,
+  /harassed, ridiculed, and called bad names/i,
+  /harassed, ridiculed, and called names/i,
+];
+
+const WORK_Q210_SHORT_LABELS: Array<{ match: RegExp; label: string }> = [
+  { match: /balance work and social/i, label: 'Work-life balance' },
+  { match: /remote work techniques/i, label: 'Remote work flexibility' },
+  { match: /thanking and praising/i, label: 'Job recognition' },
+  { match: /benefits, benefits and compensation/i, label: 'Pay and benefits' },
+  { match: /professional development/i, label: 'Career development' },
+  { match: /busy and stressed/i, label: 'Job stress' },
+  { match: /afraid of losing my job/i, label: 'Job loss fear' },
+  { match: /negative physical and psychological/i, label: 'Work health impacts' },
+  { match: /barely covers family expenses/i, label: 'Income pressure' },
+];
+
+function getWorkQ210ShortLabel(statement: string): string {
+  const match = WORK_Q210_SHORT_LABELS.find((entry) => entry.match.test(statement));
+  return match?.label ?? truncateStatementLabel(statement, 28);
+}
+
+function truncateStatementLabel(text: string, max = 44): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function resolveStatementPolarity(
+  question: import('./types').LikertQuestion,
+  riskMatchers: RegExp[],
+): import('./types').IndicatorPolarity {
+  if (question.polarity) return question.polarity;
+  const text = `${question.statementEn ?? ''} ${question.statementAr}`;
+  if (ENVIRONMENT_NEGATIVE_STATEMENT_MATCHERS.some((matcher) => matcher.test(text))) {
+    return 'negative';
+  }
+  return riskMatchers.some((matcher) => matcher.test(text)) ? 'negative' : 'positive';
+}
+
+function toStatementComparisonItem(
+  question: import('./types').LikertQuestion,
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem {
+  const agreement2024 = question.data['2024']?.agreement ?? 0;
+  const agreement2025 = question.data['2025']?.agreement ?? 0;
+  const fullName = question.statementEn ?? question.statementAr;
+
+  return {
+    id: `${question.code}-${question.statementAr}`,
+    name: truncateStatementLabel(fullName),
+    fullName,
+    value2024: agreement2024,
+    value2025: agreement2025,
+    movement: getYearDelta(agreement2024, agreement2025, compareYears),
+  };
+}
+
+function toDivergingLikertStatementRow(
+  question: import('./types').LikertQuestion,
+  year: import('./types').SurveyYear,
+): DivergingLikertStatementRow {
+  const breakdown = question.data[year]?.breakdown ?? {};
+  const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+  const total = dissatisfied + neutral + satisfied;
+  const scale = total > 0 ? 100 / total : 0;
+  const fullName = question.statementEn ?? question.statementAr;
+
+  return {
+    id: `${question.code}-${question.statementAr}-${year}`,
+    name: truncateStatementLabel(fullName),
+    fullName,
+    dissatisfied: dissatisfied * scale,
+    neutral: neutral * scale,
+    satisfied: satisfied * scale,
+  };
+}
+
+function getLikertStatementsByCode(
+  questions: import('./types').Question[],
+  code: string,
+): import('./types').LikertQuestion[] {
+  return getLikertStatements(questions).filter((question) => question.code === code);
+}
+
+const ENVIRONMENT_Q601_SHORT_LABELS: { match: RegExp; label: string }[] = [
+  { match: /cleanliness of the neighborhood/i, label: 'Neighborhood cleanliness' },
+  { match: /cleanliness of public facilities/i, label: 'Public facility cleanliness' },
+  { match: /urban planning of the city/i, label: 'Urban planning' },
+  { match: /architectural \(aesthetic\) character/i, label: 'Architectural character' },
+  { match: /quality of service facilities/i, label: 'Parks & public facilities' },
+  { match: /internal road services/i, label: 'Roads, sidewalks & lighting' },
+  { match: /beautification and landscaping/i, label: 'Street beautification' },
+  { match: /air quality in the residential area/i, label: 'Air quality' },
+  { match: /noise level in my residential area/i, label: 'Noise level' },
+  { match: /availability of shopping areas/i, label: 'Shopping availability' },
+  { match: /transportation services within the residential area/i, label: 'Transport services' },
+  { match: /sanitation services within a residential area/i, label: 'Sanitation services' },
+  { match: /general appearance of the city/i, label: 'City appearance control' },
+];
+
+function getEnvironmentQ601ShortLabel(statement: string): string {
+  const match = ENVIRONMENT_Q601_SHORT_LABELS.find((entry) => entry.match.test(statement));
+  return match?.label ?? truncateStatementLabel(statement, 32);
+}
+
+export function getEnvironmentPositiveStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q601')
+    .filter((question) => resolveStatementPolarity(question, []) === 'positive')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getEnvironmentQ601ShortLabel(statement) };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getEnvironmentInsectsRiskStatement(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem | null {
+  const question = getLikertStatementsByCode(questions, 'Q601').find(
+    (entry) => resolveStatementPolarity(entry, []) === 'negative',
+  );
+  if (!question) return null;
+
+  const row = toStatementComparisonItem(question, compareYears);
+  return { ...row, name: 'Insects & rodents' };
+}
+
+export function getEnvironmentDomainHeatmap(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): WellbeingHeatmapRow[] {
+  const domains: { name: string; fullName: string; match: RegExp }[] = [
+    {
+      name: 'Cleanliness',
+      fullName: 'Neighborhood cleanliness satisfaction',
+      match: ENVIRONMENT_KPI_STATEMENT.cleanliness,
+    },
+    {
+      name: 'Facilities',
+      fullName: ENVIRONMENT_CHART_STATEMENTS.serviceFacilities.short,
+      match: ENVIRONMENT_CHART_STATEMENTS.serviceFacilities.match,
+    },
+    {
+      name: 'Planning',
+      fullName: ENVIRONMENT_CHART_STATEMENTS.urbanPlanning.short,
+      match: ENVIRONMENT_CHART_STATEMENTS.urbanPlanning.match,
+    },
+    {
+      name: 'Roads',
+      fullName: ENVIRONMENT_CHART_STATEMENTS.internalRoadServices.short,
+      match: ENVIRONMENT_CHART_STATEMENTS.internalRoadServices.match,
+    },
+    {
+      name: 'Air quality',
+      fullName: 'Air quality satisfaction',
+      match: ENVIRONMENT_KPI_STATEMENT.airQuality,
+    },
+    {
+      name: 'Noise',
+      fullName: 'Noise level satisfaction',
+      match: ENVIRONMENT_KPI_STATEMENT.noiseLevel,
+    },
+  ];
+
+  return domains.map((domain) => {
+    const agreement2024 = getEducationLikertAgreement(questions, domain.match, '2024');
+    const agreement2025 = getEducationLikertAgreement(questions, domain.match, '2025');
+    return {
+      name: domain.name,
+      fullName: domain.fullName,
+      agreement2024,
+      agreement2025,
+      movement: getYearDelta(agreement2024, agreement2025, compareYears),
+    };
+  });
+}
+
+export function generateEnvironmentPositiveStatementsInsight(
+  items: StatementComparisonItem[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  const top = items[0];
+  if (!top) {
+    return ['No positive Q601 environment statements are available.'];
+  }
+
+  const value = pickYearValue(top.value2024, top.value2025, year);
+  return [
+    { bold: top.name },
+    ' leads positive environment satisfaction in ',
+    { bold: year },
+    ' at ',
+    { bold: `${value.toFixed(1)}%`, tone: 'positive' },
+    ' agreement.',
+  ];
+}
+
+export function generateEnvironmentDomainHeatmapInsight(
+  rows: WellbeingHeatmapRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['No environment domain satisfaction data is available.'];
+  }
+
+  const ranked = [...rows].sort(
+    (a, b) =>
+      pickYearValue(b.agreement2024, b.agreement2025, year)
+      - pickYearValue(a.agreement2024, a.agreement2025, year),
+  );
+  const top = ranked[0];
+  const bottom = ranked[ranked.length - 1];
+  const topValue = pickYearValue(top.agreement2024, top.agreement2025, year);
+
+  if (bottom && top.name !== bottom.name) {
+    const bottomValue = pickYearValue(bottom.agreement2024, bottom.agreement2025, year);
+    if (topValue - bottomValue >= 12) {
+      return [
+        { bold: top.name },
+        ' leads at ',
+        { bold: `${topValue.toFixed(1)}%` },
+        ', while ',
+        { bold: bottom.name },
+        ' is weakest at ',
+        { bold: `${bottomValue.toFixed(1)}%` },
+        '.',
+      ];
+    }
+  }
+
+  return [
+    { bold: top.name },
+    ' leads environment domain satisfaction in ',
+    { bold: year },
+    ' at ',
+    { bold: `${topValue.toFixed(1)}%` },
+    '.',
+  ];
+}
+
+const HOUSING_RISK_STATEMENT_MATCHERS = [
+  /unpleasant odors inside the residence/i,
+  /insects and some rodents appear constantly in the residence/i,
+  /residence needs repairs and maintenance/i,
+  /size of the house is small or insufficient/i,
+  /densely populated area makes me feel unstable/i,
+];
+
+const HOUSING_Q701_SHORT_LABELS: { match: RegExp; label: string }[] = [
+  { match: /family is comfortable in the residential area/i, label: 'Family comfort in area' },
+  { match: /satisfied with the type of housing/i, label: 'Housing type satisfaction' },
+  { match: /home ownership prices in a residential area/i, label: 'Homeownership prices' },
+  { match: /fees for services for obtaining documents related to housing/i, label: 'Housing document fees' },
+  { match: /ventilation system in the residence is adequate/i, label: 'Ventilation adequacy' },
+  { match: /sun enters most parts of the residence/i, label: 'Natural lighting' },
+  { match: /unpleasant odors inside the residence/i, label: 'Unpleasant odors' },
+  { match: /insects and some rodents appear constantly/i, label: 'Insects & rodents' },
+  { match: /residence needs repairs and maintenance/i, label: 'Repairs & maintenance' },
+  { match: /size of the house is small or insufficient/i, label: 'Insufficient space' },
+  { match: /densely populated area makes me feel unstable/i, label: 'Overcrowding concern' },
+  { match: /limit the transmission of diseases/i, label: 'Disease prevention measures' },
+  { match: /quality of drinking water from the tap/i, label: 'Drinking water quality' },
+  { match: /housing rent value is consistent/i, label: 'Rent value vs location' },
+  { match: /thinking of getting a private residence/i, label: 'Planning to own home' },
+];
+
+function getHousingQ701ShortLabel(statement: string): string {
+  const match = HOUSING_Q701_SHORT_LABELS.find((entry) => entry.match.test(statement));
+  return match?.label ?? truncateStatementLabel(statement, 32);
+}
+
+export interface ConditionRiskMatrixItem {
+  id: string;
+  name: string;
+  fullName: string;
+  concern2024: number;
+  concern2025: number;
+  movement: number;
+}
+
+export function getHousingPositiveStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q701')
+    .filter((question) => resolveStatementPolarity(question, HOUSING_RISK_STATEMENT_MATCHERS) === 'positive')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getHousingQ701ShortLabel(statement) };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getHousingRiskStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q701')
+    .filter((question) => resolveStatementPolarity(question, HOUSING_RISK_STATEMENT_MATCHERS) === 'negative')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getHousingQ701ShortLabel(statement) };
+    })
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getHousingConditionRiskMatrix(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): ConditionRiskMatrixItem[] {
+  return getHousingRiskStatements(questions, compareYears).map((item) => ({
+    id: item.id,
+    name: item.name,
+    fullName: item.fullName,
+    concern2024: item.value2024,
+    concern2025: item.value2025,
+    movement: item.movement,
+  }));
+}
+
+export function generateHousingPositiveStatementsInsight(
+  items: StatementComparisonItem[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  const top = items[0];
+  if (!top) {
+    return ['No positive Q701 housing statements are available.'];
+  }
+
+  const value = pickYearValue(top.value2024, top.value2025, year);
+  return [
+    { bold: top.name },
+    ' leads positive housing satisfaction in ',
+    { bold: year },
+    ' at ',
+    { bold: `${value.toFixed(1)}%`, tone: 'positive' },
+    ' agreement.',
+  ];
+}
+
+export function generateHousingConditionRiskInsight(
+  items: ConditionRiskMatrixItem[],
+  compareYears: import('./types').CompareYears,
+): InsightPart[] {
+  if (items.length === 0) {
+    return ['No Q701 housing condition risk statements are available.'];
+  }
+
+  const topConcern = [...items].sort((a, b) => b.concern2025 - a.concern2025)[0];
+  const rising = [...items].sort((a, b) => b.movement - a.movement)[0];
+
+  if (rising && rising.movement >= 3) {
+    return [
+      { bold: topConcern.name },
+      ' is the highest reported concern at ',
+      { bold: `${topConcern.concern2025.toFixed(1)}%`, tone: 'negative' },
+      ', while ',
+      { bold: rising.name },
+      ' shows the sharpest rise (',
+      { bold: formatDelta(rising.movement), tone: 'negative' },
+      ` vs ${compareYears[0]}).`,
+    ];
+  }
+
+  return [
+    { bold: topConcern.name },
+    ' leads reported housing concern in ',
+    { bold: compareYears[1] },
+    ' at ',
+    { bold: `${topConcern.concern2025.toFixed(1)}%`, tone: 'negative' },
+    ' agreement.',
+  ];
+}
+
+export function getSectionDumbbellItem(section: import('./types').Section): PillarDumbbellItem {
+  const score = section.score;
+  if (!score) {
+    return {
+      sectionId: section.id,
+      name: section.nameEn,
+      value2024: null,
+      value2025: null,
+      status: section.scoreStatus ?? 'unavailable',
+    };
+  }
+
+  return {
+    sectionId: section.id,
+    name: section.nameEn,
+    value2024: score.score2024,
+    value2025: score.score2025,
+    status: section.scoreStatus ?? 'approved',
+  };
+}
+
+export function getWorkStatementsByPolarity(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+  polarity: import('./types').IndicatorPolarity,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q210')
+    .filter((question) => resolveStatementPolarity(question, WORK_RISK_STATEMENT_MATCHERS) === polarity)
+    .map((question) => toStatementComparisonItem(question, compareYears))
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getWorkDivergingLikertRows(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+  polarity: import('./types').IndicatorPolarity,
+  viewMode: import('./types').ViewMode = 'current',
+  compareYears: import('./types').CompareYears = ['2024', '2025'],
+): DivergingLikertStatementRow[] {
+  const filtered = getLikertStatementsByCode(questions, 'Q210')
+    .filter((question) => resolveStatementPolarity(question, WORK_RISK_STATEMENT_MATCHERS) === polarity)
+    .sort((a, b) => (b.data[year]?.agreement ?? 0) - (a.data[year]?.agreement ?? 0));
+
+  if (viewMode === 'yoy') {
+    return filtered.flatMap((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const baseName = getWorkQ210ShortLabel(statement);
+      return compareYears.map((entryYear) => {
+        const row = toDivergingLikertStatementRow(question, entryYear);
+        return {
+          ...row,
+          name: `${baseName} · ${entryYear}`,
+          fullName: statement,
+        };
+      });
+    });
+  }
+
+  return filtered.map((question) => {
+    const statement = question.statementEn ?? question.statementAr;
+    const row = toDivergingLikertStatementRow(question, year);
+    return {
+      ...row,
+      name: getWorkQ210ShortLabel(statement),
+      fullName: statement,
+    };
+  });
+}
+
+export function generateWorkPositiveStatementsInsight(
+  rows: DivergingLikertStatementRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['No positive employment statements are available for this view.'];
+  }
+
+  const top = rows[0];
+
+  return [
+    { bold: top.name },
+    ' is the strongest positive signal in ',
+    { bold: year },
+    ' at ',
+    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'positive' },
+    ' satisfied.',
+  ];
+}
+
+export function generateWorkRiskStatementsInsight(
+  rows: DivergingLikertStatementRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['No reported employment risk statements are available for this view.'];
+  }
+
+  const top = rows[0];
+
+  return [
+    { bold: top.name },
+    ' is the highest reported concern in ',
+    { bold: year },
+    ' at ',
+    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'negative' },
+    ' agreement.',
+  ];
+}
+
+export function getEducationPositiveStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q301')
+    .filter((question) => resolveStatementPolarity(question, EDUCATION_RISK_STATEMENT_MATCHERS) === 'positive')
+    .map((question) => toStatementComparisonItem(question, compareYears))
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getEducationRiskStatements(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+): StatementComparisonItem[] {
+  return getLikertStatementsByCode(questions, 'Q301')
+    .filter((question) => resolveStatementPolarity(question, EDUCATION_RISK_STATEMENT_MATCHERS) === 'negative')
+    .map((question) => toStatementComparisonItem(question, compareYears))
+    .sort((a, b) => b.value2025 - a.value2025);
+}
+
+export function getEducationDivergingLikertRows(
+  questions: import('./types').Question[],
+  year: import('./types').SurveyYear,
+  polarity: import('./types').IndicatorPolarity,
+  viewMode: import('./types').ViewMode = 'current',
+  compareYears: import('./types').CompareYears = ['2024', '2025'],
+): DivergingLikertStatementRow[] {
+  const filtered = getLikertStatementsByCode(questions, 'Q301')
+    .filter((question) => resolveStatementPolarity(question, EDUCATION_RISK_STATEMENT_MATCHERS) === polarity)
+    .sort((a, b) => (b.data[year]?.agreement ?? 0) - (a.data[year]?.agreement ?? 0));
+
+  if (viewMode === 'yoy') {
+    return filtered.flatMap((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const baseName = formatEducationAxisLabel(statement);
+      return compareYears.map((entryYear) => {
+        const row = toDivergingLikertStatementRow(question, entryYear);
+        return {
+          ...row,
+          name: `${baseName} · ${entryYear}`,
+          fullName: statement,
+        };
+      });
+    });
+  }
+
+  return filtered.map((question) => {
+    const statement = question.statementEn ?? question.statementAr;
+    const row = toDivergingLikertStatementRow(question, year);
+    return {
+      ...row,
+      name: formatEducationAxisLabel(statement),
+      fullName: statement,
+    };
+  });
+}
+
+export function getCurrentYearDivergingLikertRows(
+  rows: DivergingLikertStatementRow[],
+  viewMode: import('./types').ViewMode,
+  compareYears: import('./types').CompareYears,
+): DivergingLikertStatementRow[] {
+  if (viewMode !== 'yoy') return rows;
+
+  const currentYear = compareYears[1];
+  return rows.filter((row) => row.id.endsWith(`-${currentYear}`));
+}
+
+export type EducationPositiveCategory = 'school' | 'higher-education' | 'school-life';
+
+export const EDUCATION_POSITIVE_CATEGORY_ORDER: EducationPositiveCategory[] = [
+  'school',
+  'higher-education',
+  'school-life',
+];
+
+export const EDUCATION_POSITIVE_CATEGORY_LABELS: Record<EducationPositiveCategory, string> = {
+  school: 'School education',
+  'higher-education': 'Higher education',
+  'school-life': 'School life & wellbeing',
+};
+
+const EDUCATION_POSITIVE_CATEGORY_MATCHERS: Record<EducationPositiveCategory, RegExp[]> = {
+  school: [
+    /government school education system/i,
+    /financial costs of public school/i,
+    /private school education system/i,
+    /financial costs of private school/i,
+    /quality of school education/i,
+    /ease of attending school/i,
+    /proximity of the educational facility/i,
+  ],
+  'higher-education': [
+    /university education system/i,
+    /financial costs of university/i,
+    /ease of enrolling in university/i,
+  ],
+  'school-life': [
+    /physically safe for my son/i,
+    /student discipline/i,
+    /sports competitions/i,
+    /life skills, innovation and sports/i,
+    /sports facilities/i,
+    /respect for the teaching profession/i,
+  ],
+};
+
+export function getEducationPositiveStatementCategory(
+  statement: string,
+): EducationPositiveCategory | null {
+  for (const category of EDUCATION_POSITIVE_CATEGORY_ORDER) {
+    if (EDUCATION_POSITIVE_CATEGORY_MATCHERS[category].some((matcher) => matcher.test(statement))) {
+      return category;
+    }
+  }
+  return null;
+}
+
+export function filterEducationPositiveRowsByCategory(
+  rows: DivergingLikertStatementRow[],
+  category: EducationPositiveCategory,
+): DivergingLikertStatementRow[] {
+  return rows.filter((row) => getEducationPositiveStatementCategory(row.fullName) === category);
+}
+
+export function generateEducationPositiveStatementsInsight(
+  rows: DivergingLikertStatementRow[],
+  year: import('./types').SurveyYear,
+  categoryLabel?: string,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return [
+      categoryLabel
+        ? `No ${categoryLabel.toLowerCase()} statements are available for this view.`
+        : 'No positive education statements are available for this view.',
+    ];
+  }
+
+  const top = rows[0];
+  const scope = categoryLabel ? `${categoryLabel.toLowerCase()} ` : 'positive education ';
+
+  return [
+    { bold: top.name },
+    ` is the strongest ${scope}signal in `,
+    { bold: year },
+    ' at ',
+    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'positive' },
+    ' satisfied.',
+  ];
+}
+
+export function generateEducationRiskStatementsInsight(
+  rows: DivergingLikertStatementRow[],
+  year: import('./types').SurveyYear,
+): InsightPart[] {
+  if (rows.length === 0) {
+    return ['No reported school safety risk statements are available for this view.'];
+  }
+
+  const top = rows[0];
+
+  return [
+    { bold: top.name },
+    ' is the highest reported school safety concern in ',
+    { bold: year },
+    ' at ',
+    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'negative' },
+    ' agreement.',
+  ];
+}
+
+function getLikertDisagreementPercent(breakdown: Record<string, number>): number {
+  const { dissatisfied, neutral, satisfied } = getLikertBreakdownValues(breakdown);
+  const total = dissatisfied + neutral + satisfied;
+  return total > 0 ? (dissatisfied / total) * 100 : 0;
+}
+
+function resolveQuestionPolarity(question: import('./types').LikertQuestion): import('./types').IndicatorPolarity {
+  if (question.polarity) return question.polarity;
+  const statement = question.statementEn ?? question.statementAr;
+  if (ENVIRONMENT_NEGATIVE_STATEMENT_MATCHERS.some((matcher) => matcher.test(statement))) {
+    return 'negative';
+  }
+  if (WORK_RISK_STATEMENT_MATCHERS.some((matcher) => matcher.test(statement))) {
+    return 'negative';
+  }
+  if (EDUCATION_RISK_STATEMENT_MATCHERS.some((matcher) => matcher.test(statement))) {
+    return 'negative';
+  }
+  if (HOUSING_RISK_STATEMENT_MATCHERS.some((matcher) => matcher.test(statement))) {
+    return 'negative';
+  }
+  if (SECURITY_CONCERN_MATCHERS.some((matcher) => matcher.test(statement))) {
+    return 'negative';
+  }
+  return 'positive';
+}
+
+function interpretStatementRow(
+  polarity: import('./types').IndicatorPolarity,
+  agreement: number,
+  movement: number,
+): string {
+  if (polarity === 'negative') {
+    if (agreement >= 60) {
+      return movement > 0
+        ? 'Elevated reported concern — agreement rose, indicating more residents report this issue.'
+        : 'Elevated reported concern — higher agreement means more residents report this issue, not an improvement outcome.';
+    }
+    return movement < 0
+      ? 'Reported concern eased versus the prior year, but this remains a risk-framed indicator.'
+      : 'Moderate reported concern — lower values are more favourable for risk indicators.';
+  }
+
+  if (agreement >= 70) {
+    return movement >= 0
+      ? 'Strong positive signal with stable or improving agreement.'
+      : 'Strong positive signal, though agreement softened year on year.';
+  }
+
+  return movement >= 0
+    ? 'Mixed or moderate positive signal with slight improvement.'
+    : 'Weaker positive signal — agreement declined year on year.';
+}
+
+export interface StatementRegisterRow {
+  id: string;
+  questionGroup: string;
+  statementAr: string;
+  statementEn?: string;
+  polarity: import('./types').IndicatorPolarity;
+  agreement2024: number;
+  agreement2025: number;
+  disagreement2024: number;
+  disagreement2025: number;
+  movement: number;
+  interpretation: string;
+}
+
+export function getStatementRegisterData(
+  questions: import('./types').Question[],
+  compareYears: import('./types').CompareYears,
+  questionCode?: string,
+): StatementRegisterRow[] {
+  return getLikertStatements(questions)
+    .filter((question) => !questionCode || question.code === questionCode)
+    .map((question) => {
+      const polarity = resolveQuestionPolarity(question);
+      const agreement2024 = question.data[compareYears[0]]?.agreement ?? 0;
+      const agreement2025 = question.data[compareYears[1]]?.agreement ?? 0;
+      const disagreement2024 = getLikertDisagreementPercent(question.data[compareYears[0]]?.breakdown ?? {});
+      const disagreement2025 = getLikertDisagreementPercent(question.data[compareYears[1]]?.breakdown ?? {});
+
+      return {
+        id: `${question.code}-${question.statementAr}`,
+        questionGroup: question.code,
+        statementAr: question.statementAr,
+        statementEn: question.statementEn,
+        polarity,
+        agreement2024,
+        agreement2025,
+        disagreement2024,
+        disagreement2025,
+        movement: agreement2025 - agreement2024,
+        interpretation: interpretStatementRow(polarity, agreement2025, agreement2025 - agreement2024),
+      };
+    });
+}
+
+export function generateEnvironmentRiskInsight(
+  agreement: number,
+  movement: number,
+  mode: ViewMode,
+): string[] {
+  const direction = movement > 0 ? 'rose' : movement < 0 ? 'fell' : 'held steady';
+  const level = agreement >= 60 ? 'elevated' : agreement >= 40 ? 'moderate' : 'lower';
+
+  if (mode === 'current') {
+    return [
+      `${agreement.toFixed(1)}% of residents report insects and rodents in living areas — a risk indicator where higher agreement means more reported concern.`,
+      `Current concern level is ${level}; this is not a satisfaction outcome.`,
+    ];
+  }
+
+  return [
+    `Reported concern ${direction} by ${Math.abs(movement).toFixed(1)}pp to ${agreement.toFixed(1)}% in ${mode === 'yoy' ? '2025' : 'the selected year'}.`,
+    'Higher agreement indicates more residents report this issue — not an improvement outcome.',
+  ];
+}
+
+export function generateActionAgenda(
+  data: import('./types').SurveyData,
+  compareYears: import('./types').CompareYears,
+): Record<ActionPrompt, ActionAgendaItem[]> {
+  const momentum = getMomentumMatrixData(data, compareYears);
+  const risks = getResidualRiskRegister(data, compareYears).filter((item) => item.status === 'available');
+  const compareLabel = formatCompareYearsLabel(compareYears);
+
+  const scale = momentum
+    .filter((item) => item.quadrant === 'scale')
+    .map((item) => ({
+      prompt: 'scale' as const,
+      pillar: item.pillar,
+      summary: `${item.pillar}: ${item.score2025.toFixed(1)}% in 2025 with ${formatDelta(item.yoyChange)} movement (${compareLabel}). Scale practices that are sustaining high performance.`,
+    }));
+
+  const protect = momentum
+    .filter((item) => item.quadrant === 'protect')
+    .map((item) => ({
+      prompt: 'protect' as const,
+      pillar: item.pillar,
+      summary: `${item.pillar}: strong 2025 score (${item.score2025.toFixed(1)}%) but momentum slipped ${formatDelta(item.yoyChange)}. Protect gains while diagnosing the slowdown.`,
+    }));
+
+  const target = risks
+    .slice(0, 3)
+    .map((item) => ({
+      prompt: 'target' as const,
+      pillar: item.pillar,
+      summary: `${item.pillar}: negative indicator at ${item.negative2025!.toFixed(1)}% in 2025 (${formatDelta(item.yoyChange!)} vs ${compareYears[0]}). Prioritise residual concern in management discussion.`,
+    }));
+
+  const investigate = momentum.filter((item) => item.quadrant === 'investigate');
+  const pendingPillars = getEvidenceCoverageSummary(data).pendingPillars;
+
+  const close: ActionAgendaItem[] = [
+    ...investigate.map((item) => ({
+      prompt: 'close' as const,
+      pillar: item.pillar,
+      summary: `${item.pillar}: score ${item.score2025.toFixed(1)}% with ${formatDelta(item.yoyChange)} movement. Investigate drivers before the next reporting cycle.`,
+    })),
+    ...pendingPillars.map((pillar) => ({
+      prompt: 'close' as const,
+      pillar,
+      summary: `${pillar}: approved overall score is not yet available. Close the source gap before including this pillar in executive averages.`,
+    })),
+  ];
+
+  return { scale, protect, target, close };
+}
+
+export function generateActionAgendaInsight(
+  agenda: Record<ActionPrompt, ActionAgendaItem[]>,
+): string {
+  const scalePillars = agenda.scale.map((item) => item.pillar);
+  const protectPillars = agenda.protect.map((item) => item.pillar);
+  const targetPillars = agenda.target.map((item) => item.pillar);
+  const closePillars = agenda.close.map((item) => item.pillar);
+  const actions: string[] = [];
+
+  if (scalePillars.length > 0) {
+    actions.push(
+      `scale proven practices in ${scalePillars.join(', ')} where scores and momentum support expansion`,
+    );
+  }
+  if (protectPillars.length > 0) {
+    actions.push(
+      `protect gains in ${protectPillars.join(', ')} where strong performance shows slowing momentum`,
+    );
+  }
+  if (targetPillars.length > 0) {
+    actions.push(
+      `target residual negative indicators in ${targetPillars.join(', ')} for immediate management attention`,
+    );
+  }
+  if (closePillars.length > 0) {
+    actions.push(
+      `close evidence gaps and investigate weaker movement in ${closePillars.join(', ')} before the next reporting cycle`,
+    );
+  }
+
+  if (actions.length === 0) {
+    return 'No priority action lanes are flagged for the current evidence snapshot. Continue monitoring pillar scores, movement, and approved coverage before the next executive review.';
+  }
+
+  const actionText = actions
+    .map((action, index) => (index === 0 ? action.charAt(0).toUpperCase() + action.slice(1) : action))
+    .join('; ')
+    .replace(/; ([^;]+)$/, '; and $1');
+
+  return `Based on the current district evidence, executive discussion should ${actionText}. Use the lanes below to assign owners, timelines, and follow-up evidence for each pillar.`;
 }
