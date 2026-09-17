@@ -41,6 +41,20 @@ function getServiceChangeClassName(movement: number, cellValue: number): string 
   return `health-heatmap-cell-change ${trendClass}${invertClass}`;
 }
 
+function formatServiceMovementLabel(movement: number): string {
+  if (Math.abs(movement) < 0.5) return '0%';
+  return formatDelta(movement);
+}
+
+function getServiceMovementClassName(movement: number, cellValue: number): string {
+  if (Math.abs(movement) < 0.5) {
+    const invertClass =
+      satisfactionHeatTextColor(cellValue) === '#ffffff' ? ' health-heatmap-cell-change-invert' : '';
+    return `health-heatmap-cell-change growth-neutral${invertClass}`;
+  }
+  return getServiceChangeClassName(movement, cellValue);
+}
+
 function ServiceIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -126,9 +140,9 @@ export function InfrastructureServiceScorecard({
                     >
                       <div className={`health-heatmap-cell-content${isYoY ? ' health-heatmap-cell-content-inline' : ''}`}>
                         <span className="health-heatmap-cell-value">{agreement.toFixed(0)}%</span>
-                        {isYoY && Math.abs(row.movement) >= 0.5 && (
-                          <span className={getServiceChangeClassName(row.movement, agreement)}>
-                            {formatDelta(row.movement)}
+                        {isYoY && (
+                          <span className={getServiceMovementClassName(row.movement, agreement)}>
+                            {formatServiceMovementLabel(row.movement)}
                           </span>
                         )}
                       </div>

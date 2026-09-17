@@ -5,7 +5,6 @@ import {
   CartesianGrid,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -229,6 +228,82 @@ function DivergingBarValueLabel({
 function makeDivergingBarLabel(rows: ChartRow[], segment: SentimentSegment, variant: 'positive' | 'risk') {
   return (props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => (
     <DivergingBarValueLabel {...props} rows={rows} segment={segment} variant={variant} />
+  );
+}
+
+function formatDivergingStatementTooltip(row: ChartRow): string {
+  return `${row.fullName}\nDissatisfied: ${row.dissatisfied.toFixed(1)}%\nNeutral: ${row.neutral.toFixed(1)}%\nSatisfied: ${row.satisfied.toFixed(1)}%`;
+}
+
+type DivergingBarShapeProps = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  payload?: ChartRow;
+  name?: string;
+  value?: number;
+};
+
+function DivergingBarSegmentShape({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  fill = '#ccc',
+  payload,
+  name,
+  value,
+}: DivergingBarShapeProps) {
+  const rawWidth = Number(width);
+  const barHeight = Number(height);
+  if (!rawWidth || !barHeight || Math.abs(rawWidth) < 0.5) return null;
+
+  const segmentValue = Math.abs(Number(value ?? 0));
+  if (segmentValue <= 0.05) return null;
+
+  const rectX = rawWidth < 0 ? x + rawWidth : x;
+  const rectWidth = Math.abs(rawWidth);
+  const tooltipText = payload
+    ? `${payload.fullName}\n${name ?? 'Value'}: ${segmentValue.toFixed(1)}%`
+    : `${name ?? 'Value'}: ${segmentValue.toFixed(1)}%`;
+
+  return (
+    <g>
+      <title>{tooltipText}</title>
+      <rect x={rectX} y={y} width={rectWidth} height={barHeight} fill={fill} />
+    </g>
+  );
+}
+
+function makeDivergingBarShape(segmentName: string) {
+  return (props: unknown) => (
+    <DivergingBarSegmentShape {...(props as DivergingBarShapeProps)} name={segmentName} />
+  );
+}
+
+function DivergingBarFillerShape({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  fill = NEUTRAL_COLOR,
+}: DivergingBarShapeProps) {
+  const rawWidth = Number(width);
+  const barHeight = Number(height);
+  if (!rawWidth || !barHeight || Math.abs(rawWidth) < 0.5) return null;
+
+  const rectX = rawWidth < 0 ? x + rawWidth : x;
+  return (
+    <rect
+      x={rectX}
+      y={y}
+      width={Math.abs(rawWidth)}
+      height={barHeight}
+      fill={fill}
+      pointerEvents="none"
+    />
   );
 }
 
@@ -497,8 +572,11 @@ export function GroupedDivergingLikertChart({
   const [labelColumnWidth, setLabelColumnWidth] = useState(0);
   const laneClass = variant === 'risk' ? 'chart-risk-lane' : 'chart-positive-lane';
   const barColors = getBarColors(variant);
+  const isYoY = viewMode === 'yoy';
+  const currentYear = compareYears[1];
   const chartData = rows.map(toChartRow);
   const plotHeight = Math.max(180, chartData.length * ROW_HEIGHT + PLOT_CHROME);
+  const isCurrentYearRow = (row: ChartRow) => isYoY && row.id.endsWith(`-${currentYear}`);
   const scrollMaxHeight =
     maxBodyHeight != null ? Math.max(120, maxBodyHeight - AXIS_HEIGHT) : undefined;
   const isScrollable = scrollMaxHeight != null && plotHeight > scrollMaxHeight;
@@ -569,9 +647,29 @@ export function GroupedDivergingLikertChart({
                 className="statement-bar-chart grouped-diverging-likert-shell"
                 style={{ height: plotHeight, ['--statement-rows' as string]: chartData.length }}
               >
+                {isYoY ? (
+                  <div className="grouped-diverging-likert-row-highlights" aria-hidden="true">
+                    {chartData.map((row, index) =>
+                      isCurrentYearRow(row) ? (
+                        <div
+                          key={`${row.id}-highlight`}
+                          className="grouped-diverging-likert-row-highlight"
+                          style={{
+                            top: `${(index / chartData.length) * 100}%`,
+                            height: `${100 / chartData.length}%`,
+                          }}
+                        />
+                      ) : null,
+                    )}
+                  </div>
+                ) : null}
                 <div className="statement-bar-labels" ref={labelsRef}>
                   {chartData.map((row) => (
-                    <div key={row.id} className="statement-bar-label" title={row.fullName}>
+                    <div
+                      key={row.id}
+                      className={`statement-bar-label${isCurrentYearRow(row) ? ' is-yoy-current' : isYoY ? ' is-yoy-previous' : ''}`}
+                      title={formatDivergingStatementTooltip(row)}
+                    >
                       <span
                         className={`statement-bar-label-icon ${labelIconClass}`}
                       >
@@ -593,12 +691,14 @@ export function GroupedDivergingLikertChart({
                       <XAxis type="number" domain={[-100, 100]} hide />
                       <YAxis type="category" dataKey="name" width={0} tick={false} axisLine={false} tickLine={false} />
                       <ReferenceLine x={0} stroke="#64748b" strokeWidth={1.5} />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-                        formatter={(value: number, name: string) => [`${Math.abs(value).toFixed(1)}%`, name]}
-                        labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
+                      <Bar
+                        dataKey="neutralLeft"
+                        stackId="left"
+                        fill={NEUTRAL_COLOR}
+                        legendType="none"
+                        isAnimationActive={false}
+                        shape={(props: unknown) => <DivergingBarFillerShape {...(props as DivergingBarShapeProps)} />}
                       />
-                      <Bar dataKey="neutralLeft" stackId="left" fill={NEUTRAL_COLOR} legendType="none" isAnimationActive={false} />
                       <Bar
                         dataKey="disagree"
                         stackId="left"
@@ -606,9 +706,18 @@ export function GroupedDivergingLikertChart({
                         legendType="none"
                         radius={[4, 0, 0, 4]}
                         isAnimationActive={false}
+                        shape={makeDivergingBarShape('Dissatisfied')}
                         label={makeDivergingBarLabel(chartData, 'dissatisfied', variant)}
                       />
-                      <Bar dataKey="neutralRight" stackId="right" fill={NEUTRAL_COLOR} legendType="none" isAnimationActive={false} label={makeDivergingBarLabel(chartData, 'neutral', variant)} />
+                      <Bar
+                        dataKey="neutralRight"
+                        stackId="right"
+                        fill={NEUTRAL_COLOR}
+                        legendType="none"
+                        isAnimationActive={false}
+                        shape={makeDivergingBarShape('Neutral')}
+                        label={makeDivergingBarLabel(chartData, 'neutral', variant)}
+                      />
                       <Bar
                         dataKey="agree"
                         stackId="right"
@@ -616,6 +725,7 @@ export function GroupedDivergingLikertChart({
                         legendType="none"
                         radius={[0, 4, 4, 0]}
                         isAnimationActive={false}
+                        shape={makeDivergingBarShape('Satisfied')}
                         label={makeDivergingBarLabel(chartData, 'satisfied', variant)}
                       />
                     </BarChart>

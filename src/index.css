@@ -5770,19 +5770,67 @@ button {
 }
 
 .grouped-diverging-likert-shell {
+  position: relative;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 4px;
   width: 100%;
 }
 
+.grouped-diverging-likert-row-highlights {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.grouped-diverging-likert-row-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 6px;
+}
+
+.chart-positive-lane .grouped-diverging-likert-row-highlight {
+  background: rgba(5, 150, 105, 0.09);
+}
+
+.chart-risk-lane .grouped-diverging-likert-row-highlight {
+  background: rgba(220, 38, 38, 0.07);
+}
+
 .grouped-diverging-likert-shell .statement-bar-labels {
+  position: relative;
+  z-index: 1;
   padding: 8px 0 0;
   width: max-content;
   max-width: none;
   align-content: start;
 }
 
+.grouped-diverging-likert-shell .statement-bar-label.is-yoy-current {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.grouped-diverging-likert-shell .statement-bar-label.is-yoy-previous {
+  color: #94a3b8;
+}
+
+.grouped-diverging-likert-embedded.chart-positive-lane .statement-bar-label.is-yoy-current .statement-bar-label-icon {
+  background: rgba(5, 150, 105, 0.18);
+}
+
+.grouped-diverging-likert-embedded.chart-risk-lane .statement-bar-label.is-yoy-current .statement-bar-label-icon {
+  background: rgba(220, 38, 38, 0.14);
+  color: #dc2626;
+}
+
 .grouped-diverging-likert-shell .statement-bar-plot {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -6434,6 +6482,57 @@ button {
 }
 
 .housing-assessment-lane-card--risk .health-heatmap-cell-content-inline {
+  gap: 8px;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change {
+  font-weight: 800;
+  font-size: 0.8125rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change.growth-positive,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change.growth-positive {
+  color: #14532d;
+  background: #86efac;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change.growth-negative,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change.growth-negative {
+  color: #7f1d1d;
+  background: #fca5a5;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change.growth-neutral,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change.growth-neutral {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change-invert.growth-positive,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change-invert.growth-positive {
+  color: #14532d;
+  background: #4ade80;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change-invert.growth-negative,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change-invert.growth-negative {
+  color: #ffffff;
+  background: #dc2626;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-change-invert.growth-neutral,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-change-invert.growth-neutral {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.health-assessment-lane-card--domain .health-heatmap-cell-content-inline,
+.infrastructure-assessment-lane-card--services .health-heatmap-cell-content-inline {
   gap: 8px;
 }
 
@@ -7461,7 +7560,79 @@ button {
 }
 
 .agreement-heatmap-card .health-heatmap-cell-change {
-  font-size: 0.6875rem;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change.growth-positive {
+  color: #14532d;
+  background: #86efac;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change.growth-negative {
+  color: #7f1d1d;
+  background: #fca5a5;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change.growth-neutral {
+  color: #1e40af;
+  background: #dbeafe;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change-invert.growth-positive {
+  color: #14532d;
+  background: #4ade80;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change-invert.growth-negative {
+  color: #ffffff;
+  background: #dc2626;
+}
+
+.agreement-heatmap-card .health-heatmap-cell-change-invert.growth-neutral {
+  color: #ffffff;
+  background: #3b82f6;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change {
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change.growth-positive {
+  color: #14532d;
+  background: #86efac;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change.growth-negative {
+  color: #7f1d1d;
+  background: #fca5a5;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change.growth-neutral {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change-invert.growth-positive {
+  color: #14532d;
+  background: #4ade80;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change-invert.growth-negative {
+  color: #ffffff;
+  background: #dc2626;
+}
+
+.infrastructure-service-scorecard-card .health-heatmap-cell-change-invert.growth-neutral {
+  color: #334155;
+  background: #f1f5f9;
 }
 
 .agreement-heatmap-card .health-heatmap-scale {

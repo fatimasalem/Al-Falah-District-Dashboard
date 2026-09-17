@@ -11,7 +11,6 @@ import {
 import { ChartInsightFooter } from './ChartInsightFooter';
 import { ChartSectionHeader, ChartSectionIcon } from './ChartSectionHeader';
 import { GroupedDivergingLikertChart } from './GroupedDivergingLikertChart';
-import { StatementYearLegend } from './StatementYearLegend';
 
 interface WorkStatementsCardProps {
   positiveRows: DivergingLikertStatementRow[];
@@ -67,12 +66,6 @@ export function WorkStatementsCard({
               subtitleClassName="education-statements-lane-card-subtitle"
             />
             <div className="education-statements-lane-card-actions">
-              <StatementYearLegend
-                viewMode={viewMode}
-                compareYears={compareYears}
-                year={year}
-                variant="positive"
-              />
               <span className="statement-lollipop-badge is-positive">Positive lane</span>
             </div>
           </div>
@@ -103,12 +96,6 @@ export function WorkStatementsCard({
               subtitleClassName="education-statements-lane-card-subtitle"
             />
             <div className="education-statements-lane-card-actions">
-              <StatementYearLegend
-                viewMode={viewMode}
-                compareYears={compareYears}
-                year={year}
-                variant="risk"
-              />
               <span className="statement-lollipop-badge is-risk">Risk lane</span>
             </div>
           </div>

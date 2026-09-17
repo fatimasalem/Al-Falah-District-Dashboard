@@ -33,6 +33,28 @@ function riskHeatTextColor(value: number): string {
   return clamped >= 55 ? '#ffffff' : '#1f2937';
 }
 
+function getRiskChangeClassName(movement: number, cellValue: number): string {
+  const trendClass =
+    movement > 0 ? 'growth-negative' : movement < 0 ? 'growth-positive' : 'growth-neutral';
+  const invertClass =
+    riskHeatTextColor(cellValue) === '#ffffff' ? ' health-heatmap-cell-change-invert' : '';
+  return `health-heatmap-cell-change ${trendClass}${invertClass}`;
+}
+
+function formatRiskMovementLabel(movement: number): string {
+  if (Math.abs(movement) < 0.5) return '0%';
+  return formatDelta(movement);
+}
+
+function getRiskMovementClassName(movement: number, cellValue: number): string {
+  if (Math.abs(movement) < 0.5) {
+    const invertClass =
+      riskHeatTextColor(cellValue) === '#ffffff' ? ' health-heatmap-cell-change-invert' : '';
+    return `health-heatmap-cell-change growth-neutral${invertClass}`;
+  }
+  return getRiskChangeClassName(movement, cellValue);
+}
+
 function WellbeingIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -122,8 +144,10 @@ export function AgreementHeatmap({
                     >
                       <div className={`health-heatmap-cell-content${isYoY ? ' health-heatmap-cell-content-inline' : ''}`}>
                         <span className="health-heatmap-cell-value">{agreement.toFixed(0)}%</span>
-                        {isYoY && Math.abs(row.movement) >= 0.5 && (
-                          <span className="health-heatmap-cell-change">{formatDelta(row.movement)}</span>
+                        {isYoY && (
+                          <span className={getRiskMovementClassName(row.movement, agreement)}>
+                            {formatRiskMovementLabel(row.movement)}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -150,7 +174,7 @@ export function AgreementHeatmap({
 
   if (embedded) {
     return (
-      <article className="health-assessment-lane-card health-assessment-lane-card--wellbeing">
+      <article className="health-assessment-lane-card health-assessment-lane-card--wellbeing housing-assessment-lane-card--risk">
         <div className="health-assessment-lane-card-header">
           <ChartSectionHeader
             icon="risk-register"

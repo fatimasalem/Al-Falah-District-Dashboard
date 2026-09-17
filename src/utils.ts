@@ -5005,10 +5005,11 @@ export function getWorkDivergingLikertRows(
     .sort((a, b) => (b.data[year]?.agreement ?? 0) - (a.data[year]?.agreement ?? 0));
 
   if (viewMode === 'yoy') {
+    const orderedYears = [compareYears[1], compareYears[0]] as const;
     return filtered.flatMap((question) => {
       const statement = question.statementEn ?? question.statementAr;
       const baseName = getWorkQ210ShortLabel(statement);
-      return compareYears.map((entryYear) => {
+      return orderedYears.map((entryYear) => {
         const row = toDivergingLikertStatementRow(question, entryYear);
         return {
           ...row,

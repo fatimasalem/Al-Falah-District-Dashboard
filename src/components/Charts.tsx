@@ -14,6 +14,7 @@ import {
   Cell,
   PieChart,
   Pie,
+  Sector,
   LabelList,
   Label,
   ReferenceLine,
@@ -2608,6 +2609,47 @@ export function EducationSportsLikertGaugeCard({
   );
 }
 
+function PieSectorWithTitle(props: {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  fill?: string;
+  payload?: { name?: string; value?: number };
+  value?: number;
+}) {
+  const {
+    cx = 0,
+    cy = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    startAngle = 0,
+    endAngle = 0,
+    fill,
+    payload,
+    value = 0,
+  } = props;
+  const label = payload?.name ?? 'Share';
+  const share = Number(value ?? payload?.value ?? 0);
+
+  return (
+    <g>
+      <title>{`${label}: ${share.toFixed(1)}%`}</title>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+    </g>
+  );
+}
+
 function renderEducationDisciplineDonut(
   row: EducationSentimentRow,
   yearLabel: string,
@@ -2647,6 +2689,7 @@ function renderEducationDisciplineDonut(
             outerRadius={compact ? 58 : 72}
             paddingAngle={2}
             dataKey="value"
+            activeShape={PieSectorWithTitle}
             label={renderIncomePieSliceLabel}
             labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
           >
@@ -2654,7 +2697,6 @@ function renderEducationDisciplineDonut(
               <Cell key={`${yearLabel}-${entry.name}`} fill={entry.fill} />
             ))}
           </Pie>
-          <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, 'Share']} />
         </PieChart>
       </ResponsiveContainer>
       {showLegend && (
