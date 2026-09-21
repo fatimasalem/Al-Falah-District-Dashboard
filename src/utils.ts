@@ -4035,16 +4035,19 @@ export function formatSurveyBriefParagraph(data: import('./types').SurveyData): 
     `Response rate: ${responseRateText}.`,
   ].join(' ');
 }
-
+  
 function getCategoricalDistribution(
   questions: import('./types').Question[],
   code: string,
   year: import('./types').SurveyYear,
   maxSegments = 5,
+  formatLabel?: (categoryEn: string | undefined, categoryAr: string) => string,
 ): ProfileDistributionSegment[] {
   const items = getCategoryByQuestion(questions, code)
     .map((q) => ({
-      label: translateLabel(q.categoryEn ?? q.categoryAr),
+      label: formatLabel
+        ? formatLabel(q.categoryEn, q.categoryAr)
+        : translateLabel(q.categoryEn ?? q.categoryAr),
       value: q.data[year] ?? 0,
     }))
     .filter((item) => item.value > 0)
@@ -4108,14 +4111,19 @@ export function getWhoAnsweredProfileData(
       segments: getCategoricalDistribution(questions, 'Q903', year, 5),
     },
     {
-      id: 'household',
-      label: 'Household composition',
+      id: 'marital',
+      label: 'Marital status',
       sampleBase,
-      segments: getCategoricalDistribution(questions, 'Q904', year, 4),
+      segments: getCategoricalDistribution(questions, 'Q904', year, 4, (categoryEn, categoryAr) => {
+        const raw = categoryEn ?? categoryAr;
+        return DEMOGRAPHICS_MARITAL_LABELS[raw]
+          ?? DEMOGRAPHICS_MARITAL_LABELS[categoryAr]
+          ?? translateLabel(raw);
+      }),
     },
     {
       id: 'tenure',
-      label: 'Residence tenure',
+      label: 'Ownership type',
       sampleBase,
       segments: getCategoricalDistribution(questions, 'Q911', year, 4),
     },
@@ -4251,10 +4259,9 @@ export interface MomentumMatrixItem {
   quadrant: MomentumQuadrant;
 }
 
-export function getMomentumQuadrant(score2025: number, yoyChange: number): MomentumQuadrant {
-  const highScore = score2025 >= 75;
-  if (highScore && yoyChange >= 0) return 'scale';
-  if (highScore && yoyChange < 0) return 'protect';
+export function getMomentumQuadrant(score2025: number): MomentumQuadrant {
+  if (score2025 >= 75) return 'scale';
+  if (score2025 >= 70) return 'protect';
   return 'investigate';
 }
 
@@ -4277,7 +4284,7 @@ export function getMomentumMatrixData(
         pillar: pillar.sectionNameEn,
         score2025,
         yoyChange,
-        quadrant: getMomentumQuadrant(score2025, yoyChange),
+        quadrant: getMomentumQuadrant(score2025),
       };
     })
     .filter((item): item is MomentumMatrixItem => item != null);
@@ -4367,8 +4374,10 @@ export function getResidualRiskRegister(
 export type ActionPrompt = 'scale' | 'protect' | 'target' | 'close';
 
 export interface ActionAgendaItem {
+  id: string;
   prompt: ActionPrompt;
   pillar: string;
+  title: string;
   summary: string;
 }
 
@@ -5361,95 +5370,256 @@ export function generateEnvironmentRiskInsight(
   ];
 }
 
+const AGENDA_QUESTION_CODES: Record<string, string[]> = {
+  education: ['Q301'],
+  work: ['Q210'],
+  security: ['Q401'],
+  housing: ['Q701'],
+  environment: ['Q601'],
+  infrastructure: ['Q801'],
+  health: ['Q501', 'Q502'],
+};
+
+const AGENDA_CONCERN_CLAUSES: Array<[RegExp, string]> = [
+  [/verbal abuse by other students/i, 'parents agree children face repeated verbal abuse at local schools — mockery, name-calling, or rumors'],
+  [/physical abuse by other students/i, 'parents agree children face repeated physical abuse at local schools'],
+  [/physically harmed more than once/i, 'parents report repeated physical harm among students at local schools'],
+  [/harassed, ridiculed, and called bad names/i, 'parents agree children are harassed and called names at local schools'],
+  [/harassed, ridiculed, and called names/i, 'parents report harassment and name-calling at local schools'],
+  [/barely covers family expenses/i, 'workers agree pay barely covers family expenses'],
+  [/afraid of losing my job/i, 'workers fear losing their job'],
+  [/busy and stressed/i, 'workers agree the job leaves them busy and stressed'],
+  [/negative physical and psychological/i, 'workers agree the job is harming their health'],
+  [/physical violence or threats|exposed to an incident/i, 'residents report physical violence or threats in the past year'],
+  [/fear for my children/i, 'parents fear negative peer influence on their children'],
+  [/insects and some rodents appear constantly in the residence/i, 'residents report insects and rodents inside the home'],
+  [/insects and some rodents/i, 'residents agree insects and rodents keep appearing in the area'],
+  [/unpleasant odors inside the residence/i, 'residents report unpleasant odors inside the home'],
+  [/residence needs repairs and maintenance/i, 'residents agree the home needs repairs'],
+  [/size of the house is small or insufficient/i, 'residents agree the home is too small'],
+  [/densely populated area makes me feel unstable/i, 'residents agree overcrowding makes the area feel unstable'],
+];
+
+const AGENDA_TARGET_MIN = 55;
+const AGENDA_SCALE_MIN = 75;
+const AGENDA_PROTECT_MIN = 70;
+const AGENDA_LANE_LIMITS: Record<ActionPrompt, number> = {
+  target: 6,
+  close: 6,
+  protect: 5,
+  scale: 4,
+};
+
+interface AgendaStatementSignal {
+  id: string;
+  sectionId: string;
+  pillar: string;
+  agreement: number;
+  movement: number;
+  statement: string;
+  shortLabel: string;
+  polarity: import('./types').IndicatorPolarity;
+}
+
+function getAgendaShortLabel(sectionId: string, statement: string): string {
+  switch (sectionId) {
+    case 'education':
+      return formatEducationAxisLabel(statement);
+    case 'work':
+      return getWorkQ210ShortLabel(statement);
+    case 'security':
+      return getSecurityQ401ShortLabel(statement);
+    case 'housing':
+      return getHousingQ701ShortLabel(statement);
+    case 'infrastructure':
+      return getInfrastructureQ801ShortLabel(statement);
+    case 'health':
+      return formatHealthHeatmapLabel(statement);
+    case 'environment': {
+      const chart = Object.values(ENVIRONMENT_CHART_STATEMENTS).find((entry) => entry.match.test(statement));
+      if (chart) return chart.short;
+      if (ENVIRONMENT_KPI_STATEMENT.cleanliness.test(statement)) return 'Neighborhood cleanliness';
+      if (ENVIRONMENT_KPI_STATEMENT.airQuality.test(statement)) return 'Air quality';
+      if (ENVIRONMENT_KPI_STATEMENT.noiseLevel.test(statement)) return 'Noise level';
+      if (/availability of shopping areas/i.test(statement)) return 'Shopping areas';
+      if (/general appearance of the city/i.test(statement)) return 'City appearance control';
+      if (/beautification and landscaping/i.test(statement)) return 'Street landscaping';
+      return compactStatementLabel(statement);
+    }
+    default:
+      return truncateStatementLabel(statement, 32);
+  }
+}
+
+function concernClause(statement: string): string {
+  const match = AGENDA_CONCERN_CLAUSES.find(([pattern]) => pattern.test(statement));
+  if (match) return match[1];
+  return `residents report this problem: ${truncateStatementLabel(statement, 64)}`;
+}
+
+function getAllAgendaSignals(
+  data: import('./types').SurveyData,
+  compareYears: import('./types').CompareYears,
+): AgendaStatementSignal[] {
+  return Object.entries(AGENDA_QUESTION_CODES).flatMap(([sectionId, codes]) => {
+    const section = data.sections[sectionId];
+    if (!section) return [];
+
+    return getLikertStatements(section.questions)
+      .filter((question) => codes.includes(question.code))
+      .map((question) => {
+        const earlier = question.data[compareYears[0]]?.agreement ?? 0;
+        const later = question.data[compareYears[1]]?.agreement ?? 0;
+        const statement = question.statementEn ?? question.statementAr;
+        return {
+          id: `${sectionId}-${question.code}-${statement}`,
+          sectionId,
+          pillar: section.nameEn,
+          agreement: later,
+          movement: getYearDelta(earlier, later, compareYears),
+          statement,
+          shortLabel: getAgendaShortLabel(sectionId, statement),
+          polarity: resolveQuestionPolarity(question),
+        };
+      })
+      .filter((signal) => signal.agreement > 0);
+  });
+}
+
+function classifyAgendaSignal(signal: AgendaStatementSignal): ActionPrompt | null {
+  if (signal.polarity === 'negative') {
+    return signal.agreement >= AGENDA_TARGET_MIN ? 'target' : null;
+  }
+  if (signal.agreement >= AGENDA_SCALE_MIN) return 'scale';
+  if (signal.agreement >= AGENDA_PROTECT_MIN) return 'protect';
+  return 'close';
+}
+
+function formatAgendaPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
+function joinPillarNames(names: string[]): string {
+  const unique = [...new Set(names)];
+  if (unique.length <= 1) return unique[0] ?? '';
+  if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
+  return `${unique.slice(0, -1).join(', ')}, and ${unique[unique.length - 1]}`;
+}
+
+function toAgendaItem(prompt: ActionPrompt, signal: AgendaStatementSignal): ActionAgendaItem {
+  if (prompt === 'target') {
+    return {
+      id: signal.id,
+      prompt,
+      pillar: signal.pillar,
+      title: signal.shortLabel,
+      summary: `${formatAgendaPercent(signal.agreement)} — ${concernClause(signal.statement)}.`,
+    };
+  }
+
+  if (prompt === 'close') {
+    return {
+      id: signal.id,
+      prompt,
+      pillar: signal.pillar,
+      title: signal.shortLabel,
+      summary: `${formatAgendaPercent(signal.agreement)} satisfied — lowest enough to close the gap on this ${signal.pillar.toLowerCase()} item.`,
+    };
+  }
+
+  if (prompt === 'protect') {
+    const slipNote = signal.movement < 0
+      ? ` Fell ${Math.abs(signal.movement).toFixed(1)}pp vs last year.`
+      : '';
+    return {
+      id: signal.id,
+      prompt,
+      pillar: signal.pillar,
+      title: signal.shortLabel,
+      summary: `${formatAgendaPercent(signal.agreement)} satisfied — solid, but hold this ${signal.pillar.toLowerCase()} result.${slipNote}`,
+    };
+  }
+
+  return {
+    id: signal.id,
+    prompt,
+    pillar: signal.pillar,
+    title: signal.shortLabel,
+    summary: `${formatAgendaPercent(signal.agreement)} — residents are satisfied with ${signal.shortLabel.charAt(0).toLowerCase() + signal.shortLabel.slice(1)}.`,
+  };
+}
+
+function rankAgendaSignals(prompt: ActionPrompt, signals: AgendaStatementSignal[]): AgendaStatementSignal[] {
+  const ranked = [...signals].sort((left, right) => {
+    if (prompt === 'close') return left.agreement - right.agreement;
+    if (prompt === 'protect') return left.agreement - right.agreement;
+    return right.agreement - left.agreement;
+  });
+  return ranked.slice(0, AGENDA_LANE_LIMITS[prompt]);
+}
+
 export function generateActionAgenda(
   data: import('./types').SurveyData,
   compareYears: import('./types').CompareYears,
 ): Record<ActionPrompt, ActionAgendaItem[]> {
-  const momentum = getMomentumMatrixData(data, compareYears);
-  const risks = getResidualRiskRegister(data, compareYears).filter((item) => item.status === 'available');
-  const compareLabel = formatCompareYearsLabel(compareYears);
+  const buckets: Record<ActionPrompt, AgendaStatementSignal[]> = {
+    target: [],
+    protect: [],
+    close: [],
+    scale: [],
+  };
 
-  const scale = momentum
-    .filter((item) => item.quadrant === 'scale')
-    .map((item) => ({
-      prompt: 'scale' as const,
-      pillar: item.pillar,
-      summary: `${item.pillar}: ${item.score2025.toFixed(1)}% in 2025 with ${formatDelta(item.yoyChange)} movement (${compareLabel}). Scale practices that are sustaining high performance.`,
-    }));
+  for (const signal of getAllAgendaSignals(data, compareYears)) {
+    const lane = classifyAgendaSignal(signal);
+    if (lane) buckets[lane].push(signal);
+  }
 
-  const protect = momentum
-    .filter((item) => item.quadrant === 'protect')
-    .map((item) => ({
-      prompt: 'protect' as const,
-      pillar: item.pillar,
-      summary: `${item.pillar}: strong 2025 score (${item.score2025.toFixed(1)}%) but momentum slipped ${formatDelta(item.yoyChange)}. Protect gains while diagnosing the slowdown.`,
-    }));
-
-  const target = risks
-    .slice(0, 3)
-    .map((item) => ({
-      prompt: 'target' as const,
-      pillar: item.pillar,
-      summary: `${item.pillar}: negative indicator at ${item.negative2025!.toFixed(1)}% in 2025 (${formatDelta(item.yoyChange!)} vs ${compareYears[0]}). Prioritise residual concern in management discussion.`,
-    }));
-
-  const investigate = momentum.filter((item) => item.quadrant === 'investigate');
   const pendingPillars = getEvidenceCoverageSummary(data).pendingPillars;
-
   const close: ActionAgendaItem[] = [
-    ...investigate.map((item) => ({
-      prompt: 'close' as const,
-      pillar: item.pillar,
-      summary: `${item.pillar}: score ${item.score2025.toFixed(1)}% with ${formatDelta(item.yoyChange)} movement. Investigate drivers before the next reporting cycle.`,
-    })),
+    ...rankAgendaSignals('close', buckets.close).map((signal) => toAgendaItem('close', signal)),
     ...pendingPillars.map((pillar) => ({
+      id: `pending-${pillar}`,
       prompt: 'close' as const,
       pillar,
-      summary: `${pillar}: approved overall score is not yet available. Close the source gap before including this pillar in executive averages.`,
+      title: 'Score pending approval',
+      summary: 'Approved overall score is not yet available. Close the source gap before including this pillar in executive averages.',
     })),
   ];
 
-  return { scale, protect, target, close };
+  return {
+    target: rankAgendaSignals('target', buckets.target).map((signal) => toAgendaItem('target', signal)),
+    protect: rankAgendaSignals('protect', buckets.protect).map((signal) => toAgendaItem('protect', signal)),
+    scale: rankAgendaSignals('scale', buckets.scale).map((signal) => toAgendaItem('scale', signal)),
+    close,
+  };
 }
 
 export function generateActionAgendaInsight(
   agenda: Record<ActionPrompt, ActionAgendaItem[]>,
 ): string {
-  const scalePillars = agenda.scale.map((item) => item.pillar);
-  const protectPillars = agenda.protect.map((item) => item.pillar);
-  const targetPillars = agenda.target.map((item) => item.pillar);
-  const closePillars = agenda.close.map((item) => item.pillar);
-  const actions: string[] = [];
+  const targetTitles = agenda.target.slice(0, 3).map((item) => item.title);
+  const closeTitles = agenda.close
+    .filter((item) => item.title !== 'Score pending approval')
+    .slice(0, 2)
+    .map((item) => item.title);
+  const parts: string[] = [];
 
-  if (scalePillars.length > 0) {
-    actions.push(
-      `scale proven practices in ${scalePillars.join(', ')} where scores and momentum support expansion`,
-    );
+  if (targetTitles.length > 0) {
+    parts.push(`priority concerns are ${joinPillarNames(targetTitles).toLowerCase()}`);
   }
-  if (protectPillars.length > 0) {
-    actions.push(
-      `protect gains in ${protectPillars.join(', ')} where strong performance shows slowing momentum`,
-    );
-  }
-  if (targetPillars.length > 0) {
-    actions.push(
-      `target residual negative indicators in ${targetPillars.join(', ')} for immediate management attention`,
-    );
-  }
-  if (closePillars.length > 0) {
-    actions.push(
-      `close evidence gaps and investigate weaker movement in ${closePillars.join(', ')} before the next reporting cycle`,
-    );
+  if (closeTitles.length > 0) {
+    parts.push(`weaker satisfaction shows up in ${joinPillarNames(closeTitles).toLowerCase()}`);
   }
 
-  if (actions.length === 0) {
-    return 'No priority action lanes are flagged for the current evidence snapshot. Continue monitoring pillar scores, movement, and approved coverage before the next executive review.';
+  if (parts.length === 0) {
+    const strong = agenda.scale.slice(0, 2).map((item) => item.title);
+    if (strong.length > 0) {
+      return `${joinPillarNames(strong)} lead the strong survey signals. See the cards below for the detail.`;
+    }
+    return 'No survey signals need immediate attention. See the cards below for the current evidence.';
   }
 
-  const actionText = actions
-    .map((action, index) => (index === 0 ? action.charAt(0).toUpperCase() + action.slice(1) : action))
-    .join('; ')
-    .replace(/; ([^;]+)$/, '; and $1');
-
-  return `Based on the current district evidence, executive discussion should ${actionText}. Use the lanes below to assign owners, timelines, and follow-up evidence for each pillar.`;
+  const lead = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  const body = parts.length > 1 ? `${lead}, and ${parts.slice(1).join(', and ')}.` : `${lead}.`;
+  return `${body} See the cards below for the specific survey signals.`;
 }

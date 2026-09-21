@@ -620,7 +620,7 @@ export const KPI_SECTION_META: Record<string, { title: string; subtitle: string 
 const OVERVIEW_PROFILE_ICONS: Record<string, KpiIconName> = {
   gender: 'community',
   age: 'education',
-  household: 'family',
+  marital: 'family',
   tenure: 'home-purchase',
   employment: 'briefcase',
 };

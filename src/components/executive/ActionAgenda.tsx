@@ -11,22 +11,22 @@ interface ActionAgendaProps {
 const PROMPT_META: Record<ActionPrompt, { title: string; description: string; icon: ChartSectionIconName }> = {
   scale: {
     title: 'Scale',
-    description: 'High-performing pillars with positive momentum.',
+    description: 'Survey items with strong satisfaction that can be expanded.',
     icon: 'scale',
   },
   protect: {
     title: 'Protect',
-    description: 'Strong scores that need attention to momentum.',
+    description: 'Solid survey items in the 70–74% band that need to be held.',
     icon: 'protect',
   },
   target: {
     title: 'Target',
-    description: 'Highest residual negative-indicator concerns.',
+    description: 'Survey items where a high share of residents report a problem.',
     icon: 'target',
   },
   close: {
     title: 'Close',
-    description: 'Investigate weaker pillars and outstanding data gaps.',
+    description: 'Survey items with weaker satisfaction that need to be closed.',
     icon: 'close',
   },
 };
@@ -44,34 +44,32 @@ function InsightLightbulbIcon() {
   );
 }
 
-function stripPillarPrefix(summary: string, pillar: string): string {
-  const prefix = `${pillar}: `;
-  return summary.startsWith(prefix) ? summary.slice(prefix.length) : summary;
-}
-
 const AGENDA_SUMMARY_TOKEN_PATTERN =
   /\b(negative indicator|approved overall score|reporting cycle|executive averages|momentum|movement|score)\b|([+-]?\d+(?:\.\d+)?%)|\b(20\d{2})\b/gi;
 
-function getAgendaValueTone(value: string): 'positive' | 'negative' | 'neutral' {
-  if (value.startsWith('+')) return 'positive';
+function getAgendaValueTone(value: string, prompt: ActionPrompt): 'positive' | 'negative' | 'neutral' {
+  if (value.startsWith('+')) return prompt === 'target' ? 'negative' : 'positive';
   if (value.startsWith('-')) return 'negative';
   if (value.endsWith('%')) {
     const numeric = Number.parseFloat(value);
-    if (!Number.isNaN(numeric) && numeric >= 70) return 'positive';
-    if (!Number.isNaN(numeric) && numeric <= 40) return 'negative';
+    if (Number.isNaN(numeric)) return 'neutral';
+    if (prompt === 'target') return 'negative';
+    if (prompt === 'close') return 'negative';
+    if (prompt === 'protect') return numeric >= 70 ? 'neutral' : 'negative';
+    if (numeric >= 70) return 'positive';
     return 'neutral';
   }
   return 'neutral';
 }
 
-function renderAgendaSummary(text: string): ReactNode[] {
+function renderAgendaSummary(text: string, prompt: ActionPrompt): ReactNode[] {
   const parts = text.split(AGENDA_SUMMARY_TOKEN_PATTERN);
 
   return parts.map((part, index) => {
     if (!part) return null;
 
     if (/^[+-]?\d+(?:\.\d+)?%$/.test(part)) {
-      const tone = getAgendaValueTone(part);
+      const tone = getAgendaValueTone(part, prompt);
       return (
         <strong key={`value-${index}`} className={`action-agenda-emphasis ${tone}`}>
           {part}
@@ -124,15 +122,18 @@ function ActionAgendaGroup({
       {items.length > 0 ? (
         <div className="action-agenda-group-cards">
           {items.map((item) => (
-            <article key={`${prompt}-${item.pillar}`} className="action-agenda-pill-card">
+            <article key={`${prompt}-${item.id}`} className="action-agenda-pill-card">
               <div className="action-agenda-pill-card-top">
                 <span className="action-agenda-pill-card-icon" aria-hidden="true">
                   <ChartSectionIcon name={meta.icon} />
                 </span>
-                <h4 className="action-agenda-pill-card-title">{item.pillar}</h4>
+                <div className="action-agenda-pill-card-heading">
+                  <span className="action-agenda-pill-card-pillar">{item.pillar}</span>
+                  <h4 className="action-agenda-pill-card-title">{item.title}</h4>
+                </div>
               </div>
               <p className="action-agenda-pill-card-summary">
-                {renderAgendaSummary(stripPillarPrefix(item.summary, item.pillar))}
+                {renderAgendaSummary(item.summary, prompt)}
               </p>
             </article>
           ))}
@@ -155,7 +156,7 @@ export function ActionAgenda({ agenda }: ActionAgendaProps) {
           title="Action agenda"
           titleClassName="action-agenda-title"
           subtitleClassName="action-agenda-subtitle"
-          subtitle="Evidence-led discussion prompts citing pillar, score, movement, and data limitations."
+          subtitle="Survey signals that need attention, with the exact item behind each card."
         />
       </div>
 

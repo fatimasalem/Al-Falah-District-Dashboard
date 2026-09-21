@@ -35,10 +35,10 @@ const TILE_GAP = 5;
 const TILE_RADIUS = 10;
 const TILE_PADDING = 12;
 
-const QUADRANT_LEGEND: Array<{ key: MomentumQuadrant; label: string; color: string }> = [
-  { key: 'scale', label: 'Scale', color: '#86efac' },
-  { key: 'protect', label: 'Protect', color: '#93c5fd' },
-  { key: 'investigate', label: 'Investigate', color: '#f8d7d7' },
+const SCORE_BAND_LEGEND: Array<{ key: MomentumQuadrant; label: string; color: string }> = [
+  { key: 'scale', label: 'Scale · 75%+', color: '#86efac' },
+  { key: 'protect', label: 'Protect · 70–74%', color: '#93c5fd' },
+  { key: 'investigate', label: 'Below 70%', color: '#f8d7d7' },
 ];
 
 function getPillarIcon(sectionId: string): string {
@@ -51,11 +51,9 @@ function getDeltaToneClass(yoyChange: number): string {
   return 'momentum-treemap-delta-neutral';
 }
 
-function getTreemapFill(quadrant: MomentumQuadrant, yoyChange: number): string {
+function getTreemapFill(quadrant: MomentumQuadrant): string {
   if (quadrant === 'scale') return '#bbf7d0';
   if (quadrant === 'protect') return '#dbeafe';
-  if (yoyChange < -3) return '#efb4b4';
-  if (yoyChange < 0) return '#f5c8c8';
   return '#f8d7d7';
 }
 
@@ -69,7 +67,7 @@ function toTreemapNodes(items: MomentumMatrixItem[]): MomentumTreemapNode[] {
     pillar: item.pillar,
     yoyChange: item.yoyChange,
     weight: totalScore > 0 ? (item.score2025 / totalScore) * 100 : 0,
-    fill: getTreemapFill(item.quadrant, item.yoyChange),
+    fill: getTreemapFill(item.quadrant),
     icon: getPillarIcon(item.sectionId),
     quadrant: item.quadrant,
   }));
@@ -236,8 +234,8 @@ export function MomentumMatrix({ items, viewMode, compareYears, embedded = false
           />
         </ResponsiveContainer>
       </div>
-      <ul className="momentum-treemap-legend" aria-label="Momentum quadrant legend">
-        {QUADRANT_LEGEND.map((entry) => (
+      <ul className="momentum-treemap-legend" aria-label="Score band legend">
+        {SCORE_BAND_LEGEND.map((entry) => (
           <li key={entry.key}>
             <span
               className="momentum-treemap-legend-swatch"

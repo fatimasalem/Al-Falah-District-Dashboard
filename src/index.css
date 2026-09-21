@@ -4644,11 +4644,11 @@ button {
 }
 
 .analytics-risk-yoy.is-rise {
-  color: #dc2626;
+  color: #059669;
 }
 
 .analytics-risk-yoy.is-fall {
-  color: #059669;
+  color: #dc2626;
 }
 
 .analytics-risk-yoy-value {
@@ -5014,9 +5014,25 @@ button {
 
 .action-agenda-pill-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.action-agenda-pill-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.action-agenda-pill-card-pillar {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+  line-height: 1.2;
 }
 
 .action-agenda-pill-card-title {

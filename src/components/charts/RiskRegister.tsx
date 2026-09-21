@@ -32,13 +32,14 @@ function formatPercent(value: number): string {
 function getRiskLevel(
   item: RiskRegisterItem,
   year: SurveyYear,
-  isYoY: boolean,
 ): { label: string; tone: 'moderate' | 'stable' | 'pending' | 'na' } {
   if (item.status === 'not_applicable') return { label: 'N/A', tone: 'na' };
   if (item.status === 'unavailable') return { label: 'Pending', tone: 'pending' };
-  const concern = pickYearValue(item.negative2024, item.negative2025, year) ?? 0;
-  const worsening = isYoY && (item.yoyChange ?? 0) > 0;
-  if (concern >= 20 || worsening) return { label: 'Moderate', tone: 'moderate' };
+
+  const current = pickYearValue(item.negative2024, item.negative2025, year) ?? 0;
+  const previous = year === '2025' ? item.negative2024 : item.negative2025;
+  const concern = Math.max(current, previous ?? current);
+  if (concern >= 15) return { label: 'Moderate', tone: 'moderate' };
   return { label: 'Stable', tone: 'stable' };
 }
 
@@ -118,7 +119,7 @@ export function RiskRegister({
         </thead>
         <tbody>
           {items.map((item) => {
-            const risk = getRiskLevel(item, displayYear, isYoY);
+            const risk = getRiskLevel(item, displayYear);
             const yoyDirection = item.yoyChange == null || item.yoyChange === 0
               ? 'flat'
               : item.yoyChange > 0
@@ -139,7 +140,7 @@ export function RiskRegister({
                   <span className={`analytics-risk-badge analytics-risk-badge-${risk.tone}`}>
                     {risk.label}
                     {risk.tone === 'moderate' || risk.tone === 'stable' ? (
-                      <TrendIcon direction={risk.tone === 'moderate' ? 'up' : 'down'} />
+                      <TrendIcon direction={yoyDirection} />
                     ) : null}
                   </span>
                 </td>
