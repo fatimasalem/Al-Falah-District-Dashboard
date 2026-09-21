@@ -986,7 +986,7 @@
           "labelAr": "العلاقة بقوة العمل",
           "labelEn": "Relationship with the work force",
           "categoryAr": "له/ لها دخل أو إيراد",
-          "categoryEn": "His/her income or income",
+          "categoryEn": "He/She has income or revenue",
           "data": {
             "2024": 36.8,
             "2025": 31.9
@@ -7628,7 +7628,7 @@
           "labelAr": "نوع ملكية السكن",
           "labelEn": "Type of housing ownership",
           "categoryAr": "ملك",
-          "categoryEn": "king",
+          "categoryEn": "Homeowner",
           "data": {
             "2024": 41.3,
             "2025": 20.6
