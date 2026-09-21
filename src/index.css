@@ -5969,6 +5969,17 @@ button {
   min-width: 0;
 }
 
+.grouped-diverging-likert-sentiment-legend {
+  justify-content: flex-end;
+  padding: 8px 0 4px;
+  margin-left: auto;
+}
+
+.grouped-diverging-likert-sentiment-legend .sentiment-legend-swatch.is-neutral {
+  border: 1px solid #cbd5e1;
+  box-sizing: border-box;
+}
+
 .grouped-diverging-likert-chart-wrap.is-scrollable {
   flex: 1 1 auto;
   min-height: 0;

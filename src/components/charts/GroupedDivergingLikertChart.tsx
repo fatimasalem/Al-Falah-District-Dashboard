@@ -74,6 +74,63 @@ function getBarColors(variant: 'positive' | 'risk') {
   return variant === 'risk' ? RISK_BAR_COLORS : POSITIVE_BAR_COLORS;
 }
 
+const POSITIVE_SENTIMENT_LEGEND_ITEMS: Array<{
+  key: SentimentSegment;
+  label: string;
+  colorKey: 'dark' | 'neutral' | 'light';
+}> = [
+  { key: 'satisfied', label: 'Satisfied', colorKey: 'dark' },
+  { key: 'neutral', label: 'Neutral', colorKey: 'neutral' },
+  { key: 'dissatisfied', label: 'Dissatisfied', colorKey: 'light' },
+];
+
+const RISK_SENTIMENT_LEGEND_ITEMS: Array<{
+  key: SentimentSegment;
+  label: string;
+  colorKey: 'dark' | 'neutral' | 'light';
+}> = [
+  { key: 'satisfied', label: 'Agree', colorKey: 'dark' },
+  { key: 'neutral', label: 'Neutral', colorKey: 'neutral' },
+  { key: 'dissatisfied', label: 'Disagree', colorKey: 'light' },
+];
+
+function getSentimentLegendItems(variant: 'positive' | 'risk') {
+  return variant === 'risk' ? RISK_SENTIMENT_LEGEND_ITEMS : POSITIVE_SENTIMENT_LEGEND_ITEMS;
+}
+
+function getSentimentSegmentLabel(segment: SentimentSegment, variant: 'positive' | 'risk'): string {
+  const items = getSentimentLegendItems(variant);
+  return items.find((item) => item.key === segment)?.label ?? segment;
+}
+
+function DivergingLikertSentimentLegend({ variant }: { variant: 'positive' | 'risk' }) {
+  const barColors = getBarColors(variant);
+  const colors = {
+    dark: barColors.dark,
+    neutral: NEUTRAL_COLOR,
+    light: barColors.light,
+  };
+  const items = getSentimentLegendItems(variant);
+  const ariaLabels = items.map((item) => item.label).join(', ');
+
+  return (
+    <div
+      className="sentiment-legend grouped-diverging-likert-sentiment-legend"
+      aria-label={`Bar colors show ${ariaLabels}`}
+    >
+      {items.map((item) => (
+        <span key={item.key} className="sentiment-legend-item">
+          <span
+            className={`sentiment-legend-swatch${item.colorKey === 'neutral' ? ' is-neutral' : ''}`}
+            style={{ background: colors[item.colorKey] }}
+          />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function scaleDivergingX(value: number): number {
   const innerWidth = PLOT_WIDTH - PLOT_MARGIN.left - PLOT_MARGIN.right;
   return PLOT_MARGIN.left + ((value + 100) / 200) * innerWidth;
@@ -231,8 +288,11 @@ function makeDivergingBarLabel(rows: ChartRow[], segment: SentimentSegment, vari
   );
 }
 
-function formatDivergingStatementTooltip(row: ChartRow): string {
-  return `${row.fullName}\nDissatisfied: ${row.dissatisfied.toFixed(1)}%\nNeutral: ${row.neutral.toFixed(1)}%\nSatisfied: ${row.satisfied.toFixed(1)}%`;
+function formatDivergingStatementTooltip(row: ChartRow, variant: 'positive' | 'risk'): string {
+  const disagreeLabel = getSentimentSegmentLabel('dissatisfied', variant);
+  const neutralLabel = getSentimentSegmentLabel('neutral', variant);
+  const agreeLabel = getSentimentSegmentLabel('satisfied', variant);
+  return `${row.fullName}\n${disagreeLabel}: ${row.dissatisfied.toFixed(1)}%\n${neutralLabel}: ${row.neutral.toFixed(1)}%\n${agreeLabel}: ${row.satisfied.toFixed(1)}%`;
 }
 
 type DivergingBarShapeProps = {
@@ -668,7 +728,7 @@ export function GroupedDivergingLikertChart({
                     <div
                       key={row.id}
                       className={`statement-bar-label${isCurrentYearRow(row) ? ' is-yoy-current' : isYoY ? ' is-yoy-previous' : ''}`}
-                      title={formatDivergingStatementTooltip(row)}
+                      title={formatDivergingStatementTooltip(row, variant)}
                     >
                       <span
                         className={`statement-bar-label-icon ${labelIconClass}`}
@@ -706,7 +766,7 @@ export function GroupedDivergingLikertChart({
                         legendType="none"
                         radius={[4, 0, 0, 4]}
                         isAnimationActive={false}
-                        shape={makeDivergingBarShape('Dissatisfied')}
+                        shape={makeDivergingBarShape(getSentimentSegmentLabel('dissatisfied', variant))}
                         label={makeDivergingBarLabel(chartData, 'dissatisfied', variant)}
                       />
                       <Bar
@@ -715,7 +775,7 @@ export function GroupedDivergingLikertChart({
                         fill={NEUTRAL_COLOR}
                         legendType="none"
                         isAnimationActive={false}
-                        shape={makeDivergingBarShape('Neutral')}
+                        shape={makeDivergingBarShape(getSentimentSegmentLabel('neutral', variant))}
                         label={makeDivergingBarLabel(chartData, 'neutral', variant)}
                       />
                       <Bar
@@ -725,7 +785,7 @@ export function GroupedDivergingLikertChart({
                         legendType="none"
                         radius={[0, 4, 4, 0]}
                         isAnimationActive={false}
-                        shape={makeDivergingBarShape('Satisfied')}
+                        shape={makeDivergingBarShape(getSentimentSegmentLabel('satisfied', variant))}
                         label={makeDivergingBarLabel(chartData, 'satisfied', variant)}
                       />
                     </BarChart>
@@ -734,6 +794,7 @@ export function GroupedDivergingLikertChart({
               </div>
             </div>
             <DivergingLikertAxisRail labelColumnWidth={labelColumnWidth} />
+            <DivergingLikertSentimentLegend variant={variant} />
           </div>
         )}
       </div>

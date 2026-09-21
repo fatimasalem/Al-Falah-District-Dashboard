@@ -5002,6 +5002,11 @@ export function getWorkStatementsByPolarity(
     .sort((a, b) => b.value2025 - a.value2025);
 }
 
+/** Keep statements where agreement/satisfaction is the plurality (chart lane meaning). */
+function isDominantAgreementRow(row: DivergingLikertStatementRow): boolean {
+  return row.satisfied >= row.neutral && row.satisfied >= row.dissatisfied;
+}
+
 export function getWorkDivergingLikertRows(
   questions: import('./types').Question[],
   year: import('./types').SurveyYear,
@@ -5009,8 +5014,10 @@ export function getWorkDivergingLikertRows(
   viewMode: import('./types').ViewMode = 'current',
   compareYears: import('./types').CompareYears = ['2024', '2025'],
 ): DivergingLikertStatementRow[] {
+  // Year mode: selected year must lead. YoY: recent year (compareYears[1] / `year`) must lead.
   const filtered = getLikertStatementsByCode(questions, 'Q210')
     .filter((question) => resolveStatementPolarity(question, WORK_RISK_STATEMENT_MATCHERS) === polarity)
+    .filter((question) => isDominantAgreementRow(toDivergingLikertStatementRow(question, year)))
     .sort((a, b) => (b.data[year]?.agreement ?? 0) - (a.data[year]?.agreement ?? 0));
 
   if (viewMode === 'yoy') {
