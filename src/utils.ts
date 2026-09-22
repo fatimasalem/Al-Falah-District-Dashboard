@@ -1906,27 +1906,33 @@ export function generateSecurityDotPlotInsight(
   concernItems: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  const topConcern = concernItems[0];
-  const topConfidence = confidenceItems[0];
+  const topConcern = [...concernItems].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  const topConfidence = [...confidenceItems].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
 
-  if (topConcern && topConcern.value2025 >= 55) {
+  if (topConcern && pickYearValue(topConcern.value2024, topConcern.value2025, year) >= 55) {
+    const concernValue = pickYearValue(topConcern.value2024, topConcern.value2025, year);
     return [
       { bold: topConcern.name },
       ' is the leading reported concern in ',
       { bold: year },
       ' at ',
-      { bold: `${topConcern.value2025.toFixed(1)}%`, tone: 'negative' },
+      { bold: `${concernValue.toFixed(1)}%`, tone: 'negative' },
       ' agreement.',
     ];
   }
 
   if (topConfidence) {
+    const confidenceValue = pickYearValue(topConfidence.value2024, topConfidence.value2025, year);
     return [
       { bold: topConfidence.name },
       ' is the strongest confidence signal in ',
       { bold: year },
       ' at ',
-      { bold: `${topConfidence.value2025.toFixed(1)}%`, tone: 'positive' },
+      { bold: `${confidenceValue.toFixed(1)}%`, tone: 'positive' },
       ' agreement.',
     ];
   }
@@ -3160,7 +3166,15 @@ export function generatePillarCompositionInsight(
     return ['Approved pillar scores are not yet available for this composition view.'];
   }
 
-  const leader = [...approved].sort((a, b) => (b.value2025 ?? 0) - (a.value2025 ?? 0))[0];
+  const leader = [...approved].sort((a, b) => {
+    const aValue = mode === 'yoy'
+      ? (a.value2025 ?? 0)
+      : pickYearValue(a.value2024 ?? 0, a.value2025 ?? 0, year);
+    const bValue = mode === 'yoy'
+      ? (b.value2025 ?? 0)
+      : pickYearValue(b.value2024 ?? 0, b.value2025 ?? 0, year);
+    return bValue - aValue;
+  })[0];
   const leaderValue = mode === 'yoy'
     ? leader.value2025!
     : (year === '2024' ? leader.value2024! : leader.value2025!);
@@ -3281,20 +3295,24 @@ export function generateResidualRiskRegisterInsight(
 export function generateStatementRegisterInsight(
   rows: StatementRegisterRow[],
   questionLabel: string,
+  year: SurveyYear = '2025',
 ): InsightPart[] {
   if (rows.length === 0) {
     return [`No ${questionLabel} statements are available in this register.`];
   }
 
+  const agreementOf = (row: StatementRegisterRow) => pickYearValue(row.agreement2024, row.agreement2025, year);
   const positiveRows = rows.filter((row) => row.polarity === 'positive');
   const riskRows = rows.filter((row) => row.polarity === 'negative');
-  const topPositive = [...positiveRows].sort((left, right) => right.agreement2025 - left.agreement2025)[0];
-  const topRisk = [...riskRows].sort((left, right) => right.agreement2025 - left.agreement2025)[0];
+  const topPositive = [...positiveRows].sort((left, right) => agreementOf(right) - agreementOf(left))[0];
+  const topRisk = [...riskRows].sort((left, right) => agreementOf(right) - agreementOf(left))[0];
+  const topRiskAgreement = topRisk ? agreementOf(topRisk) : 0;
+  const topPositiveAgreement = topPositive ? agreementOf(topPositive) : 0;
 
-  if (topRisk && topRisk.agreement2025 >= 25) {
+  if (topRisk && topRiskAgreement >= 25) {
     return [
       'Highest risk signal at ',
-      { bold: `${topRisk.agreement2025.toFixed(1)}%`, tone: 'negative' },
+      { bold: `${topRiskAgreement.toFixed(1)}%`, tone: 'negative' },
       ' agreement; ',
       { bold: String(positiveRows.length) },
       ' positive and ',
@@ -3308,7 +3326,7 @@ export function generateStatementRegisterInsight(
   if (topPositive) {
     return [
       'Strongest positive signal at ',
-      { bold: `${topPositive.agreement2025.toFixed(1)}%`, tone: topPositive.agreement2025 >= 70 ? 'positive' : undefined },
+      { bold: `${topPositiveAgreement.toFixed(1)}%`, tone: topPositiveAgreement >= 70 ? 'positive' : undefined },
       ' agreement across ',
       { bold: String(rows.length) },
       ' ',
@@ -4504,7 +4522,9 @@ export function generateHealthSubgroupInsight(
   year: import('./types').SurveyYear,
   subgroup: 'q501' | 'q502',
 ): InsightPart[] {
-  const top = items[0];
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
   if (!top) {
     return subgroup === 'q501'
       ? ['No Q501 health center assessment statements are available.']
@@ -4775,7 +4795,9 @@ export function generateEnvironmentPositiveStatementsInsight(
   items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  const top = items[0];
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
   if (!top) {
     return ['No positive Q601 environment statements are available.'];
   }
@@ -4920,7 +4942,9 @@ export function generateHousingPositiveStatementsInsight(
   items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  const top = items[0];
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
   if (!top) {
     return ['No positive Q701 housing statements are available.'];
   }
@@ -5289,12 +5313,19 @@ function interpretStatementRow(
   polarity: import('./types').IndicatorPolarity,
   agreement: number,
   movement: number,
+  includeYoY = true,
 ): string {
   if (polarity === 'negative') {
     if (agreement >= 60) {
+      if (!includeYoY) {
+        return 'Elevated reported concern — higher agreement means more residents report this issue, not an improvement outcome.';
+      }
       return movement > 0
         ? 'Elevated reported concern — agreement rose, indicating more residents report this issue.'
         : 'Elevated reported concern — higher agreement means more residents report this issue, not an improvement outcome.';
+    }
+    if (!includeYoY) {
+      return 'Moderate reported concern — lower values are more favourable for risk indicators.';
     }
     return movement < 0
       ? 'Reported concern eased versus the prior year, but this remains a risk-framed indicator.'
@@ -5302,9 +5333,16 @@ function interpretStatementRow(
   }
 
   if (agreement >= 70) {
+    if (!includeYoY) {
+      return 'Strong positive signal based on agreement in the selected year.';
+    }
     return movement >= 0
       ? 'Strong positive signal with stable or improving agreement.'
       : 'Strong positive signal, though agreement softened year on year.';
+  }
+
+  if (!includeYoY) {
+    return 'Mixed or moderate positive signal in the selected year.';
   }
 
   return movement >= 0
@@ -5330,7 +5368,11 @@ export function getStatementRegisterData(
   questions: import('./types').Question[],
   compareYears: import('./types').CompareYears,
   questionCode?: string,
+  viewMode: ViewMode = 'yoy',
+  selectedYear: SurveyYear = '2025',
 ): StatementRegisterRow[] {
+  const includeYoY = viewMode === 'yoy';
+
   return getLikertStatements(questions)
     .filter((question) => !questionCode || question.code === questionCode)
     .map((question) => {
@@ -5339,6 +5381,10 @@ export function getStatementRegisterData(
       const agreement2025 = question.data[compareYears[1]]?.agreement ?? 0;
       const disagreement2024 = getLikertDisagreementPercent(question.data[compareYears[0]]?.breakdown ?? {});
       const disagreement2025 = getLikertDisagreementPercent(question.data[compareYears[1]]?.breakdown ?? {});
+      const focusAgreement = includeYoY
+        ? agreement2025
+        : pickYearValue(agreement2024, agreement2025, selectedYear);
+      const movement = agreement2025 - agreement2024;
 
       return {
         id: `${question.code}-${question.statementAr}`,
@@ -5350,8 +5396,8 @@ export function getStatementRegisterData(
         agreement2025,
         disagreement2024,
         disagreement2025,
-        movement: agreement2025 - agreement2024,
-        interpretation: interpretStatementRow(polarity, agreement2025, agreement2025 - agreement2024),
+        movement,
+        interpretation: interpretStatementRow(polarity, focusAgreement, movement, includeYoY),
       };
     });
 }
@@ -5467,6 +5513,8 @@ function concernClause(statement: string): string {
 function getAllAgendaSignals(
   data: import('./types').SurveyData,
   compareYears: import('./types').CompareYears,
+  viewMode: ViewMode = 'yoy',
+  selectedYear: SurveyYear = '2025',
 ): AgendaStatementSignal[] {
   return Object.entries(AGENDA_QUESTION_CODES).flatMap(([sectionId, codes]) => {
     const section = data.sections[sectionId];
@@ -5482,7 +5530,9 @@ function getAllAgendaSignals(
           id: `${sectionId}-${question.code}-${statement}`,
           sectionId,
           pillar: section.nameEn,
-          agreement: later,
+          agreement: viewMode === 'current'
+            ? (question.data[selectedYear]?.agreement ?? 0)
+            : later,
           movement: getYearDelta(earlier, later, compareYears),
           statement,
           shortLabel: getAgendaShortLabel(sectionId, statement),
@@ -5513,7 +5563,11 @@ function joinPillarNames(names: string[]): string {
   return `${unique.slice(0, -1).join(', ')}, and ${unique[unique.length - 1]}`;
 }
 
-function toAgendaItem(prompt: ActionPrompt, signal: AgendaStatementSignal): ActionAgendaItem {
+function toAgendaItem(
+  prompt: ActionPrompt,
+  signal: AgendaStatementSignal,
+  includeYoYComparisons = true,
+): ActionAgendaItem {
   if (prompt === 'target') {
     return {
       id: signal.id,
@@ -5535,7 +5589,7 @@ function toAgendaItem(prompt: ActionPrompt, signal: AgendaStatementSignal): Acti
   }
 
   if (prompt === 'protect') {
-    const slipNote = signal.movement < 0
+    const slipNote = includeYoYComparisons && signal.movement < 0
       ? ` Fell ${Math.abs(signal.movement).toFixed(1)}pp vs last year.`
       : '';
     return {
@@ -5568,7 +5622,10 @@ function rankAgendaSignals(prompt: ActionPrompt, signals: AgendaStatementSignal[
 export function generateActionAgenda(
   data: import('./types').SurveyData,
   compareYears: import('./types').CompareYears,
+  viewMode: ViewMode = 'yoy',
+  selectedYear: SurveyYear = '2025',
 ): Record<ActionPrompt, ActionAgendaItem[]> {
+  const includeYoYComparisons = viewMode === 'yoy';
   const buckets: Record<ActionPrompt, AgendaStatementSignal[]> = {
     target: [],
     protect: [],
@@ -5576,14 +5633,14 @@ export function generateActionAgenda(
     scale: [],
   };
 
-  for (const signal of getAllAgendaSignals(data, compareYears)) {
+  for (const signal of getAllAgendaSignals(data, compareYears, viewMode, selectedYear)) {
     const lane = classifyAgendaSignal(signal);
     if (lane) buckets[lane].push(signal);
   }
 
   const pendingPillars = getEvidenceCoverageSummary(data).pendingPillars;
   const close: ActionAgendaItem[] = [
-    ...rankAgendaSignals('close', buckets.close).map((signal) => toAgendaItem('close', signal)),
+    ...rankAgendaSignals('close', buckets.close).map((signal) => toAgendaItem('close', signal, includeYoYComparisons)),
     ...pendingPillars.map((pillar) => ({
       id: `pending-${pillar}`,
       prompt: 'close' as const,
@@ -5594,9 +5651,9 @@ export function generateActionAgenda(
   ];
 
   return {
-    target: rankAgendaSignals('target', buckets.target).map((signal) => toAgendaItem('target', signal)),
-    protect: rankAgendaSignals('protect', buckets.protect).map((signal) => toAgendaItem('protect', signal)),
-    scale: rankAgendaSignals('scale', buckets.scale).map((signal) => toAgendaItem('scale', signal)),
+    target: rankAgendaSignals('target', buckets.target).map((signal) => toAgendaItem('target', signal, includeYoYComparisons)),
+    protect: rankAgendaSignals('protect', buckets.protect).map((signal) => toAgendaItem('protect', signal, includeYoYComparisons)),
+    scale: rankAgendaSignals('scale', buckets.scale).map((signal) => toAgendaItem('scale', signal, includeYoYComparisons)),
     close,
   };
 }

@@ -46,32 +46,38 @@ function buildChartRows(
 ): ChartRow[] {
   const isYoY = mode === 'yoy';
 
-  return items.map((item) => {
-    const isPending = item.status !== 'approved'
-      || (isYoY
-        ? item.value2024 == null || item.value2025 == null
-        : (selectedYear === '2024' ? item.value2024 : item.value2025) == null);
+  return items
+    .map((item) => {
+      const isPending = item.status !== 'approved'
+        || (isYoY
+          ? item.value2024 == null || item.value2025 == null
+          : (selectedYear === '2024' ? item.value2024 : item.value2025) == null);
 
-    const displayValue = isPending
-      ? null
-      : isYoY
-        ? item.value2025
-        : selectedYear === '2024'
-          ? item.value2024
-          : item.value2025;
+      const displayValue = isPending
+        ? null
+        : isYoY
+          ? item.value2025
+          : selectedYear === '2024'
+            ? item.value2024
+            : item.value2025;
 
-    return {
-      name: item.sectionId,
-      displayLabel: getPillarLabel(item.sectionId, item.name),
-      fullName: item.name,
-      sectionId: item.sectionId,
-      icon: getPillarIcon(item.sectionId),
-      value2024: isPending ? null : item.value2024,
-      value2025: isPending ? null : item.value2025,
-      displayValue,
-      isPending,
-    };
-  });
+      return {
+        name: item.sectionId,
+        displayLabel: getPillarLabel(item.sectionId, item.name),
+        fullName: item.name,
+        sectionId: item.sectionId,
+        icon: getPillarIcon(item.sectionId),
+        value2024: isPending ? null : item.value2024,
+        value2025: isPending ? null : item.value2025,
+        displayValue,
+        isPending,
+      };
+    })
+    .sort((a, b) => {
+      if (a.isPending && !b.isPending) return 1;
+      if (!a.isPending && b.isPending) return -1;
+      return (b.displayValue ?? 0) - (a.displayValue ?? 0);
+    });
 }
 
 function scaleX(value: number): number {

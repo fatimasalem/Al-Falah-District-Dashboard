@@ -42,16 +42,18 @@ function buildChartRows(
   isYoY: boolean,
   displayYear: SurveyYear,
 ): ChartRow[] {
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    fullName: item.fullName,
-    value2024: item.value2024,
-    value2025: item.value2025,
-    displayValue: isYoY
-      ? item.value2025
-      : pickYearValue(item.value2024, item.value2025, displayYear),
-  }));
+  return items
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      fullName: item.fullName,
+      value2024: item.value2024,
+      value2025: item.value2025,
+      displayValue: isYoY
+        ? item.value2025
+        : pickYearValue(item.value2024, item.value2025, displayYear),
+    }))
+    .sort((a, b) => b.displayValue - a.displayValue);
 }
 
 function scaleX(value: number): number {

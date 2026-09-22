@@ -239,6 +239,8 @@ function WorkEducationCharts({
         workSection={workSection}
         educationSection={educationSection}
         compareYears={compareYears}
+        viewMode={viewMode}
+        selectedYear={selectedYear}
       />
     </div>
   );
@@ -248,7 +250,13 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const confidenceItems = getSecurityConfidenceStatements(section.questions, compareYears);
   const concernItems = getSecurityConcernStatements(section.questions, compareYears);
-  const statementRegister = getStatementRegisterData(section.questions, compareYears, 'Q401');
+  const statementRegister = getStatementRegisterData(
+    section.questions,
+    compareYears,
+    'Q401',
+    viewMode,
+    selectedYear,
+  );
   const confidenceRegister = statementRegister.filter((row) => row.polarity === 'positive');
   const concernRegister = statementRegister.filter((row) => row.polarity === 'negative');
 
@@ -265,7 +273,14 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
       />
       <StatementRegister
         title="Q401 statement register"
-        subtitle="Review Security pillar statements with agreement, disagreement, and movement."
+        subtitle={
+          viewMode === 'yoy'
+            ? 'Review Security pillar statements with agreement, disagreement, and movement.'
+            : `Review Security pillar statements with agreement and disagreement for ${selectedYear}.`
+        }
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        compareYears={compareYears}
         tabs={[
           {
             id: 'confidence',
@@ -344,7 +359,13 @@ function HealthCharts({ section, viewMode, selectedYear, compareYears }: Section
 
 function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: SectionChartsProps) {
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
-  const statementRegister = getStatementRegisterData(section.questions, compareYears, 'Q601');
+  const statementRegister = getStatementRegisterData(
+    section.questions,
+    compareYears,
+    'Q601',
+    viewMode,
+    selectedYear,
+  );
   const positiveRegister = statementRegister.filter((row) => row.polarity === 'positive');
   const riskRegister = statementRegister.filter((row) => row.polarity === 'negative');
   const positiveItems = getEnvironmentPositiveStatements(section.questions, compareYears);
@@ -363,7 +384,14 @@ function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: Se
       />
       <StatementRegister
         title="Q601 statement register"
-        subtitle="Review Environment pillar statements with agreement, disagreement, and movement."
+        subtitle={
+          viewMode === 'yoy'
+            ? 'Review Environment pillar statements with agreement, disagreement, and movement.'
+            : `Review Environment pillar statements with agreement and disagreement for ${selectedYear}.`
+        }
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        compareYears={compareYears}
         tabs={[
           {
             id: 'positive',

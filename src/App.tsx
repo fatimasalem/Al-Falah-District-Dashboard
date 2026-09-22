@@ -381,7 +381,7 @@ export default function App() {
               maxItems={activeTab === 'overview' || activeTab === 'health' || activeTab === 'work-education' || activeTab === 'housing-infrastructure' ? 5 : 4}
             />
             {activeTab === 'overview' && (
-              <ActionAgenda agenda={generateActionAgenda(data, compareYears)} />
+              <ActionAgenda agenda={generateActionAgenda(data, compareYears, viewMode, selectedYear)} />
             )}
             <div className="dashboard-split">
               {activeTab === 'overview' ? (
