@@ -1,11 +1,9 @@
 import type { CompareYears, SurveyYear, ViewMode } from '../../types';
-import type { MomentumMatrixItem, RiskRegisterItem } from '../../utils';
+import type { RiskRegisterItem } from '../../utils';
 import { ChartSectionHeader } from '../charts/ChartSectionHeader';
-import { MomentumMatrix } from '../charts/MomentumMatrix';
 import { RiskRegister } from '../charts/RiskRegister';
 
 interface ExecutiveDecisionLensProps {
-  momentumItems: MomentumMatrixItem[];
   riskItems: RiskRegisterItem[];
   viewMode: ViewMode;
   selectedYear: SurveyYear;
@@ -13,7 +11,6 @@ interface ExecutiveDecisionLensProps {
 }
 
 export function ExecutiveDecisionLens({
-  momentumItems,
   riskItems,
   viewMode,
   selectedYear,
@@ -27,12 +24,11 @@ export function ExecutiveDecisionLens({
           title="Executive decision lens"
           titleClassName="executive-decision-lens-title"
           subtitleClassName="executive-decision-lens-subtitle"
-          subtitle="Relate 2025 performance, year-on-year momentum, and unresolved risk in one management view."
+          subtitle="Surface unresolved residual risk across approved pillars in one management view."
         />
       </header>
 
-      <div className="executive-decision-lens-grid">
-        <MomentumMatrix items={momentumItems} viewMode={viewMode} compareYears={compareYears} embedded />
+      <div className="executive-decision-lens-grid executive-decision-lens-grid-single">
         <RiskRegister
           items={riskItems}
           viewMode={viewMode}

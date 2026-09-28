@@ -17,6 +17,8 @@ interface MomentumMatrixProps {
   viewMode: ViewMode;
   compareYears: CompareYears;
   embedded?: boolean;
+  /** Render only the treemap body (no header, legend, or insight). */
+  chartOnly?: boolean;
 }
 
 interface MomentumTreemapNode {
@@ -35,10 +37,10 @@ const TILE_GAP = 5;
 const TILE_RADIUS = 10;
 const TILE_PADDING = 12;
 
-const SCORE_BAND_LEGEND: Array<{ key: MomentumQuadrant; label: string; color: string }> = [
+export const SCORE_BAND_LEGEND: Array<{ key: MomentumQuadrant; label: string; color: string }> = [
   { key: 'scale', label: 'Scale · 75%+', color: '#86efac' },
   { key: 'protect', label: 'Protect · 70–74%', color: '#93c5fd' },
-  { key: 'investigate', label: 'Below 70%', color: '#f8d7d7' },
+  { key: 'investigate', label: 'Target · Below 70%', color: '#f8d7d7' },
 ];
 
 function getPillarIcon(sectionId: string): string {
@@ -51,7 +53,7 @@ function getDeltaToneClass(yoyChange: number): string {
   return 'momentum-treemap-delta-neutral';
 }
 
-function getTreemapFill(quadrant: MomentumQuadrant): string {
+export function getScoreBandFill(quadrant: MomentumQuadrant): string {
   if (quadrant === 'scale') return '#bbf7d0';
   if (quadrant === 'protect') return '#dbeafe';
   return '#f8d7d7';
@@ -67,7 +69,7 @@ function toTreemapNodes(items: MomentumMatrixItem[]): MomentumTreemapNode[] {
     pillar: item.pillar,
     yoyChange: item.yoyChange,
     weight: totalScore > 0 ? (item.score2025 / totalScore) * 100 : 0,
-    fill: getTreemapFill(item.quadrant),
+    fill: getScoreBandFill(item.quadrant),
     icon: getPillarIcon(item.sectionId),
     quadrant: item.quadrant,
   }));
@@ -207,7 +209,13 @@ function MomentumTreemapContent(props: {
   );
 }
 
-export function MomentumMatrix({ items, viewMode, compareYears, embedded = false }: MomentumMatrixProps) {
+export function MomentumMatrix({
+  items,
+  viewMode,
+  compareYears,
+  embedded = false,
+  chartOnly = false,
+}: MomentumMatrixProps) {
   const isYoY = viewMode === 'yoy';
   const compareLabel = formatCompareYearsLabel(compareYears);
   const nodes = toTreemapNodes(items);
@@ -220,20 +228,28 @@ export function MomentumMatrix({ items, viewMode, compareYears, embedded = false
   );
   const chartTitle = 'Performance & momentum matrix';
 
+  const treemap = (
+    <div className="momentum-treemap-body">
+      <ResponsiveContainer width="100%" height="100%">
+        <Treemap
+          data={nodes}
+          dataKey="value"
+          stroke="#ffffff"
+          fill="#f8d7d7"
+          content={<MomentumTreemapContent viewMode={viewMode} />}
+          isAnimationActive={false}
+        />
+      </ResponsiveContainer>
+    </div>
+  );
+
+  if (chartOnly) {
+    return treemap;
+  }
+
   const body = (
     <>
-      <div className="momentum-treemap-body">
-        <ResponsiveContainer width="100%" height="100%">
-          <Treemap
-            data={nodes}
-            dataKey="value"
-            stroke="#ffffff"
-            fill="#f8d7d7"
-            content={<MomentumTreemapContent viewMode={viewMode} />}
-            isAnimationActive={false}
-          />
-        </ResponsiveContainer>
-      </div>
+      {treemap}
       <ul className="momentum-treemap-legend" aria-label="Score band legend">
         {SCORE_BAND_LEGEND.map((entry) => (
           <li key={entry.key}>

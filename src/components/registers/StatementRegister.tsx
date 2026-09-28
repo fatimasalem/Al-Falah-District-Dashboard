@@ -199,7 +199,7 @@ export function StatementRegister({
                 <tr key={row.id}>
                   <td>{row.questionGroup}</td>
                   <td className="statement-register-statement" title={row.statementEn ?? row.statementAr}>
-                    {row.statementEn ?? row.statementAr}
+                    {row.statementLabel}
                   </td>
                   <td>
                     <span className={`statement-register-polarity statement-register-polarity--${row.polarity}`}>

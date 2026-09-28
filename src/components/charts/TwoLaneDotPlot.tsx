@@ -264,7 +264,7 @@ export function TwoLaneDotPlot({
   compareYears,
   year,
   viewMode,
-  title = 'Q401 confidence vs concern',
+  title = 'Security confidence & reported concern',
   subtitle,
   insight: insightOverride,
   maxBodyHeight = DEFAULT_MAX_SCROLL_HEIGHT,
@@ -282,8 +282,8 @@ export function TwoLaneDotPlot({
   const currentBarColor = isConcernLane ? DESIGN.negative : DESIGN.chart.yearCurrent;
 
   const defaultSubtitle = isYoY
-    ? `${compareLabel} Q401 ${laneLabel} statements`
-    : `Q401 ${laneLabel} statements for ${displayYear}`;
+    ? `${compareLabel} security ${laneLabel} by statement`
+    : `Security ${laneLabel} by statement for ${displayYear}`;
 
   const activeSubtitle = subtitle ?? defaultSubtitle;
   const rows = buildChartRows(activeItems, isYoY, displayYear);

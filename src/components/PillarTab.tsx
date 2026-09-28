@@ -268,15 +268,15 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
         compareYears={compareYears}
         year={chartYear}
         viewMode={viewMode}
-        title="Q401 confidence vs concern"
+        title="Security confidence & reported concern"
         maxBodyHeight={320}
       />
       <StatementRegister
-        title="Q401 statement register"
+        title="Security statement evidence"
         subtitle={
           viewMode === 'yoy'
-            ? 'Review Security pillar statements with agreement, disagreement, and movement.'
-            : `Review Security pillar statements with agreement and disagreement for ${selectedYear}.`
+            ? 'Agreement, disagreement, and year-on-year movement for Q401 security statements.'
+            : `Agreement and disagreement for Q401 security statements in ${selectedYear}.`
         }
         viewMode={viewMode}
         selectedYear={selectedYear}
@@ -286,13 +286,13 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
             id: 'confidence',
             label: 'Confidence statements',
             rows: confidenceRegister,
-            subtitle: 'Statements where higher agreement reflects stronger perceived security and safety.',
+            subtitle: 'Satisfaction and confidence statements behind the Security pillar.',
           },
           {
             id: 'concern',
             label: 'Reported concern',
             rows: concernRegister,
-            subtitle: 'Risk-framed indicators where higher agreement means more reported concern.',
+            subtitle: 'Risk-framed indicators — higher agreement means more reported concern.',
           },
         ]}
       />
@@ -383,11 +383,11 @@ function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: Se
         viewMode={viewMode}
       />
       <StatementRegister
-        title="Q601 statement register"
+        title="Environment statement evidence"
         subtitle={
           viewMode === 'yoy'
-            ? 'Review Environment pillar statements with agreement, disagreement, and movement.'
-            : `Review Environment pillar statements with agreement and disagreement for ${selectedYear}.`
+            ? 'Agreement, disagreement, and year-on-year movement for Q601 environment statements.'
+            : `Agreement and disagreement for Q601 environment statements in ${selectedYear}.`
         }
         viewMode={viewMode}
         selectedYear={selectedYear}

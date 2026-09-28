@@ -89,7 +89,7 @@ export function AgreementHeatmap({
   const heatmapBody = (
     <div className={`chart-card-body agreement-heatmap-body${embedded ? ' agreement-heatmap-body-embedded' : ''}`}>
       {rows.length === 0 ? (
-        <p className="statement-lollipop-empty">No Q508 wellbeing context data available.</p>
+        <p className="statement-lollipop-empty">No reported wellbeing problems data available.</p>
       ) : (
         <div
           className={`health-heatmap agreement-heatmap agreement-heatmap--risk${
@@ -168,7 +168,7 @@ export function AgreementHeatmap({
 
   const insightFooter = (
     <div className={embedded ? 'health-assessment-lane-insight' : undefined}>
-      <ChartInsightFooter chartTitle="Q508 wellbeing context" insight={insight} singleLine />
+      <ChartInsightFooter chartTitle="Reported wellbeing problems" insight={insight} singleLine />
     </div>
   );
 
@@ -178,7 +178,7 @@ export function AgreementHeatmap({
         <div className="health-assessment-lane-card-header">
           <ChartSectionHeader
             icon="risk-register"
-            title="Q508 wellbeing context"
+            title="Reported wellbeing problems"
             subtitle={laneSubtitle}
             titleClassName="health-assessment-lane-card-title"
             subtitleClassName="health-assessment-lane-card-subtitle"
@@ -198,7 +198,7 @@ export function AgreementHeatmap({
       <div className="chart-card-header">
         <ChartSectionHeader
           icon="risk-register"
-          title="Q508 wellbeing context"
+          title="Reported wellbeing problems"
           subtitle={laneSubtitle}
         />
         <div className="chart-header-actions">

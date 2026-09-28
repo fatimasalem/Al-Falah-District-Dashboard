@@ -30,13 +30,17 @@ export function WorkEducationStatementRegisterSection({
   const positiveRegister = registerRows.filter((row) => row.polarity === 'positive');
   const riskRegister = registerRows.filter((row) => row.polarity === 'negative');
 
+  const title = questionCode === 'Q210'
+    ? 'Employment statement evidence'
+    : 'Education statement evidence';
+
   const subtitle = questionCode === 'Q210'
     ? (isYoY
-      ? 'Review employment pillar statements with agreement, disagreement, and movement.'
-      : `Review employment pillar statements with agreement and disagreement for ${selectedYear}.`)
+      ? 'Agreement, disagreement, and year-on-year movement for Q210 employment statements.'
+      : `Agreement and disagreement for Q210 employment statements in ${selectedYear}.`)
     : (isYoY
-      ? 'Review education pillar statements with agreement, disagreement, and movement.'
-      : `Review education pillar statements with agreement and disagreement for ${selectedYear}.`);
+      ? 'Agreement, disagreement, and year-on-year movement for Q301 education statements.'
+      : `Agreement and disagreement for Q301 education statements in ${selectedYear}.`);
 
   const positiveTabSubtitle = questionCode === 'Q210'
     ? 'Satisfaction and confidence statements behind the Work pillar.'
@@ -50,7 +54,7 @@ export function WorkEducationStatementRegisterSection({
 
   return (
     <StatementRegister
-      title={`${questionCode} statement register`}
+      title={title}
       subtitle={subtitle}
       viewMode={viewMode}
       selectedYear={selectedYear}

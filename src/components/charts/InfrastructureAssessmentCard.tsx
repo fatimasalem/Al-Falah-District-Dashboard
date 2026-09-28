@@ -27,8 +27,8 @@ export function InfrastructureAssessmentCard({
 }: InfrastructureAssessmentCardProps) {
   const isYoY = viewMode === 'yoy';
   const shellSubtitle = isYoY
-    ? `Q801 statement movement and service-access satisfaction (${formatCompareYearsLabel(compareYears)}).`
-    : `Q801 statement movement and service-access satisfaction for ${year}.`;
+    ? `Infrastructure statement agreement and service-access satisfaction (${formatCompareYearsLabel(compareYears)}).`
+    : `Infrastructure statement agreement and service-access satisfaction for ${year}.`;
 
   return (
     <section className="infrastructure-assessment-shell-card" aria-label={title}>

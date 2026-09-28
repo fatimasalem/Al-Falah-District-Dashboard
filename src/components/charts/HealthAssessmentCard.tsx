@@ -35,8 +35,8 @@ export function HealthAssessmentCard({
 }: HealthAssessmentCardProps) {
   const isYoY = viewMode === 'yoy';
   const shellSubtitle = isYoY
-    ? `Q501 and Q502 assessments plus Q508 wellbeing context (${formatCompareYearsLabel(compareYears)}).`
-    : `Q501 and Q502 assessments plus Q508 wellbeing context for ${year}.`;
+    ? `Health center and system quality assessments with reported wellbeing problems (${formatCompareYearsLabel(compareYears)}).`
+    : `Health center and system quality assessments with reported wellbeing problems for ${year}.`;
 
   return (
     <section className="health-assessment-shell-card" aria-label={title}>

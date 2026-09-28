@@ -4,17 +4,17 @@ import {
   formatCompareYearsLabel,
   generateWorkPositiveStatementsInsight,
   generateWorkRiskStatementsInsight,
-  getCurrentYearDivergingLikertRows,
-  type DivergingLikertStatementRow,
   type InsightPart,
+  type StatementComparisonItem,
 } from '../../utils';
 import { ChartInsightFooter } from './ChartInsightFooter';
 import { ChartSectionHeader, ChartSectionIcon } from './ChartSectionHeader';
-import { GroupedDivergingLikertChart } from './GroupedDivergingLikertChart';
+import { StatementYearLegend } from './StatementYearLegend';
+import { WorkStatementChart } from './WorkStatementChart';
 
 interface WorkStatementsCardProps {
-  positiveRows: DivergingLikertStatementRow[];
-  riskRows: DivergingLikertStatementRow[];
+  positiveItems: StatementComparisonItem[];
+  riskItems: StatementComparisonItem[];
   year: SurveyYear;
   viewMode: ViewMode;
   compareYears: CompareYears;
@@ -24,8 +24,8 @@ interface WorkStatementsCardProps {
 }
 
 export function WorkStatementsCard({
-  positiveRows,
-  riskRows,
+  positiveItems,
+  riskItems,
   year,
   viewMode,
   compareYears,
@@ -34,22 +34,23 @@ export function WorkStatementsCard({
   hideShellHeader = false,
 }: WorkStatementsCardProps) {
   const isYoY = viewMode === 'yoy';
+  const insightYear = isYoY ? compareYears[1] : year;
 
-  const positiveInsight = useMemo(() => {
-    const insightRows = getCurrentYearDivergingLikertRows(positiveRows, viewMode, compareYears);
-    return generateWorkPositiveStatementsInsight(insightRows, year);
-  }, [compareYears, positiveRows, viewMode, year]);
-  const riskInsight = useMemo(() => {
-    const insightRows = getCurrentYearDivergingLikertRows(riskRows, viewMode, compareYears);
-    return generateWorkRiskStatementsInsight(insightRows, year);
-  }, [compareYears, riskRows, viewMode, year]);
+  const positiveInsight = useMemo(
+    () => generateWorkPositiveStatementsInsight(positiveItems, insightYear),
+    [insightYear, positiveItems],
+  );
+  const riskInsight = useMemo(
+    () => generateWorkRiskStatementsInsight(riskItems, insightYear),
+    [insightYear, riskItems],
+  );
 
   const shellSubtitle = isYoY
-    ? `${positiveRows.length} positive and ${riskRows.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
-    : `${positiveRows.length} positive and ${riskRows.length} risk Q210 statements for ${year}.`;
+    ? `${positiveItems.length} positive and ${riskItems.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
+    : `${positiveItems.length} positive and ${riskItems.length} risk Q210 statements for ${year}.`;
   const positiveSubtitle = isYoY
-    ? `${formatCompareYearsLabel(compareYears)} employment satisfaction statements, sorted by agreement.`
-    : `Employment satisfaction statements for ${year}, sorted by agreement.`;
+    ? `${formatCompareYearsLabel(compareYears)} employment satisfaction statements, ranked by agreement.`
+    : `Employment satisfaction statements for ${year}, ranked by agreement.`;
   const riskSubtitle = isYoY
     ? `${formatCompareYearsLabel(compareYears)} employment risk indicators — higher agreement signals reported concern.`
     : `Employment risk indicators for ${year} — higher agreement signals reported concern.`;
@@ -66,21 +67,25 @@ export function WorkStatementsCard({
               subtitleClassName="education-statements-lane-card-subtitle"
             />
             <div className="education-statements-lane-card-actions">
+              <StatementYearLegend
+                viewMode={viewMode}
+                compareYears={compareYears}
+                year={year}
+                variant="positive"
+              />
               <span className="statement-lollipop-badge is-positive">Positive lane</span>
             </div>
           </div>
 
-          <GroupedDivergingLikertChart
-            rows={positiveRows}
-            title="Positive employment statements"
+          <WorkStatementChart
+            items={positiveItems}
             year={year}
             viewMode={viewMode}
             compareYears={compareYears}
             variant="positive"
-            topic="work"
-            embedded
-            showInsight={false}
             maxBodyHeight={maxBodyHeight}
+            emptyMessage="No positive employment statements are available for this view."
+            ariaLabel="Positive employment statements"
           />
 
           <WorkLaneInsight chartTitle="Positive employment statements" insight={positiveInsight} />
@@ -96,21 +101,26 @@ export function WorkStatementsCard({
               subtitleClassName="education-statements-lane-card-subtitle"
             />
             <div className="education-statements-lane-card-actions">
+              <StatementYearLegend
+                viewMode={viewMode}
+                compareYears={compareYears}
+                year={year}
+                variant="risk"
+              />
               <span className="statement-lollipop-badge is-risk">Risk lane</span>
             </div>
           </div>
 
-          <GroupedDivergingLikertChart
-            rows={riskRows}
-            title="Reported employment risk statements"
+          <WorkStatementChart
+            items={riskItems}
             year={year}
             viewMode={viewMode}
             compareYears={compareYears}
             variant="risk"
-            topic="work"
-            embedded
-            showInsight={false}
             maxBodyHeight={maxBodyHeight}
+            fillHeight
+            emptyMessage="No reported employment risk statements are available for this view."
+            ariaLabel="Reported employment risk statements"
           />
 
           <WorkLaneInsight chartTitle="Reported employment risk" insight={riskInsight} />

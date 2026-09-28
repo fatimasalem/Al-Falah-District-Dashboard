@@ -112,10 +112,13 @@ export function HealthSubgroupChart({
   const currentBarColor = DESIGN.positive;
 
   const activeItems = activeTab === 'q501' ? centresItems : systemItems;
-  const laneSubtitle =
-    activeTab === 'q501'
-      ? `Q501 health center assessments for ${displayYear} — combined with Q502 for SCORE_5.`
-      : `Q502 healthcare system quality for ${displayYear} — combined with Q501 for SCORE_5.`;
+  const laneSubtitle = isYoY
+    ? activeTab === 'q501'
+      ? `${compareYears[0]} vs ${compareYears[1]} health center assessments — ranked by ${compareYears[1]} agreement.`
+      : `${compareYears[0]} vs ${compareYears[1]} healthcare system quality — ranked by ${compareYears[1]} agreement.`
+    : activeTab === 'q501'
+      ? `Health center assessments for ${displayYear} — ranked by agreement.`
+      : `Healthcare system quality for ${displayYear} — ranked by agreement.`;
 
   const rows = buildChartRows(activeItems, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;
@@ -162,7 +165,7 @@ export function HealthSubgroupChart({
           <span className="health-score-callout-label">SCORE_5 (calculated)</span>
           <strong className="health-score-callout-value">{calculatedScore.toFixed(1)}%</strong>
           <span className="health-score-callout-caption">
-            Average of Q501 + Q502 subgroup scores — Q508 wellbeing shown separately.
+            Average of Q501 + Q502 subgroup scores — reported wellbeing problems shown separately.
           </span>
         </div>
         <div className="health-score-callout-subgroups">

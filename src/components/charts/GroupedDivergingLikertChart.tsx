@@ -606,9 +606,18 @@ function resolveInsight(
       : generateEducationPositiveStatementsInsight(rows, year);
   }
 
+  const comparisonItems = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    fullName: row.fullName,
+    value2024: row.satisfied,
+    value2025: row.satisfied,
+    movement: 0,
+  }));
+
   return variant === 'risk'
-    ? generateWorkRiskStatementsInsight(rows, year)
-    : generateWorkPositiveStatementsInsight(rows, year);
+    ? generateWorkRiskStatementsInsight(comparisonItems, year)
+    : generateWorkPositiveStatementsInsight(comparisonItems, year);
 }
 
 export function GroupedDivergingLikertChart({

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 
 export type ChartSectionIconName =
   | 'action-agenda'
+  | 'bar-composition'
   | 'compare'
   | 'executive-lens'
   | 'momentum-matrix'
@@ -31,6 +32,11 @@ const SECTION_ICONS: Record<ChartSectionIconName, ReactElement> = {
       <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
       <rect x="9" y="3" width="6" height="4" rx="1" />
       <path d="M9 12h6M9 16h6" />
+    </svg>
+  ),
+  'bar-composition': (
+    <svg {...SVG_PROPS}>
+      <path d="M4 6h12M4 12h16M4 18h9" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   ),
   compare: (

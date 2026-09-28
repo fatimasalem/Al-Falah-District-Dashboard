@@ -3895,6 +3895,50 @@ button {
   margin-bottom: 0;
 }
 
+.pillar-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.pillar-view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pillar-view-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.pillar-view-toggle-btn.is-active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.pillar-view-panel {
+  min-height: 0;
+}
+
+.pillar-view-panel .momentum-treemap-body {
+  height: 320px;
+  min-height: 320px;
+}
+
 .pillar-composition-title {
   margin: 0;
   font-size: 1rem;
@@ -4383,6 +4427,10 @@ button {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 18px;
   align-items: stretch;
+}
+
+.executive-decision-lens-grid-single {
+  grid-template-columns: 1fr;
 }
 
 .executive-decision-lens-section {
@@ -5331,6 +5379,11 @@ button {
     gap: 10px;
   }
 
+  .pillar-view-toggle {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
   .executive-decision-lens-grid {
     grid-template-columns: 1fr;
   }
@@ -5665,9 +5718,10 @@ button {
 }
 
 .statement-register-statement {
-  min-width: 220px;
-  max-width: 320px;
+  min-width: 140px;
+  max-width: 200px;
   text-align: left;
+  white-space: nowrap;
 }
 
 .statement-register-polarity {
@@ -6193,6 +6247,40 @@ button {
 .grouped-diverging-likert-embedded > .grouped-diverging-likert-body.is-embedded {
   flex: 1;
   padding: 0;
+}
+
+.education-statements-lane-card .work-statement-chart-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.education-statements-lane-card .work-statement-chart-body .health-subgroup-bar-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.education-statements-lane-card .work-statement-chart-body.is-fill-height .health-subgroup-bar-scroll,
+.education-statements-lane-card .work-statement-chart-body.is-fill-height .health-subgroup-bar-scroll.is-fill-height {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.education-statements-lane-card .work-statement-chart-stretch .health-subgroup-bar-labels {
+  grid-template-rows: repeat(var(--statement-rows), 1fr);
+  align-content: stretch;
+  height: 100%;
+}
+
+.education-statements-lane-card .work-statement-chart-stretch .health-subgroup-bar-label {
+  align-items: center;
 }
 
 .education-statements-lane-insight {

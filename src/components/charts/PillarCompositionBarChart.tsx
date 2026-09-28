@@ -1,7 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { DESIGN, PILLAR_TABS } from '../../types';
 import type { CompareYears, SurveyYear, ViewMode } from '../../types';
-import type { PillarDumbbellItem } from '../../utils';
+import {
+  getMomentumQuadrant,
+  type MomentumQuadrant,
+  type PillarDumbbellItem,
+} from '../../utils';
+import { getScoreBandFill } from './MomentumMatrix';
 import { PillarTabIcon } from './PillarTabIcon';
 
 interface PillarCompositionBarChartProps {
@@ -20,6 +25,7 @@ interface ChartRow {
   value2024: number | null;
   value2025: number | null;
   displayValue: number | null;
+  quadrant: MomentumQuadrant | null;
   isPending: boolean;
 }
 
@@ -30,6 +36,11 @@ const ROW_HEIGHT_YOY = 48;
 const ROW_HEIGHT_SINGLE = 36;
 const MAX_SCROLL_HEIGHT = 300;
 const DOMAIN_TICKS = [0, 25, 50, 75, 100];
+const BAND_ORDER: Record<MomentumQuadrant, number> = {
+  scale: 0,
+  protect: 1,
+  investigate: 2,
+};
 
 function getPillarIcon(sectionId: string): string {
   return PILLAR_TABS.find((tab) => tab.id === sectionId)?.icon ?? 'grid';
@@ -70,12 +81,16 @@ function buildChartRows(
         value2024: isPending ? null : item.value2024,
         value2025: isPending ? null : item.value2025,
         displayValue,
+        quadrant: displayValue != null ? getMomentumQuadrant(displayValue) : null,
         isPending,
       };
     })
     .sort((a, b) => {
       if (a.isPending && !b.isPending) return 1;
       if (!a.isPending && b.isPending) return -1;
+      const bandDiff = (BAND_ORDER[a.quadrant ?? 'investigate'] ?? 3)
+        - (BAND_ORDER[b.quadrant ?? 'investigate'] ?? 3);
+      if (bandDiff !== 0) return bandDiff;
       return (b.displayValue ?? 0) - (a.displayValue ?? 0);
     });
 }
@@ -194,7 +209,7 @@ export function PillarCompositionBarChart({
                           height={barHeight}
                           rx={4}
                           ry={4}
-                          fill={DESIGN.chart.yearCurrent}
+                          fill={getScoreBandFill(getMomentumQuadrant(row.value2025))}
                         />
                         <rect
                           x={PLOT_MARGIN.left}
@@ -238,7 +253,7 @@ export function PillarCompositionBarChart({
                           height={barHeight}
                           rx={4}
                           ry={4}
-                          fill={DESIGN.chart.yearCurrent}
+                          fill={getScoreBandFill(getMomentumQuadrant(row.displayValue))}
                         />
                         <text
                           x={scaleX(row.displayValue) + 6}

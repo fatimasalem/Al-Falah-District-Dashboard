@@ -103,7 +103,7 @@ export function EnvironmentStatementChart({
 
   const laneSubtitle = isYoY
     ? `${compareYears[0]} vs ${compareYears[1]} satisfaction statements — ranked by ${compareYears[1]} agreement.`
-    : `Positive Q601 statements for ${displayYear} — ranked by agreement.`;
+    : `Positive environment satisfaction for ${displayYear} — ranked by agreement.`;
 
   const rows = buildChartRows(positiveItems, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;
@@ -134,7 +134,7 @@ export function EnvironmentStatementChart({
       <div className={embedded ? 'health-assessment-lane-card-header' : 'chart-card-header'}>
         <ChartSectionHeader
           icon="compare"
-          title="Q601 positive environment statements"
+          title="Positive environment statements"
           titleClassName={embedded ? 'health-assessment-lane-card-title' : 'dumbbell-chart-title'}
           subtitleClassName={embedded ? 'health-assessment-lane-card-subtitle' : 'dumbbell-chart-subtitle'}
           subtitle={laneSubtitle}
@@ -171,7 +171,7 @@ export function EnvironmentStatementChart({
 
       <div className="health-subgroup-body environment-statement-body">
         {positiveItems.length === 0 ? (
-          <p className="statement-lollipop-empty">No positive Q601 environment statements available.</p>
+          <p className="statement-lollipop-empty">No positive environment statements available.</p>
         ) : (
           <div className="health-subgroup-bar-panel">
             <div
@@ -211,7 +211,7 @@ export function EnvironmentStatementChart({
                     height={chartHeight}
                     preserveAspectRatio="none"
                     role="img"
-                    aria-label="Q601 positive environment statements"
+                    aria-label="Positive environment statements"
                   >
                     {DOMAIN_TICKS.map((tick) => (
                       <line
@@ -347,7 +347,7 @@ export function EnvironmentStatementChart({
       </div>
 
       <div className={embedded ? 'health-assessment-lane-insight' : undefined}>
-        <ChartInsightFooter chartTitle="Q601 positive environment statements" insight={insight} />
+        <ChartInsightFooter chartTitle="Positive environment statements" insight={insight} />
       </div>
     </>
   );

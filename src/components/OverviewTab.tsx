@@ -39,13 +39,13 @@ export function OverviewCharts({ data, viewMode, selectedYear, compareYears }: O
           viewMode={viewMode}
           compareYears={compareYears}
           pillarItems={dumbbellItems}
+          momentumItems={momentumItems}
           selectedYear={selectedYear}
         />
       </section>
 
       <section className="overview-executive">
         <ExecutiveDecisionLens
-          momentumItems={momentumItems}
           riskItems={riskItems}
           viewMode={viewMode}
           selectedYear={selectedYear}

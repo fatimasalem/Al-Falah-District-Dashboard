@@ -31,8 +31,8 @@ export function HousingAssessmentCard({
 }: HousingAssessmentCardProps) {
   const isYoY = viewMode === 'yoy';
   const shellSubtitle = isYoY
-    ? `Q701 positive statements and condition risk (${formatCompareYearsLabel(compareYears)}).`
-    : `Q701 positive statements and condition risk for ${year}.`;
+    ? `Positive housing statements and reported condition concerns (${formatCompareYearsLabel(compareYears)}).`
+    : `Positive housing statements and reported condition concerns for ${year}.`;
 
   return (
     <section className="housing-assessment-shell-card" aria-label={title}>

@@ -1789,26 +1789,26 @@ const SECURITY_CONCERN_MATCHERS = [
 const SECURITY_Q401_SHORT_LABELS: Array<{ match: RegExp; label: string }> = [
   { match: /availability of housing/i, label: 'Housing availability' },
   { match: /uninterrupted power services/i, label: 'Power reliability' },
-  { match: /drinking water services/i, label: 'Drinking water supply' },
+  { match: /drinking water services/i, label: 'Drinking water' },
   { match: /general cleanliness/i, label: 'General cleanliness' },
   { match: /constant availability of food/i, label: 'Food availability' },
-  { match: /control over the food/i, label: 'Food quality control' },
+  { match: /control over the food/i, label: 'Food quality' },
   { match: /easy access to food/i, label: 'Food access' },
-  { match: /provide food/i, label: 'Ability to provide food' },
+  { match: /provide food/i, label: 'Provide food' },
   { match: /job security in the Emirate/i, label: 'Job security' },
   { match: /freedom of expression/i, label: 'Freedom of expression' },
   { match: /communicate on social media/i, label: 'Social media freedom' },
-  { match: /communication with their families/i, label: 'Family communication' },
+  { match: /communication with their families/i, label: 'Family contact' },
   { match: /effective laws that apply to everyone/i, label: 'Fair laws' },
   { match: /moving around during the day and night/i, label: 'Day & night mobility' },
   { match: /practice religious rituals/i, label: 'Religious practice' },
   { match: /justice, equality between religions/i, label: 'Justice & equality' },
   { match: /safe and protected in a residential area/i, label: 'Area protection' },
-  { match: /security and safety in their residential area/i, label: 'Area security level' },
-  { match: /Abu Dhabi Police General Command to deal with accidents/i, label: 'Police incident response' },
-  { match: /combat drugs in a residential area/i, label: 'Drug prevention confidence' },
-  { match: /police preventive measures to reduce crime/i, label: 'Crime prevention measures' },
-  { match: /fear for my children from bad company/i, label: 'Negative peer influence' },
+  { match: /security and safety in their residential area/i, label: 'Area security' },
+  { match: /Abu Dhabi Police General Command to deal with accidents/i, label: 'Police response' },
+  { match: /combat drugs in a residential area/i, label: 'Drug prevention' },
+  { match: /police preventive measures to reduce crime/i, label: 'Crime prevention' },
+  { match: /fear for my children from bad company/i, label: 'Bad company risk' },
   { match: /physical violence or threats/i, label: 'Violence or threats' },
 ];
 
@@ -3226,7 +3226,9 @@ export function generateMomentumMatrixInsight(
       { bold: `${leader.score2025.toFixed(1)}%` },
       '; ',
       { bold: String(investigateCount) },
-      ' need investigation.',
+      ' sit in the ',
+      { bold: 'Target' },
+      ' band.',
     ];
   }
 
@@ -4552,7 +4554,7 @@ export function generateHealthWellbeingInsight(
 ): InsightPart[] {
   const top = rows[0];
   if (!top) {
-    return ['No Q508 wellbeing context statements are available.'];
+    return ['No reported wellbeing problems data is available.'];
   }
 
   const value = pickYearValue(top.agreement2024, top.agreement2025, year);
@@ -4703,6 +4705,7 @@ const ENVIRONMENT_Q601_SHORT_LABELS: { match: RegExp; label: string }[] = [
   { match: /beautification and landscaping/i, label: 'Street beautification' },
   { match: /air quality in the residential area/i, label: 'Air quality' },
   { match: /noise level in my residential area/i, label: 'Noise level' },
+  { match: /insects and some rodents/i, label: 'Insects & rodents' },
   { match: /availability of shopping areas/i, label: 'Shopping availability' },
   { match: /transportation services within the residential area/i, label: 'Transport services' },
   { match: /sanitation services within a residential area/i, label: 'Sanitation services' },
@@ -4799,7 +4802,7 @@ export function generateEnvironmentPositiveStatementsInsight(
     (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
   )[0];
   if (!top) {
-    return ['No positive Q601 environment statements are available.'];
+    return ['No positive environment statements are available.'];
   }
 
   const value = pickYearValue(top.value2024, top.value2025, year);
@@ -5022,7 +5025,14 @@ export function getWorkStatementsByPolarity(
 ): StatementComparisonItem[] {
   return getLikertStatementsByCode(questions, 'Q210')
     .filter((question) => resolveStatementPolarity(question, WORK_RISK_STATEMENT_MATCHERS) === polarity)
-    .map((question) => toStatementComparisonItem(question, compareYears))
+    .map((question) => {
+      const row = toStatementComparisonItem(question, compareYears);
+      const statement = question.statementEn ?? question.statementAr;
+      return {
+        ...row,
+        name: getWorkQ210ShortLabel(statement),
+      };
+    })
     .sort((a, b) => b.value2025 - a.value2025);
 }
 
@@ -5072,41 +5082,45 @@ export function getWorkDivergingLikertRows(
 }
 
 export function generateWorkPositiveStatementsInsight(
-  rows: DivergingLikertStatementRow[],
+  items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  if (rows.length === 0) {
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) {
     return ['No positive employment statements are available for this view.'];
   }
 
-  const top = rows[0];
-
+  const value = pickYearValue(top.value2024, top.value2025, year);
   return [
     { bold: top.name },
     ' is the strongest positive signal in ',
     { bold: year },
     ' at ',
-    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'positive' },
-    ' satisfied.',
+    { bold: `${value.toFixed(1)}%`, tone: 'positive' },
+    ' agreement.',
   ];
 }
 
 export function generateWorkRiskStatementsInsight(
-  rows: DivergingLikertStatementRow[],
+  items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  if (rows.length === 0) {
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) {
     return ['No reported employment risk statements are available for this view.'];
   }
 
-  const top = rows[0];
-
+  const value = pickYearValue(top.value2024, top.value2025, year);
   return [
     { bold: top.name },
     ' is the highest reported concern in ',
     { bold: year },
     ' at ',
-    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'negative' },
+    { bold: `${value.toFixed(1)}%`, tone: 'negative' },
     ' agreement.',
   ];
 }
@@ -5355,6 +5369,8 @@ export interface StatementRegisterRow {
   questionGroup: string;
   statementAr: string;
   statementEn?: string;
+  /** Concise label for table display; full wording stays in statementEn/statementAr. */
+  statementLabel: string;
   polarity: import('./types').IndicatorPolarity;
   agreement2024: number;
   agreement2025: number;
@@ -5362,6 +5378,21 @@ export interface StatementRegisterRow {
   disagreement2025: number;
   movement: number;
   interpretation: string;
+}
+
+function getStatementRegisterShortLabel(questionCode: string, statement: string): string {
+  switch (questionCode) {
+    case 'Q210':
+      return getWorkQ210ShortLabel(statement);
+    case 'Q301':
+      return formatEducationAxisLabel(statement);
+    case 'Q401':
+      return getSecurityQ401ShortLabel(statement);
+    case 'Q601':
+      return getEnvironmentQ601ShortLabel(statement);
+    default:
+      return truncateStatementLabel(statement, 32);
+  }
 }
 
 export function getStatementRegisterData(
@@ -5385,12 +5416,14 @@ export function getStatementRegisterData(
         ? agreement2025
         : pickYearValue(agreement2024, agreement2025, selectedYear);
       const movement = agreement2025 - agreement2024;
+      const fullStatement = question.statementEn ?? question.statementAr;
 
       return {
         id: `${question.code}-${question.statementAr}`,
         questionGroup: question.code,
         statementAr: question.statementAr,
         statementEn: question.statementEn,
+        statementLabel: getStatementRegisterShortLabel(question.code, fullStatement),
         polarity,
         agreement2024,
         agreement2025,

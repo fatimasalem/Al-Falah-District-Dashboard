@@ -29,8 +29,8 @@ export function EnvironmentAssessmentCard({
 }: EnvironmentAssessmentCardProps) {
   const isYoY = viewMode === 'yoy';
   const shellSubtitle = isYoY
-    ? `Q601 positive statements and domain satisfaction (${formatCompareYearsLabel(compareYears)}).`
-    : `Q601 positive statements and domain satisfaction for ${year}.`;
+    ? `Positive environment statements and domain satisfaction (${formatCompareYearsLabel(compareYears)}).`
+    : `Positive environment statements and domain satisfaction for ${year}.`;
 
   return (
     <section className="environment-assessment-shell-card" aria-label={title}>

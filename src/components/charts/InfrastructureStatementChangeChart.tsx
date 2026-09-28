@@ -103,7 +103,7 @@ export function InfrastructureStatementChangeChart({
 
   const laneSubtitle = isYoY
     ? `${compareYears[0]} vs ${compareYears[1]} infrastructure statements — ranked by ${compareYears[1]} agreement.`
-    : `Q801 infrastructure statements for ${displayYear} — ranked by agreement.`;
+    : `Infrastructure statements for ${displayYear} — ranked by agreement.`;
 
   const rows = buildChartRows(items, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;
@@ -130,7 +130,7 @@ export function InfrastructureStatementChangeChart({
       <div className={embedded ? 'health-assessment-lane-card-header' : 'chart-card-header'}>
         <ChartSectionHeader
           icon="compare"
-          title="Q801 statement movement"
+          title="Infrastructure statements"
           titleClassName={embedded ? 'health-assessment-lane-card-title' : 'dumbbell-chart-title'}
           subtitleClassName={embedded ? 'health-assessment-lane-card-subtitle' : 'dumbbell-chart-subtitle'}
           subtitle={laneSubtitle}
@@ -147,7 +147,7 @@ export function InfrastructureStatementChangeChart({
 
       <div className="health-subgroup-body infrastructure-statement-body">
         {items.length === 0 ? (
-          <p className="statement-lollipop-empty">No Q801 infrastructure statements available.</p>
+          <p className="statement-lollipop-empty">No infrastructure statements available.</p>
         ) : (
           <div className="health-subgroup-bar-panel">
             <div
@@ -187,7 +187,7 @@ export function InfrastructureStatementChangeChart({
                     height={chartHeight}
                     preserveAspectRatio="none"
                     role="img"
-                    aria-label="Q801 infrastructure statement movement"
+                    aria-label="Infrastructure statement agreement"
                   >
                     {DOMAIN_TICKS.map((tick) => (
                       <line
@@ -323,7 +323,7 @@ export function InfrastructureStatementChangeChart({
       </div>
 
       <div className={embedded ? 'health-assessment-lane-insight' : undefined}>
-        <ChartInsightFooter chartTitle="Q801 statement movement" insight={insight} />
+        <ChartInsightFooter chartTitle="Infrastructure statements" insight={insight} />
       </div>
     </>
   );

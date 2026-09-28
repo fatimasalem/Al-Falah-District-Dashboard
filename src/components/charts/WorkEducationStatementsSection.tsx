@@ -3,7 +3,8 @@ import type { CompareYears, Section, SurveyYear, ViewMode } from '../../types';
 import {
   formatCompareYearsLabel,
   getEducationDivergingLikertRows,
-  getWorkDivergingLikertRows,
+  getWorkStatementsByPolarity,
+  pickYearValue,
 } from '../../utils';
 import { ChartSectionIcon } from './ChartSectionHeader';
 import { EducationStatementsCard } from './EducationStatementsCard';
@@ -29,19 +30,23 @@ export function WorkEducationStatementsSection({
   const chartYear = viewMode === 'current' ? selectedYear : compareYears[1];
   const isYoY = viewMode === 'yoy';
 
-  const workPositiveRows = getWorkDivergingLikertRows(
-    workSection.questions,
-    chartYear,
-    'positive',
-    viewMode,
-    compareYears,
+  const workPositiveItems = useMemo(
+    () =>
+      getWorkStatementsByPolarity(workSection.questions, compareYears, 'positive').sort(
+        (a, b) =>
+          pickYearValue(b.value2024, b.value2025, chartYear) -
+          pickYearValue(a.value2024, a.value2025, chartYear),
+      ),
+    [chartYear, compareYears, workSection.questions],
   );
-  const workRiskRows = getWorkDivergingLikertRows(
-    workSection.questions,
-    chartYear,
-    'negative',
-    viewMode,
-    compareYears,
+  const workRiskItems = useMemo(
+    () =>
+      getWorkStatementsByPolarity(workSection.questions, compareYears, 'negative').sort(
+        (a, b) =>
+          pickYearValue(b.value2024, b.value2025, chartYear) -
+          pickYearValue(a.value2024, a.value2025, chartYear),
+      ),
+    [chartYear, compareYears, workSection.questions],
   );
   const educationPositiveRows = getEducationDivergingLikertRows(
     educationSection.questions,
@@ -61,8 +66,8 @@ export function WorkEducationStatementsSection({
   const shellSubtitle = useMemo(() => {
     if (questionCode === 'Q210') {
       return isYoY
-        ? `${workPositiveRows.length} positive and ${workRiskRows.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
-        : `${workPositiveRows.length} positive and ${workRiskRows.length} risk Q210 statements for ${chartYear}.`;
+        ? `${workPositiveItems.length} positive and ${workRiskItems.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
+        : `${workPositiveItems.length} positive and ${workRiskItems.length} risk Q210 statements for ${chartYear}.`;
     }
 
     return isYoY
@@ -75,8 +80,8 @@ export function WorkEducationStatementsSection({
     educationRiskRows.length,
     isYoY,
     questionCode,
-    workPositiveRows.length,
-    workRiskRows.length,
+    workPositiveItems.length,
+    workRiskItems.length,
   ]);
 
   return (
@@ -100,8 +105,8 @@ export function WorkEducationStatementsSection({
 
       {questionCode === 'Q210' ? (
         <WorkStatementsCard
-          positiveRows={workPositiveRows}
-          riskRows={workRiskRows}
+          positiveItems={workPositiveItems}
+          riskItems={workRiskItems}
           year={chartYear}
           viewMode={viewMode}
           compareYears={compareYears}
