@@ -600,12 +600,6 @@ function resolveInsight(
 ): InsightPart[] {
   if (insight) return insight;
 
-  if (topic === 'education') {
-    return variant === 'risk'
-      ? generateEducationRiskStatementsInsight(rows, year)
-      : generateEducationPositiveStatementsInsight(rows, year);
-  }
-
   const comparisonItems = rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -614,6 +608,12 @@ function resolveInsight(
     value2025: row.satisfied,
     movement: 0,
   }));
+
+  if (topic === 'education') {
+    return variant === 'risk'
+      ? generateEducationRiskStatementsInsight(comparisonItems, year)
+      : generateEducationPositiveStatementsInsight(comparisonItems, year);
+  }
 
   return variant === 'risk'
     ? generateWorkRiskStatementsInsight(comparisonItems, year)

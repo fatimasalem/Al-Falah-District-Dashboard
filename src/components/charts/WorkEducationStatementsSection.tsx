@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { CompareYears, Section, SurveyYear, ViewMode } from '../../types';
 import {
   formatCompareYearsLabel,
-  getEducationDivergingLikertRows,
+  getEducationPositiveStatements,
+  getEducationRiskStatements,
   getWorkStatementsByPolarity,
   pickYearValue,
 } from '../../utils';
@@ -48,41 +49,28 @@ export function WorkEducationStatementsSection({
       ),
     [chartYear, compareYears, workSection.questions],
   );
-  const educationPositiveRows = getEducationDivergingLikertRows(
-    educationSection.questions,
-    chartYear,
-    'positive',
-    viewMode,
-    compareYears,
+  const educationPositiveItems = useMemo(
+    () =>
+      getEducationPositiveStatements(educationSection.questions, compareYears).sort(
+        (a, b) =>
+          pickYearValue(b.value2024, b.value2025, chartYear) -
+          pickYearValue(a.value2024, a.value2025, chartYear),
+      ),
+    [chartYear, compareYears, educationSection.questions],
   );
-  const educationRiskRows = getEducationDivergingLikertRows(
-    educationSection.questions,
-    chartYear,
-    'negative',
-    viewMode,
-    compareYears,
+  const educationRiskItems = useMemo(
+    () =>
+      getEducationRiskStatements(educationSection.questions, compareYears).sort(
+        (a, b) =>
+          pickYearValue(b.value2024, b.value2025, chartYear) -
+          pickYearValue(a.value2024, a.value2025, chartYear),
+      ),
+    [chartYear, compareYears, educationSection.questions],
   );
 
-  const shellSubtitle = useMemo(() => {
-    if (questionCode === 'Q210') {
-      return isYoY
-        ? `${workPositiveItems.length} positive and ${workRiskItems.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
-        : `${workPositiveItems.length} positive and ${workRiskItems.length} risk Q210 statements for ${chartYear}.`;
-    }
-
-    return isYoY
-      ? `${educationPositiveRows.length} positive and ${educationRiskRows.length} risk Q301 statements (${formatCompareYearsLabel(compareYears)}).`
-      : `${educationPositiveRows.length} positive and ${educationRiskRows.length} risk Q301 statements for ${chartYear}.`;
-  }, [
-    chartYear,
-    compareYears,
-    educationPositiveRows.length,
-    educationRiskRows.length,
-    isYoY,
-    questionCode,
-    workPositiveItems.length,
-    workRiskItems.length,
-  ]);
+  const shellSubtitle = isYoY
+    ? `Employment satisfaction and education quality statements with reported risk indicators (${formatCompareYearsLabel(compareYears)}).`
+    : `Employment satisfaction and education quality statements with reported risk indicators for ${chartYear}.`;
 
   return (
     <section className="education-statements-shell-card" aria-label="Employment and education statements">
@@ -114,8 +102,8 @@ export function WorkEducationStatementsSection({
         />
       ) : (
         <EducationStatementsCard
-          positiveRows={educationPositiveRows}
-          riskRows={educationRiskRows}
+          positiveItems={educationPositiveItems}
+          riskItems={educationRiskItems}
           year={chartYear}
           viewMode={viewMode}
           compareYears={compareYears}

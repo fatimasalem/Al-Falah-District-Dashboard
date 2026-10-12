@@ -1,8 +1,8 @@
 export type WorkEducationQuestionCode = 'Q210' | 'Q301';
 
 const OPTIONS: { value: WorkEducationQuestionCode; label: string }[] = [
-  { value: 'Q210', label: 'Q210 — Employment' },
-  { value: 'Q301', label: 'Q301 — Education' },
+  { value: 'Q210', label: 'Employment' },
+  { value: 'Q301', label: 'Education' },
 ];
 
 interface QuestionCodeSelectProps {

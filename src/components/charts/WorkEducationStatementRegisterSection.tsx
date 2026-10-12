@@ -36,11 +36,11 @@ export function WorkEducationStatementRegisterSection({
 
   const subtitle = questionCode === 'Q210'
     ? (isYoY
-      ? 'Agreement, disagreement, and year-on-year movement for Q210 employment statements.'
-      : `Agreement and disagreement for Q210 employment statements in ${selectedYear}.`)
+      ? 'Agreement, disagreement, and year-on-year movement for employment statements.'
+      : `Agreement and disagreement for employment statements in ${selectedYear}.`)
     : (isYoY
-      ? 'Agreement, disagreement, and year-on-year movement for Q301 education statements.'
-      : `Agreement and disagreement for Q301 education statements in ${selectedYear}.`);
+      ? 'Agreement, disagreement, and year-on-year movement for education statements.'
+      : `Agreement and disagreement for education statements in ${selectedYear}.`);
 
   const positiveTabSubtitle = questionCode === 'Q210'
     ? 'Satisfaction and confidence statements behind the Work pillar.'
@@ -59,6 +59,7 @@ export function WorkEducationStatementRegisterSection({
       viewMode={viewMode}
       selectedYear={selectedYear}
       compareYears={compareYears}
+      showQuestionGroup={false}
       headerAction={(
         <QuestionCodeSelect
           value={questionCode}

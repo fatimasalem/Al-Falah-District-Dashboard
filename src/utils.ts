@@ -4274,6 +4274,7 @@ export type MomentumQuadrant = 'scale' | 'protect' | 'investigate';
 export interface MomentumMatrixItem {
   sectionId: string;
   pillar: string;
+  score2024: number;
   score2025: number;
   yoyChange: number;
   quadrant: MomentumQuadrant;
@@ -4296,12 +4297,14 @@ export function getMomentumMatrixData(
       const score = data.sectionScores[pillar.sectionId];
       if (!score) return null;
 
+      const score2024 = score.score2024;
       const score2025 = pickYearValue(score.score2024, score.score2025, year);
       const yoyChange = getYearDelta(score.score2024, score.score2025, compareYears);
 
       return {
         sectionId: pillar.sectionId,
         pillar: pillar.sectionNameEn,
+        score2024,
         score2025,
         yoyChange,
         quadrant: getMomentumQuadrant(score2025),
@@ -5131,7 +5134,14 @@ export function getEducationPositiveStatements(
 ): StatementComparisonItem[] {
   return getLikertStatementsByCode(questions, 'Q301')
     .filter((question) => resolveStatementPolarity(question, EDUCATION_RISK_STATEMENT_MATCHERS) === 'positive')
-    .map((question) => toStatementComparisonItem(question, compareYears))
+    .map((question) => {
+      const row = toStatementComparisonItem(question, compareYears);
+      const statement = question.statementEn ?? question.statementAr;
+      return {
+        ...row,
+        name: formatEducationAxisLabel(statement),
+      };
+    })
     .sort((a, b) => b.value2025 - a.value2025);
 }
 
@@ -5141,7 +5151,14 @@ export function getEducationRiskStatements(
 ): StatementComparisonItem[] {
   return getLikertStatementsByCode(questions, 'Q301')
     .filter((question) => resolveStatementPolarity(question, EDUCATION_RISK_STATEMENT_MATCHERS) === 'negative')
-    .map((question) => toStatementComparisonItem(question, compareYears))
+    .map((question) => {
+      const row = toStatementComparisonItem(question, compareYears);
+      const statement = question.statementEn ?? question.statementAr;
+      return {
+        ...row,
+        name: formatEducationAxisLabel(statement),
+      };
+    })
     .sort((a, b) => b.value2025 - a.value2025);
 }
 
@@ -5243,19 +5260,22 @@ export function getEducationPositiveStatementCategory(
   return null;
 }
 
-export function filterEducationPositiveRowsByCategory(
-  rows: DivergingLikertStatementRow[],
+export function filterEducationPositiveRowsByCategory<T extends { fullName: string }>(
+  rows: T[],
   category: EducationPositiveCategory,
-): DivergingLikertStatementRow[] {
+): T[] {
   return rows.filter((row) => getEducationPositiveStatementCategory(row.fullName) === category);
 }
 
 export function generateEducationPositiveStatementsInsight(
-  rows: DivergingLikertStatementRow[],
+  items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
   categoryLabel?: string,
 ): InsightPart[] {
-  if (rows.length === 0) {
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) {
     return [
       categoryLabel
         ? `No ${categoryLabel.toLowerCase()} statements are available for this view.`
@@ -5263,7 +5283,7 @@ export function generateEducationPositiveStatementsInsight(
     ];
   }
 
-  const top = rows[0];
+  const value = pickYearValue(top.value2024, top.value2025, year);
   const scope = categoryLabel ? `${categoryLabel.toLowerCase()} ` : 'positive education ';
 
   return [
@@ -5271,27 +5291,30 @@ export function generateEducationPositiveStatementsInsight(
     ` is the strongest ${scope}signal in `,
     { bold: year },
     ' at ',
-    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'positive' },
-    ' satisfied.',
+    { bold: `${value.toFixed(1)}%`, tone: 'positive' },
+    ' agreement.',
   ];
 }
 
 export function generateEducationRiskStatementsInsight(
-  rows: DivergingLikertStatementRow[],
+  items: StatementComparisonItem[],
   year: import('./types').SurveyYear,
 ): InsightPart[] {
-  if (rows.length === 0) {
+  const top = [...items].sort(
+    (a, b) => pickYearValue(b.value2024, b.value2025, year) - pickYearValue(a.value2024, a.value2025, year),
+  )[0];
+  if (!top) {
     return ['No reported school safety risk statements are available for this view.'];
   }
 
-  const top = rows[0];
+  const value = pickYearValue(top.value2024, top.value2025, year);
 
   return [
     { bold: top.name },
     ' is the highest reported school safety concern in ',
     { bold: year },
     ' at ',
-    { bold: `${top.satisfied.toFixed(1)}%`, tone: 'negative' },
+    { bold: `${value.toFixed(1)}%`, tone: 'negative' },
     ' agreement.',
   ];
 }

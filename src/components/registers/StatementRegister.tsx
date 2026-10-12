@@ -25,6 +25,7 @@ interface StatementRegisterProps {
   viewMode?: ViewMode;
   selectedYear?: SurveyYear;
   compareYears?: CompareYears;
+  showQuestionGroup?: boolean;
 }
 
 const FILTER_OPTIONS: { id: PolarityFilter; label: string }[] = [
@@ -42,6 +43,7 @@ export function StatementRegister({
   viewMode = 'yoy',
   selectedYear = '2025',
   compareYears = DEFAULT_COMPARE_YEARS,
+  showQuestionGroup = true,
 }: StatementRegisterProps) {
   const isYoY = viewMode === 'yoy';
   const [activeTabId, setActiveTabId] = useState(tabs?.[0]?.id ?? 'all');
@@ -67,7 +69,7 @@ export function StatementRegister({
 
     return [...nextRows].sort((left, right) => {
       const direction = sortAsc ? 1 : -1;
-      if (sortKey === 'questionGroup') {
+      if (showQuestionGroup && sortKey === 'questionGroup') {
         return direction * left.questionGroup.localeCompare(right.questionGroup);
       }
       if (sortKey === 'movement') {
@@ -81,7 +83,7 @@ export function StatementRegister({
         : pickYearValue(right.agreement2024, right.agreement2025, selectedYear);
       return direction * (leftAgreement - rightAgreement);
     });
-  }, [filter, isYoY, rows, selectedYear, showPolarityFilter, sortAsc, sortKey]);
+  }, [filter, isYoY, rows, selectedYear, showPolarityFilter, showQuestionGroup, sortAsc, sortKey]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -151,11 +153,13 @@ export function StatementRegister({
         <table className="statement-register-table">
           <thead>
             <tr>
-              <th>
-                <button type="button" className="statement-register-sort" onClick={() => handleSort('questionGroup')}>
-                  Question Group
-                </button>
-              </th>
+              {showQuestionGroup ? (
+                <th>
+                  <button type="button" className="statement-register-sort" onClick={() => handleSort('questionGroup')}>
+                    Question Group
+                  </button>
+                </th>
+              ) : null}
               <th>Statement</th>
               <th>Polarity</th>
               {isYoY ? (
@@ -197,7 +201,7 @@ export function StatementRegister({
 
               return (
                 <tr key={row.id}>
-                  <td>{row.questionGroup}</td>
+                  {showQuestionGroup ? <td>{row.questionGroup}</td> : null}
                   <td className="statement-register-statement" title={row.statementEn ?? row.statementAr}>
                     {row.statementLabel}
                   </td>

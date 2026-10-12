@@ -118,7 +118,7 @@ export function HousingPositiveDotPlot({
       <div className="chart-card-header">
         <ChartSectionHeader
           icon="compare"
-          title="Q701 positive housing statements"
+          title="Positive housing statements"
           titleClassName="dumbbell-chart-title"
           subtitleClassName="dumbbell-chart-subtitle"
           subtitle={
@@ -152,7 +152,7 @@ export function HousingPositiveDotPlot({
                 viewBox={`0 0 ${CHART_WIDTH} ${plotContentHeight}`}
                 className="dumbbell-chart-svg two-lane-dot-plot-svg-plot"
                 role="img"
-                aria-label="Q701 positive housing statements"
+                aria-label="Positive housing statements"
                 preserveAspectRatio="xMidYMin meet"
               >
                 {ticks.map((tick) => (
@@ -285,7 +285,7 @@ export function HousingPositiveDotPlot({
         )}
       </div>
 
-      <ChartInsightFooter chartTitle="Q701 positive housing statements" insight={insight} />
+      <ChartInsightFooter chartTitle="Positive housing statements" insight={insight} />
     </div>
   );
 }

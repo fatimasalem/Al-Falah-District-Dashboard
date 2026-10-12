@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ResponsiveContainer, Treemap } from 'recharts';
-import { PILLAR_TABS } from '../../types';
+import { DESIGN, PILLAR_TABS } from '../../types';
 import type { CompareYears, ViewMode } from '../../types';
 import {
   formatCompareYearsLabel,
@@ -26,6 +26,7 @@ interface MomentumTreemapNode {
   value: number;
   sectionId: string;
   pillar: string;
+  score2024: number;
   yoyChange: number;
   weight: number;
   fill: string;
@@ -67,6 +68,7 @@ function toTreemapNodes(items: MomentumMatrixItem[]): MomentumTreemapNode[] {
     value: item.score2025,
     sectionId: item.sectionId,
     pillar: item.pillar,
+    score2024: item.score2024,
     yoyChange: item.yoyChange,
     weight: totalScore > 0 ? (item.score2025 / totalScore) * 100 : 0,
     fill: getScoreBandFill(item.quadrant),
@@ -86,6 +88,7 @@ function MomentumTreemapContent(props: {
   fill?: string;
   sectionId?: string;
   pillar?: string;
+  score2024?: number;
   yoyChange?: number;
   weight?: number;
   icon?: string;
@@ -93,6 +96,7 @@ function MomentumTreemapContent(props: {
   children?: MomentumTreemapNode[];
   payload?: MomentumTreemapNode;
   viewMode?: ViewMode;
+  compareYears?: CompareYears;
 }) {
   const {
     x = 0,
@@ -103,12 +107,14 @@ function MomentumTreemapContent(props: {
     name,
     fill,
     pillar,
+    score2024,
     yoyChange,
     weight,
     icon,
     children,
     payload,
     viewMode = 'yoy',
+    compareYears = ['2024', '2025'] as CompareYears,
   } = props;
 
   if (depth === 0 || (children && children.length > 0)) return null;
@@ -119,6 +125,7 @@ function MomentumTreemapContent(props: {
     value: props.value ?? payload?.value ?? 0,
     sectionId: props.sectionId ?? payload?.sectionId ?? '',
     pillar: pillar ?? payload?.pillar ?? name ?? '',
+    score2024: score2024 ?? payload?.score2024 ?? 0,
     yoyChange: yoyChange ?? payload?.yoyChange ?? 0,
     weight: weight ?? payload?.weight ?? 0,
     fill: fill ?? payload?.fill ?? '#f8d7d7',
@@ -131,18 +138,98 @@ function MomentumTreemapContent(props: {
   const tileY = y + TILE_GAP / 2;
   const tileWidth = Math.max(0, width - TILE_GAP);
   const tileHeight = Math.max(0, height - TILE_GAP);
-  const innerWidth = Math.max(0, tileWidth - TILE_PADDING * 2);
+  const clipId = `momentum-tile-clip-${node.sectionId}`;
 
+  if (isYoY) {
+    const showSplitContent = tileWidth > 56 && tileHeight > 48;
+    const showRecentScore = tileWidth > 40 && tileHeight > 36;
+    const showPreviousMeta = tileWidth > 72 && tileHeight > 64;
+    const recentLabelWidth = Math.max(40, tileWidth * 0.48);
+    const previousLabelWidth = Math.max(40, tileWidth * 0.48);
+
+    return (
+      <g fill="none">
+        <defs>
+          <clipPath id={clipId}>
+            <rect
+              x={tileX}
+              y={tileY}
+              width={tileWidth}
+              height={tileHeight}
+              rx={TILE_RADIUS}
+              ry={TILE_RADIUS}
+            />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipId})`}>
+          <rect
+            x={tileX}
+            y={tileY}
+            width={tileWidth}
+            height={tileHeight}
+            fill={node.fill}
+          />
+          <polygon
+            points={[
+              `${tileX + tileWidth},${tileY}`,
+              `${tileX + tileWidth},${tileY + tileHeight}`,
+              `${tileX},${tileY + tileHeight}`,
+            ].join(' ')}
+            fill={DESIGN.chart.yearPrevious}
+          />
+        </g>
+        <rect
+          x={tileX}
+          y={tileY}
+          width={tileWidth}
+          height={tileHeight}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={1.5}
+          rx={TILE_RADIUS}
+          ry={TILE_RADIUS}
+        />
+        {showRecentScore && (
+          <foreignObject
+            x={tileX + TILE_PADDING}
+            y={tileY + TILE_PADDING}
+            width={recentLabelWidth}
+            height={showSplitContent ? 52 : 28}
+          >
+            <div className="momentum-treemap-split-recent">
+              <span className="momentum-treemap-split-year">{compareYears[1]}</span>
+              <span className="momentum-treemap-split-score">{`${node.value.toFixed(1)}%`}</span>
+              {showSplitContent && (
+                <span className={`momentum-treemap-split-delta ${getDeltaToneClass(node.yoyChange)}`}>
+                  {formatDelta(node.yoyChange)}
+                </span>
+              )}
+            </div>
+          </foreignObject>
+        )}
+        {showPreviousMeta && (
+          <foreignObject
+            x={tileX + tileWidth - TILE_PADDING - previousLabelWidth}
+            y={tileY + tileHeight - TILE_PADDING - 48}
+            width={previousLabelWidth}
+            height={48}
+          >
+            <div className="momentum-treemap-split-previous">
+              <span className="momentum-treemap-split-name">{node.pillar}</span>
+              <span className="momentum-treemap-split-prev-score">
+                {`${compareYears[0]} · ${node.score2024.toFixed(1)}%`}
+              </span>
+            </div>
+          </foreignObject>
+        )}
+      </g>
+    );
+  }
+
+  const innerWidth = Math.max(0, tileWidth - TILE_PADDING * 2);
   const showIcon = tileWidth > 52 && tileHeight > 48;
   const showName = tileWidth > 60 && tileHeight > 56;
   const showMainValue = tileWidth > 40 && tileHeight > 36;
-  const showSecondaryScore = isYoY && tileWidth > 68 && tileHeight > 72;
-
-  const mainValueText = isYoY ? formatDelta(node.yoyChange) : `${node.value.toFixed(1)}%`;
-  const mainValueClass = isYoY
-    ? `momentum-treemap-delta ${getDeltaToneClass(node.yoyChange)}${showName ? '' : ' momentum-treemap-delta-compact'}`
-    : `momentum-treemap-delta momentum-treemap-score-primary${showName ? '' : ' momentum-treemap-delta-compact'}`;
-
   const nameTop = tileY + TILE_PADDING + (showIcon ? 32 : 0);
   const mainValueTop = nameTop + (showName ? 34 : 0) + (showIcon && !showName ? 4 : 0);
 
@@ -188,20 +275,8 @@ function MomentumTreemapContent(props: {
           width={innerWidth}
           height={24}
         >
-          <div className={mainValueClass}>
-            {mainValueText}
-          </div>
-        </foreignObject>
-      )}
-      {showSecondaryScore && (
-        <foreignObject
-          x={tileX + TILE_PADDING}
-          y={tileY + tileHeight - TILE_PADDING - 14}
-          width={innerWidth}
-          height={16}
-        >
-          <div className="momentum-treemap-score">
-            {`Score ${node.value.toFixed(1)}%`}
+          <div className={`momentum-treemap-delta momentum-treemap-score-primary${showName ? '' : ' momentum-treemap-delta-compact'}`}>
+            {`${node.value.toFixed(1)}%`}
           </div>
         </foreignObject>
       )}
@@ -220,7 +295,7 @@ export function MomentumMatrix({
   const compareLabel = formatCompareYearsLabel(compareYears);
   const nodes = toTreemapNodes(items);
   const subtitle = isYoY
-    ? `2025 section score share vs ${compareLabel} movement for approved pillars`
+    ? `${compareLabel} section scores — recent year share with previous-year cut`
     : 'Section score share for approved pillars in the selected year';
   const insight = useMemo(
     () => generateMomentumMatrixInsight(items, viewMode),
@@ -228,18 +303,37 @@ export function MomentumMatrix({
   );
   const chartTitle = 'Performance & momentum matrix';
 
+  const yearLegend = isYoY ? (
+    <div
+      className="pillar-composition-legend pillar-composition-legend--end"
+      aria-label={`Treemap tiles show ${compareYears[0]} and ${compareYears[1]} section scores`}
+    >
+      <span>
+        <i className="pillar-composition-legend-dot previous" aria-hidden="true" />
+        {compareYears[0]}
+      </span>
+      <span>
+        <i className="pillar-composition-legend-dot current-bands" aria-hidden="true" />
+        {compareYears[1]}
+      </span>
+    </div>
+  ) : null;
+
   const treemap = (
-    <div className="momentum-treemap-body">
-      <ResponsiveContainer width="100%" height="100%">
-        <Treemap
-          data={nodes}
-          dataKey="value"
-          stroke="#ffffff"
-          fill="#f8d7d7"
-          content={<MomentumTreemapContent viewMode={viewMode} />}
-          isAnimationActive={false}
-        />
-      </ResponsiveContainer>
+    <div className="momentum-treemap-chart-wrap">
+      {yearLegend}
+      <div className="momentum-treemap-body">
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={nodes}
+            dataKey="value"
+            stroke="#ffffff"
+            fill="#f8d7d7"
+            content={<MomentumTreemapContent viewMode={viewMode} compareYears={compareYears} />}
+            isAnimationActive={false}
+          />
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 

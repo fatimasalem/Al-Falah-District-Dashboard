@@ -3934,9 +3934,14 @@ button {
   min-height: 0;
 }
 
-.pillar-view-panel .momentum-treemap-body {
+.pillar-view-panel .momentum-treemap-chart-wrap {
   height: 320px;
   min-height: 320px;
+}
+
+.pillar-view-panel .momentum-treemap-body {
+  min-height: 0;
+  height: auto;
 }
 
 .pillar-composition-title {
@@ -3959,6 +3964,11 @@ button {
   font-size: 0.75rem;
   color: #64748b;
   flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.pillar-composition-legend--end {
+  justify-content: flex-end;
 }
 
 .pillar-composition-legend span {
@@ -3980,6 +3990,10 @@ button {
 
 .pillar-composition-legend-dot.current {
   background: #3b82f6;
+}
+
+.pillar-composition-legend-dot.current-bands {
+  background: linear-gradient(135deg, #86efac 0 33%, #93c5fd 33% 66%, #f8d7d7 66% 100%);
 }
 
 .pillar-composition-legend-dot.is-risk {
@@ -4108,6 +4122,23 @@ button {
   font-size: 11px;
   font-weight: 600;
   fill: #334155;
+}
+
+.pillar-composition-delta {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pillar-composition-delta-positive {
+  fill: #16a34a;
+}
+
+.pillar-composition-delta-negative {
+  fill: #dc2626;
+}
+
+.pillar-composition-delta-neutral {
+  fill: #64748b;
 }
 
 .pillar-composition-axis-label {
@@ -4479,6 +4510,13 @@ button {
   line-height: 1.45;
 }
 
+.momentum-treemap-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
 .momentum-treemap-body {
   flex: 1 1 auto;
   width: 100%;
@@ -4548,6 +4586,62 @@ button {
   color: #1e293b;
 }
 
+.momentum-treemap-split-recent,
+.momentum-treemap-split-previous {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  height: 100%;
+}
+
+.momentum-treemap-split-previous {
+  align-items: flex-end;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.momentum-treemap-split-year {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #475569;
+  line-height: 1;
+}
+
+.momentum-treemap-split-score {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.momentum-treemap-split-delta {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.momentum-treemap-split-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-align: right;
+}
+
+.momentum-treemap-split-prev-score {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
 .momentum-treemap-legend {
   list-style: none;
   margin: 10px 0 0;
@@ -4559,6 +4653,10 @@ button {
   font-weight: 600;
   color: #64748b;
   flex-shrink: 0;
+}
+
+.momentum-treemap-legend--start {
+  justify-content: flex-start;
 }
 
 .momentum-treemap-legend li {

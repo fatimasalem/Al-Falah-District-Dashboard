@@ -281,6 +281,7 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
         viewMode={viewMode}
         selectedYear={selectedYear}
         compareYears={compareYears}
+        showQuestionGroup={false}
         tabs={[
           {
             id: 'confidence',
@@ -392,6 +393,7 @@ function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: Se
         viewMode={viewMode}
         selectedYear={selectedYear}
         compareYears={compareYears}
+        showQuestionGroup={false}
         tabs={[
           {
             id: 'positive',

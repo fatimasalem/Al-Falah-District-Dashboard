@@ -84,7 +84,7 @@ export function AgreementHeatmap({
   const shouldCapHeight = embedded && !fillHeight;
   const laneSubtitle = isYoY
     ? `${compareYears[0]} vs ${compareYears[1]} reported problems — higher agreement means more concern, not improvement.`
-    : `Reported wellbeing problems for ${displayYear} — shown separately from SCORE_5 (Q501 + Q502).`;
+    : `Reported wellbeing problems for ${displayYear} — shown separately from the health section score.`;
 
   const heatmapBody = (
     <div className={`chart-card-body agreement-heatmap-body${embedded ? ' agreement-heatmap-body-embedded' : ''}`}>

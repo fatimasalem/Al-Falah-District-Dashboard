@@ -127,7 +127,7 @@ export function HousingStatementChart({
       <div className={embedded ? 'health-assessment-lane-card-header' : 'chart-card-header'}>
         <ChartSectionHeader
           icon="compare"
-          title="Q701 positive housing statements"
+          title="Positive housing statements"
           titleClassName={embedded ? 'health-assessment-lane-card-title' : 'dumbbell-chart-title'}
           subtitleClassName={embedded ? 'health-assessment-lane-card-subtitle' : 'dumbbell-chart-subtitle'}
           subtitle={laneSubtitle}
@@ -187,7 +187,7 @@ export function HousingStatementChart({
                     height={chartHeight}
                     preserveAspectRatio="none"
                     role="img"
-                    aria-label="Q701 positive housing statements"
+                    aria-label="Positive housing statements"
                   >
                     {DOMAIN_TICKS.map((tick) => (
                       <line
@@ -323,7 +323,7 @@ export function HousingStatementChart({
       </div>
 
       <div className={embedded ? 'health-assessment-lane-insight' : undefined}>
-        <ChartInsightFooter chartTitle="Q701 positive housing statements" insight={insight} />
+        <ChartInsightFooter chartTitle="Positive housing statements" insight={insight} />
       </div>
     </>
   );

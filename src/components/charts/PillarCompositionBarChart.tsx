@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { DESIGN, PILLAR_TABS } from '../../types';
 import type { CompareYears, SurveyYear, ViewMode } from '../../types';
 import {
+  formatDelta,
   getMomentumQuadrant,
   type MomentumQuadrant,
   type PillarDumbbellItem,
@@ -31,6 +32,7 @@ interface ChartRow {
 
 const PLOT_WIDTH = 1000;
 const PLOT_MARGIN = { top: 8, right: 56, left: 10, bottom: 0 };
+const PLOT_MARGIN_YOY = { top: 8, right: 110, left: 10, bottom: 0 };
 const AXIS_HEIGHT = 44;
 const ROW_HEIGHT_YOY = 48;
 const ROW_HEIGHT_SINGLE = 36;
@@ -95,13 +97,14 @@ function buildChartRows(
     });
 }
 
-function scaleX(value: number): number {
-  const plotWidth = PLOT_WIDTH - PLOT_MARGIN.left - PLOT_MARGIN.right;
-  return PLOT_MARGIN.left + (value / 100) * plotWidth;
-}
-
 function formatValueLabel(value: number): string {
   return `${value.toFixed(1)}%`;
+}
+
+function getDeltaTone(delta: number): 'positive' | 'negative' | 'neutral' {
+  if (delta > 0) return 'positive';
+  if (delta < 0) return 'negative';
+  return 'neutral';
 }
 
 export function PillarCompositionBarChart({
@@ -116,8 +119,14 @@ export function PillarCompositionBarChart({
   const displayYear = isYoY ? compareYears[1] : selectedYear;
   const rows = buildChartRows(items, mode, selectedYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;
-  const chartHeight = Math.max(rows.length * rowHeight + PLOT_MARGIN.top + PLOT_MARGIN.bottom, 180);
-  const plotBottom = chartHeight - PLOT_MARGIN.bottom;
+  const margin = isYoY ? PLOT_MARGIN_YOY : PLOT_MARGIN;
+  const chartHeight = Math.max(rows.length * rowHeight + margin.top + margin.bottom, 180);
+  const plotBottom = chartHeight - margin.bottom;
+
+  const scaleX = (value: number): number => {
+    const plotWidth = PLOT_WIDTH - margin.left - margin.right;
+    return margin.left + (value / 100) * plotWidth;
+  };
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -133,6 +142,21 @@ export function PillarCompositionBarChart({
 
   return (
     <div className="pillar-composition-chart-wrap">
+      {isYoY && (
+        <div
+          className="pillar-composition-legend pillar-composition-legend--end"
+          aria-label={`Chart bars show ${compareYears[0]} and ${compareYears[1]} section scores`}
+        >
+          <span>
+            <i className="pillar-composition-legend-dot previous" aria-hidden="true" />
+            {compareYears[0]}
+          </span>
+          <span>
+            <i className="pillar-composition-legend-dot current-bands" aria-hidden="true" />
+            {compareYears[1]}
+          </span>
+        </div>
+      )}
       <div className="pillar-composition-chart-panel">
         <div
           className="pillar-composition-chart-scroll statement-bar-chart-scroll"
@@ -176,7 +200,7 @@ export function PillarCompositionBarChart({
                     key={tick}
                     x1={scaleX(tick)}
                     x2={scaleX(tick)}
-                    y1={PLOT_MARGIN.top}
+                    y1={margin.top}
                     y2={plotBottom}
                     stroke={DESIGN.chart.grid}
                     strokeDasharray="3 3"
@@ -184,7 +208,7 @@ export function PillarCompositionBarChart({
                 ))}
 
                 {rows.map((row, index) => {
-                  const centerY = PLOT_MARGIN.top + index * rowHeight + rowHeight / 2;
+                  const centerY = margin.top + index * rowHeight + rowHeight / 2;
 
                   if (row.isPending) {
                     return null;
@@ -194,16 +218,19 @@ export function PillarCompositionBarChart({
                     const barHeight = 12;
                     const currentY = centerY - barHeight - 2;
                     const previousY = centerY + 2;
-                    const previousWidth = scaleX(row.value2024) - PLOT_MARGIN.left;
-                    const currentWidth = scaleX(row.value2025) - PLOT_MARGIN.left;
+                    const previousWidth = scaleX(row.value2024) - margin.left;
+                    const currentWidth = scaleX(row.value2025) - margin.left;
+                    const delta = row.value2025 - row.value2024;
+                    const deltaTone = getDeltaTone(delta);
+                    const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '–';
 
                     return (
                       <g key={row.sectionId}>
                         <title>
-                          {`${row.fullName}\n${compareYears[1]}: ${formatValueLabel(row.value2025)}\n${compareYears[0]}: ${formatValueLabel(row.value2024)}`}
+                          {`${row.fullName}\n${compareYears[1]}: ${formatValueLabel(row.value2025)}\n${compareYears[0]}: ${formatValueLabel(row.value2024)}\nChange: ${formatDelta(delta)}`}
                         </title>
                         <rect
-                          x={PLOT_MARGIN.left}
+                          x={margin.left}
                           y={currentY}
                           width={Math.max(currentWidth, 0)}
                           height={barHeight}
@@ -212,7 +239,7 @@ export function PillarCompositionBarChart({
                           fill={getScoreBandFill(getMomentumQuadrant(row.value2025))}
                         />
                         <rect
-                          x={PLOT_MARGIN.left}
+                          x={margin.left}
                           y={previousY}
                           width={Math.max(previousWidth, 0)}
                           height={barHeight}
@@ -228,6 +255,13 @@ export function PillarCompositionBarChart({
                           {formatValueLabel(row.value2025)}
                         </text>
                         <text
+                          x={scaleX(row.value2025) + 52}
+                          y={currentY + barHeight / 2 + 4}
+                          className={`pillar-composition-delta pillar-composition-delta-${deltaTone}`}
+                        >
+                          {`${arrow} ${formatDelta(delta)}`}
+                        </text>
+                        <text
                           x={scaleX(row.value2024) + 6}
                           y={previousY + barHeight / 2 + 4}
                           className="pillar-composition-bar-label"
@@ -241,13 +275,13 @@ export function PillarCompositionBarChart({
                   if (!isYoY && row.displayValue != null) {
                     const barHeight = 16;
                     const barY = centerY - barHeight / 2;
-                    const barWidth = scaleX(row.displayValue) - PLOT_MARGIN.left;
+                    const barWidth = scaleX(row.displayValue) - margin.left;
 
                     return (
                       <g key={row.sectionId}>
                         <title>{`${row.fullName}\n${displayYear}: ${formatValueLabel(row.displayValue)}`}</title>
                         <rect
-                          x={PLOT_MARGIN.left}
+                          x={margin.left}
                           y={barY}
                           width={Math.max(barWidth, 0)}
                           height={barHeight}

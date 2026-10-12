@@ -96,8 +96,8 @@ export function RiskRegister({
   const displayYear = isYoY ? compareYears[1] : selectedYear;
   const compareLabel = formatCompareYearsLabel(compareYears);
   const subtitle = isYoY
-    ? `Ranked ${compareYears[1]} negative concern (lower is better); NS means no negative score.`
-    : `Ranked ${selectedYear} negative concern (lower is better); NS means no negative score.`;
+    ? `${compareLabel} residual risk and section scores.`
+    : `Ranked ${selectedYear} negative concern (lower is better).`;
   const insight = useMemo(
     () => generateResidualRiskRegisterInsight(items, displayYear, isYoY),
     [displayYear, isYoY, items],
@@ -110,11 +110,21 @@ export function RiskRegister({
         <thead>
           <tr>
             <th scope="col">Category</th>
-            <th scope="col">Risk</th>
-            {isYoY ? <th scope="col">{compareYears[0]} concern</th> : null}
-            <th scope="col">{displayYear} concern</th>
-            <th scope="col">Score</th>
-            {isYoY ? <th scope="col">{compareLabel}</th> : null}
+            {isYoY ? (
+              <>
+                <th scope="col">{compareYears[0]} Risk</th>
+                <th scope="col">{compareYears[1]} Risk</th>
+                <th scope="col">{compareYears[0]} Score</th>
+                <th scope="col">{compareYears[1]} Score</th>
+                <th scope="col">{compareLabel}</th>
+              </>
+            ) : (
+              <>
+                <th scope="col">Risk</th>
+                <th scope="col">{displayYear} concern</th>
+                <th scope="col">Score</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -136,31 +146,34 @@ export function RiskRegister({
                     <span className="analytics-risk-category-text">{item.pillar}</span>
                   </span>
                 </th>
-                <td>
-                  <span className={`analytics-risk-badge analytics-risk-badge-${risk.tone}`}>
-                    {risk.label}
-                    {risk.tone === 'moderate' || risk.tone === 'stable' ? (
-                      <TrendIcon direction={yoyDirection} />
-                    ) : null}
-                  </span>
-                </td>
                 {isYoY ? (
-                  <td className="analytics-risk-metric">{renderConcernCell(item, compareYears[0])}</td>
-                ) : null}
-                <td className="analytics-risk-metric">{renderConcernCell(item, displayYear)}</td>
-                <td className="analytics-risk-score">{renderScoreCell(item, displayYear)}</td>
-                {isYoY ? (
-                  <td className={`analytics-risk-yoy${item.yoyChange != null && item.yoyChange >= 0 ? ' is-rise' : item.yoyChange != null ? ' is-fall' : ''}`}>
-                    {item.yoyChange != null ? (
-                      <span className="analytics-risk-yoy-value">
-                        <TrendIcon direction={yoyDirection} />
-                        {formatDelta(item.yoyChange)}
+                  <>
+                    <td className="analytics-risk-metric">{renderConcernCell(item, compareYears[0])}</td>
+                    <td className="analytics-risk-metric">{renderConcernCell(item, compareYears[1])}</td>
+                    <td className="analytics-risk-score">{renderScoreCell(item, compareYears[0])}</td>
+                    <td className="analytics-risk-score">{renderScoreCell(item, compareYears[1])}</td>
+                    <td className={`analytics-risk-yoy${item.yoyChange != null && item.yoyChange >= 0 ? ' is-rise' : item.yoyChange != null ? ' is-fall' : ''}`}>
+                      {item.yoyChange != null ? (
+                        <span className="analytics-risk-yoy-value">
+                          <TrendIcon direction={yoyDirection} />
+                          {formatDelta(item.yoyChange)}
+                        </span>
+                      ) : (
+                        <MutedPlaceholder>—</MutedPlaceholder>
+                      )}
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>
+                      <span className={`analytics-risk-badge analytics-risk-badge-${risk.tone}`}>
+                        {risk.label}
                       </span>
-                    ) : (
-                      <MutedPlaceholder>—</MutedPlaceholder>
-                    )}
-                  </td>
-                ) : null}
+                    </td>
+                    <td className="analytics-risk-metric">{renderConcernCell(item, displayYear)}</td>
+                    <td className="analytics-risk-score">{renderScoreCell(item, displayYear)}</td>
+                  </>
+                )}
               </tr>
             );
           })}

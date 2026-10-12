@@ -7,19 +7,18 @@ import {
   formatCompareYearsLabel,
   generateEducationPositiveStatementsInsight,
   generateEducationRiskStatementsInsight,
-  getCurrentYearDivergingLikertRows,
-  type DivergingLikertStatementRow,
   type EducationPositiveCategory,
   type InsightPart,
+  type StatementComparisonItem,
 } from '../../utils';
 import { ChartInsightFooter } from './ChartInsightFooter';
 import { ChartSectionHeader, ChartSectionIcon } from './ChartSectionHeader';
-import { GroupedDivergingLikertChart } from './GroupedDivergingLikertChart';
 import { StatementYearLegend } from './StatementYearLegend';
+import { WorkStatementChart } from './WorkStatementChart';
 
 interface EducationStatementsCardProps {
-  positiveRows: DivergingLikertStatementRow[];
-  riskRows: DivergingLikertStatementRow[];
+  positiveItems: StatementComparisonItem[];
+  riskItems: StatementComparisonItem[];
   year: SurveyYear;
   viewMode: ViewMode;
   compareYears: CompareYears;
@@ -34,39 +33,40 @@ const POSITIVE_CATEGORY_TABS = EDUCATION_POSITIVE_CATEGORY_ORDER.map((id) => ({
 }));
 
 export function EducationStatementsCard({
-  positiveRows,
-  riskRows,
+  positiveItems,
+  riskItems,
   year,
   viewMode,
   compareYears,
-  title = 'Q301 education statements',
+  title = 'Education statements',
   maxBodyHeight = 320,
   hideShellHeader = false,
 }: EducationStatementsCardProps) {
   const [activeCategory, setActiveCategory] = useState<EducationPositiveCategory>('school');
   const isYoY = viewMode === 'yoy';
+  const insightYear = isYoY ? compareYears[1] : year;
 
-  const categoryRows = useMemo(
-    () => filterEducationPositiveRowsByCategory(positiveRows, activeCategory),
-    [activeCategory, positiveRows],
+  const categoryItems = useMemo(
+    () => filterEducationPositiveRowsByCategory(positiveItems, activeCategory),
+    [activeCategory, positiveItems],
   );
 
   const activeCategoryLabel = EDUCATION_POSITIVE_CATEGORY_LABELS[activeCategory];
-  const positiveInsight = useMemo(() => {
-    const insightRows = getCurrentYearDivergingLikertRows(categoryRows, viewMode, compareYears);
-    return generateEducationPositiveStatementsInsight(insightRows, year, activeCategoryLabel);
-  }, [activeCategoryLabel, categoryRows, compareYears, viewMode, year]);
-  const riskInsight = useMemo(() => {
-    const insightRows = getCurrentYearDivergingLikertRows(riskRows, viewMode, compareYears);
-    return generateEducationRiskStatementsInsight(insightRows, year);
-  }, [compareYears, riskRows, viewMode, year]);
+  const positiveInsight = useMemo(
+    () => generateEducationPositiveStatementsInsight(categoryItems, insightYear, activeCategoryLabel),
+    [activeCategoryLabel, categoryItems, insightYear],
+  );
+  const riskInsight = useMemo(
+    () => generateEducationRiskStatementsInsight(riskItems, insightYear),
+    [insightYear, riskItems],
+  );
 
   const shellSubtitle = isYoY
-    ? `${positiveRows.length} positive and ${riskRows.length} risk Q301 statements (${formatCompareYearsLabel(compareYears)}).`
-    : `${positiveRows.length} positive and ${riskRows.length} risk Q301 statements for ${year}.`;
+    ? `${positiveItems.length} positive and ${riskItems.length} risk education statements (${formatCompareYearsLabel(compareYears)}).`
+    : `${positiveItems.length} positive and ${riskItems.length} risk education statements for ${year}.`;
   const positiveSubtitle = isYoY
-    ? `${formatCompareYearsLabel(compareYears)} satisfaction and confidence statements, sorted by agreement.`
-    : `Satisfaction and confidence statements for ${year}, sorted by agreement.`;
+    ? `${formatCompareYearsLabel(compareYears)} satisfaction and confidence statements, ranked by agreement.`
+    : `Satisfaction and confidence statements for ${year}, ranked by agreement.`;
   const riskSubtitle = isYoY
     ? `${formatCompareYearsLabel(compareYears)} bullying and harm indicators — higher agreement signals reported concern.`
     : `Bullying and harm indicators for ${year} — higher agreement signals reported concern.`;
@@ -99,7 +99,7 @@ export function EducationStatementsCard({
             aria-label="Positive statement categories"
           >
             {POSITIVE_CATEGORY_TABS.map((tab) => {
-              const count = filterEducationPositiveRowsByCategory(positiveRows, tab.id).length;
+              const count = filterEducationPositiveRowsByCategory(positiveItems, tab.id).length;
               return (
                 <button
                   key={tab.id}
@@ -116,18 +116,15 @@ export function EducationStatementsCard({
             })}
           </div>
 
-          <GroupedDivergingLikertChart
-            rows={categoryRows}
-            title="Positive education statements"
+          <WorkStatementChart
+            items={categoryItems}
             year={year}
             viewMode={viewMode}
             compareYears={compareYears}
             variant="positive"
-            topic="education"
-            embedded
-            showInsight={false}
             maxBodyHeight={maxBodyHeight}
             emptyMessage={`No ${activeCategoryLabel.toLowerCase()} statements available.`}
+            ariaLabel="Positive education statements"
           />
 
           <EducationLaneInsight
@@ -156,17 +153,16 @@ export function EducationStatementsCard({
             </div>
           </div>
 
-          <GroupedDivergingLikertChart
-            rows={riskRows}
-            title="Reported school safety risk statements"
+          <WorkStatementChart
+            items={riskItems}
             year={year}
             viewMode={viewMode}
             compareYears={compareYears}
             variant="risk"
-            topic="education"
-            embedded
-            showInsight={false}
             maxBodyHeight={maxBodyHeight}
+            fillHeight
+            emptyMessage="No reported school safety risk statements are available for this view."
+            ariaLabel="Reported school safety risk statements"
           />
 
           <EducationLaneInsight chartTitle="Reported school safety risk" insight={riskInsight} />

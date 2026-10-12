@@ -68,7 +68,7 @@ export function OverallDistrictScoreCard({
     ? `${formatCompareYearsLabel(compareYears)} approved section scores`
     : `Approved section scores for ${year}`;
   const momentumSubtitle = isYoY
-    ? `2025 section score share vs ${formatCompareYearsLabel(compareYears)} movement for approved pillars`
+    ? `${formatCompareYearsLabel(compareYears)} section scores — recent year share with previous-year cut`
     : 'Section score share for approved pillars in the selected year';
   const isComposition = activeView === 'composition';
   const sharedInsight = useMemo(
@@ -154,7 +154,10 @@ export function OverallDistrictScoreCard({
               chartOnly
             />
           )}
-          <ul className="momentum-treemap-legend" aria-label="Score band legend">
+          <ul
+            className={`momentum-treemap-legend${isComposition ? ' momentum-treemap-legend--start' : ''}`}
+            aria-label="Score band legend"
+          >
             {SCORE_BAND_LEGEND.map((entry) => (
               <li key={entry.key}>
                 <span

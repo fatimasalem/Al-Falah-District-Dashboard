@@ -34,8 +34,8 @@ const DEFAULT_MAX_SCROLL_HEIGHT = 220;
 const DOMAIN_TICKS = [0, 25, 50, 75, 100];
 
 const TABS: { id: SubgroupTab; label: string }[] = [
-  { id: 'q501', label: 'Health centers (Q501)' },
-  { id: 'q502', label: 'System quality (Q502)' },
+  { id: 'q501', label: 'Health centers' },
+  { id: 'q502', label: 'Healthcare system quality' },
 ];
 
 interface ChartRow {
@@ -162,15 +162,15 @@ export function HealthSubgroupChart({
 
       <div className="health-score-callout" aria-label="Calculated health section score">
         <div className="health-score-callout-main">
-          <span className="health-score-callout-label">SCORE_5 (calculated)</span>
+          <span className="health-score-callout-label">Health section score</span>
           <strong className="health-score-callout-value">{calculatedScore.toFixed(1)}%</strong>
           <span className="health-score-callout-caption">
-            Average of Q501 + Q502 subgroup scores — reported wellbeing problems shown separately.
+            Average of health centers and healthcare system quality scores — reported wellbeing problems shown separately.
           </span>
         </div>
         <div className="health-score-callout-subgroups">
-          <span>Q501 {q501Score.toFixed(1)}%</span>
-          <span>Q502 {q502Score.toFixed(1)}%</span>
+          <span>Health centers {q501Score.toFixed(1)}%</span>
+          <span>Healthcare system quality {q502Score.toFixed(1)}%</span>
         </div>
       </div>
 
