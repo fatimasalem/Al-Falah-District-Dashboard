@@ -4425,6 +4425,8 @@ export type RiskRegisterStatus = 'available' | 'not_applicable' | 'unavailable';
 export interface RiskRegisterItem {
   sectionId: string;
   pillar: string;
+  positive2024: number | null;
+  positive2025: number | null;
   negative2024: number | null;
   negative2025: number | null;
   score2024: number | null;
@@ -4446,6 +4448,8 @@ export function getResidualRiskRegister(
         return {
           sectionId: pillar.sectionId,
           pillar: pillar.sectionNameEn,
+          positive2024: score?.positive2024 ?? null,
+          positive2025: score?.positive2025 ?? null,
           negative2024: null,
           negative2025: null,
           score2024: score?.score2024 ?? null,
@@ -4459,6 +4463,8 @@ export function getResidualRiskRegister(
         return {
           sectionId: pillar.sectionId,
           pillar: pillar.sectionNameEn,
+          positive2024: null,
+          positive2025: null,
           negative2024: null,
           negative2025: null,
           score2024: null,
@@ -4472,6 +4478,8 @@ export function getResidualRiskRegister(
         return {
           sectionId: pillar.sectionId,
           pillar: pillar.sectionNameEn,
+          positive2024: null,
+          positive2025: null,
           negative2024: null,
           negative2025: null,
           score2024: null,
@@ -4484,6 +4492,8 @@ export function getResidualRiskRegister(
       return {
         sectionId: pillar.sectionId,
         pillar: pillar.sectionNameEn,
+        positive2024: score.positive2024,
+        positive2025: score.positive2025,
         negative2024: score.negative2024,
         negative2025: score.negative2025,
         score2024: score.score2024,

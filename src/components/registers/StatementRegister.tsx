@@ -38,7 +38,7 @@ export function StatementRegister({
   rows: rowsProp,
   tabs,
   title = 'Statement register',
-  subtitle = 'Trace pillar evidence to underlying statements with polarity, agreement, and movement.',
+  subtitle = 'Trace pillar evidence to underlying statements with agreement, disagreement, and movement.',
   headerAction,
   viewMode = 'yoy',
   selectedYear = '2025',
@@ -161,7 +161,6 @@ export function StatementRegister({
                 </th>
               ) : null}
               <th>Statement</th>
-              <th>Polarity</th>
               {isYoY ? (
                 <>
                   <th>Agreement {compareYears[0]}</th>
@@ -170,6 +169,7 @@ export function StatementRegister({
                       Agreement {compareYears[1]}
                     </button>
                   </th>
+                  <th>Disagreement {compareYears[0]}</th>
                   <th>Disagreement {compareYears[1]}</th>
                   <th>
                     <button type="button" className="statement-register-sort" onClick={() => handleSort('movement')}>
@@ -198,6 +198,7 @@ export function StatementRegister({
               const disagreement = isYoY
                 ? row.disagreement2025
                 : pickYearValue(row.disagreement2024, row.disagreement2025, selectedYear);
+              const valueClass = `statement-register-value statement-register-value--${row.polarity}`;
 
               return (
                 <tr key={row.id}>
@@ -205,22 +206,18 @@ export function StatementRegister({
                   <td className="statement-register-statement" title={row.statementEn ?? row.statementAr}>
                     {row.statementLabel}
                   </td>
-                  <td>
-                    <span className={`statement-register-polarity statement-register-polarity--${row.polarity}`}>
-                      {row.polarity === 'negative' ? 'Risk' : 'Positive'}
-                    </span>
-                  </td>
                   {isYoY ? (
                     <>
-                      <td>{row.agreement2024.toFixed(1)}%</td>
-                      <td>{row.agreement2025.toFixed(1)}%</td>
-                      <td>{row.disagreement2025.toFixed(1)}%</td>
-                      <td>{formatDelta(row.movement)}</td>
+                      <td className={valueClass}>{row.agreement2024.toFixed(1)}%</td>
+                      <td className={valueClass}>{row.agreement2025.toFixed(1)}%</td>
+                      <td className={valueClass}>{row.disagreement2024.toFixed(1)}%</td>
+                      <td className={valueClass}>{row.disagreement2025.toFixed(1)}%</td>
+                      <td className={valueClass}>{formatDelta(row.movement)}</td>
                     </>
                   ) : (
                     <>
-                      <td>{agreement.toFixed(1)}%</td>
-                      <td>{disagreement.toFixed(1)}%</td>
+                      <td className={valueClass}>{agreement.toFixed(1)}%</td>
+                      <td className={valueClass}>{disagreement.toFixed(1)}%</td>
                     </>
                   )}
                   <td className="statement-register-interpretation">{row.interpretation}</td>

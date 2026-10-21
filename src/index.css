@@ -4771,6 +4771,14 @@ button {
   color: #0f172a;
 }
 
+.analytics-risk-positive {
+  color: #059669;
+}
+
+.analytics-risk-negative {
+  color: #dc2626;
+}
+
 .analytics-risk-muted,
 .analytics-risk-badge-pending,
 .analytics-risk-badge-na {
@@ -5822,21 +5830,16 @@ button {
   white-space: nowrap;
 }
 
-.statement-register-polarity {
-  display: inline-flex;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+.statement-register-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.statement-register-polarity--positive {
-  background: #ecfdf5;
+.statement-register-value--positive {
   color: #047857;
 }
 
-.statement-register-polarity--negative {
-  background: #fef2f2;
+.statement-register-value--negative {
   color: #b91c1c;
 }
 

@@ -29,20 +29,6 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function getRiskLevel(
-  item: RiskRegisterItem,
-  year: SurveyYear,
-): { label: string; tone: 'moderate' | 'stable' | 'pending' | 'na' } {
-  if (item.status === 'not_applicable') return { label: 'N/A', tone: 'na' };
-  if (item.status === 'unavailable') return { label: 'Pending', tone: 'pending' };
-
-  const current = pickYearValue(item.negative2024, item.negative2025, year) ?? 0;
-  const previous = year === '2025' ? item.negative2024 : item.negative2025;
-  const concern = Math.max(current, previous ?? current);
-  if (concern >= 15) return { label: 'Moderate', tone: 'moderate' };
-  return { label: 'Stable', tone: 'stable' };
-}
-
 function TrendIcon({ direction }: { direction: 'up' | 'down' | 'flat' }) {
   if (direction === 'flat') {
     return (
@@ -71,7 +57,14 @@ function MutedPlaceholder({ children }: { children: string }) {
   return <span className="analytics-risk-muted">{children}</span>;
 }
 
-function renderConcernCell(item: RiskRegisterItem, year: SurveyYear) {
+function renderPositiveCell(item: RiskRegisterItem, year: SurveyYear) {
+  if (item.status === 'unavailable') return <MutedPlaceholder>—</MutedPlaceholder>;
+
+  const value = pickYearValue(item.positive2024, item.positive2025, year);
+  return value != null ? formatPercent(value) : <MutedPlaceholder>—</MutedPlaceholder>;
+}
+
+function renderNegativeCell(item: RiskRegisterItem, year: SurveyYear) {
   if (item.status === 'unavailable') return <MutedPlaceholder>—</MutedPlaceholder>;
   if (item.status === 'not_applicable') return <NegativeScoreNa />;
 
@@ -85,6 +78,30 @@ function renderScoreCell(item: RiskRegisterItem, year: SurveyYear) {
   return value != null ? formatPercent(value) : <MutedPlaceholder>—</MutedPlaceholder>;
 }
 
+function YearSentimentHeaders({ year }: { year: SurveyYear }) {
+  return (
+    <>
+      <th scope="col">{year} Positive Sentiment</th>
+      <th scope="col">{year} Negative Sentiment</th>
+    </>
+  );
+}
+
+function YearSentimentCells({
+  item,
+  year,
+}: {
+  item: RiskRegisterItem;
+  year: SurveyYear;
+}) {
+  return (
+    <>
+      <td className="analytics-risk-metric analytics-risk-positive">{renderPositiveCell(item, year)}</td>
+      <td className="analytics-risk-metric analytics-risk-negative">{renderNegativeCell(item, year)}</td>
+    </>
+  );
+}
+
 export function RiskRegister({
   items,
   viewMode,
@@ -96,8 +113,8 @@ export function RiskRegister({
   const displayYear = isYoY ? compareYears[1] : selectedYear;
   const compareLabel = formatCompareYearsLabel(compareYears);
   const subtitle = isYoY
-    ? `${compareLabel} residual risk and section scores.`
-    : `Ranked ${selectedYear} negative concern (lower is better).`;
+    ? `${compareLabel} positive and negative sentiment with section scores.`
+    : `${selectedYear} positive and negative sentiment with section scores.`;
   const insight = useMemo(
     () => generateResidualRiskRegisterInsight(items, displayYear, isYoY),
     [displayYear, isYoY, items],
@@ -112,16 +129,16 @@ export function RiskRegister({
             <th scope="col">Category</th>
             {isYoY ? (
               <>
-                <th scope="col">{compareYears[0]} Risk</th>
-                <th scope="col">{compareYears[1]} Risk</th>
+                <YearSentimentHeaders year={compareYears[0]} />
+                <YearSentimentHeaders year={compareYears[1]} />
                 <th scope="col">{compareYears[0]} Score</th>
                 <th scope="col">{compareYears[1]} Score</th>
                 <th scope="col">{compareLabel}</th>
               </>
             ) : (
               <>
-                <th scope="col">Risk</th>
-                <th scope="col">{displayYear} concern</th>
+                <th scope="col">Positive Sentiment</th>
+                <th scope="col">Negative Sentiment</th>
                 <th scope="col">Score</th>
               </>
             )}
@@ -129,7 +146,6 @@ export function RiskRegister({
         </thead>
         <tbody>
           {items.map((item) => {
-            const risk = getRiskLevel(item, displayYear);
             const yoyDirection = item.yoyChange == null || item.yoyChange === 0
               ? 'flat'
               : item.yoyChange > 0
@@ -148,8 +164,8 @@ export function RiskRegister({
                 </th>
                 {isYoY ? (
                   <>
-                    <td className="analytics-risk-metric">{renderConcernCell(item, compareYears[0])}</td>
-                    <td className="analytics-risk-metric">{renderConcernCell(item, compareYears[1])}</td>
+                    <YearSentimentCells item={item} year={compareYears[0]} />
+                    <YearSentimentCells item={item} year={compareYears[1]} />
                     <td className="analytics-risk-score">{renderScoreCell(item, compareYears[0])}</td>
                     <td className="analytics-risk-score">{renderScoreCell(item, compareYears[1])}</td>
                     <td className={`analytics-risk-yoy${item.yoyChange != null && item.yoyChange >= 0 ? ' is-rise' : item.yoyChange != null ? ' is-fall' : ''}`}>
@@ -165,12 +181,8 @@ export function RiskRegister({
                   </>
                 ) : (
                   <>
-                    <td>
-                      <span className={`analytics-risk-badge analytics-risk-badge-${risk.tone}`}>
-                        {risk.label}
-                      </span>
-                    </td>
-                    <td className="analytics-risk-metric">{renderConcernCell(item, displayYear)}</td>
+                    <td className="analytics-risk-metric analytics-risk-positive">{renderPositiveCell(item, displayYear)}</td>
+                    <td className="analytics-risk-metric analytics-risk-negative">{renderNegativeCell(item, displayYear)}</td>
                     <td className="analytics-risk-score">{renderScoreCell(item, displayYear)}</td>
                   </>
                 )}

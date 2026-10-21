@@ -122,13 +122,13 @@ export const TAB_STATUS_TOOLTIPS: Record<TabStatus, string> = {
 };
 
 export const PILLAR_TABS = [
-  { id: 'overview', label: 'Overview', icon: 'grid', status: 'RR' },
+  { id: 'overview', label: 'Overview', icon: 'grid', status: 'AP' },
   { id: 'income', label: 'Income & Living', icon: 'wallet', status: 'PSA' },
-  { id: 'work-education', label: 'Work & Education', icon: 'briefcase', status: 'RR' },
-  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'RR' },
-  { id: 'health', label: 'Health', icon: 'heart', status: 'RR' },
-  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'RR' },
-  { id: 'housing-infrastructure', label: 'Housing & Infrastructure', icon: 'home', status: 'RR' },
+  { id: 'work-education', label: 'Work & Education', icon: 'briefcase', status: 'AP' },
+  { id: 'security', label: 'Security & Safety', icon: 'shield', status: 'AP' },
+  { id: 'health', label: 'Health', icon: 'heart', status: 'AP' },
+  { id: 'environment', label: 'Environment', icon: 'leaf', status: 'AP' },
+  { id: 'housing-infrastructure', label: 'Housing & Infrastructure', icon: 'home', status: 'AP' },
 ] as const;
 
 export type TabId = (typeof PILLAR_TABS)[number]['id'];
