@@ -48,6 +48,7 @@ import {
   getDemographicsTopCategory,
   getDemographicsKpiSentence,
   getWhoAnsweredProfileData,
+  pickPrimaryProfileSegment,
   type ProfileDistributionSegment,
 } from '../utils';
 
@@ -637,9 +638,15 @@ export function buildOverviewKpis(
     ? getWhoAnsweredProfileData(data, compareYears[0])
     : null;
 
+  const orderedLegendIds = new Set(['age', 'employment']);
+
   const cards: KpiItem[] = distributions.map((distribution) => {
-    const segments = [...distribution.segments].sort((a, b) => b.value - a.value);
-    const topSegment = segments[0];
+    const segments = orderedLegendIds.has(distribution.id)
+      ? [...distribution.segments]
+      : [...distribution.segments].sort((a, b) => b.value - a.value);
+    const topSegment = orderedLegendIds.has(distribution.id)
+      ? pickPrimaryProfileSegment(segments)
+      : segments[0];
     let delta: number | undefined;
 
     if (mode === 'yoy' && compareDistributions && topSegment) {

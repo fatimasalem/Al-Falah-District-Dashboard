@@ -11,7 +11,6 @@ interface HealthAssessmentCardProps {
   compareYears: CompareYears;
   year: SurveyYear;
   viewMode: ViewMode;
-  calculatedScore: number;
   q501Score: number;
   q502Score: number;
   title?: string;
@@ -27,7 +26,6 @@ export function HealthAssessmentCard({
   compareYears,
   year,
   viewMode,
-  calculatedScore,
   q501Score,
   q502Score,
   title = 'Healthcare assessment',
@@ -59,7 +57,6 @@ export function HealthAssessmentCard({
           compareYears={compareYears}
           year={year}
           viewMode={viewMode}
-          calculatedScore={calculatedScore}
           q501Score={q501Score}
           q502Score={q502Score}
           maxBodyHeight={maxBodyHeight}

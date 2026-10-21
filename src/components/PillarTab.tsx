@@ -49,7 +49,6 @@ import {
   getHealthCentresAssessmentStatements,
   getHealthSystemQualityStatements,
   getHealthWellbeingContext,
-  getCalculatedHealthScore,
   getHealthCentresOverallSatisfaction,
   getHealthcareSystemOverallSatisfaction,
   getEnvironmentPositiveStatements,
@@ -306,7 +305,6 @@ function HealthCharts({ section, viewMode, selectedYear, compareYears }: Section
   const centresItems = getHealthCentresAssessmentStatements(section.questions, compareYears);
   const systemItems = getHealthSystemQualityStatements(section.questions, compareYears);
   const wellbeingRows = getHealthWellbeingContext(section.questions, compareYears);
-  const calculatedScore = getCalculatedHealthScore(section.questions, chartYear);
   const q501Score = getHealthCentresOverallSatisfaction(section.questions, chartYear);
   const q502Score = getHealthcareSystemOverallSatisfaction(section.questions, chartYear);
   const emotionalStress = getHealthEmotionalStressData(section.questions, chartYear);
@@ -322,7 +320,6 @@ function HealthCharts({ section, viewMode, selectedYear, compareYears }: Section
         compareYears={compareYears}
         year={chartYear}
         viewMode={viewMode}
-        calculatedScore={calculatedScore}
         q501Score={q501Score}
         q502Score={q502Score}
       />
@@ -370,7 +367,12 @@ function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: Se
   const positiveRegister = statementRegister.filter((row) => row.polarity === 'positive');
   const riskRegister = statementRegister.filter((row) => row.polarity === 'negative');
   const positiveItems = getEnvironmentPositiveStatements(section.questions, compareYears);
-  const insectsRisk = getEnvironmentInsectsRiskStatement(section.questions, compareYears);
+  const insectsRisk = getEnvironmentInsectsRiskStatement(
+    section.questions,
+    compareYears,
+    viewMode,
+    selectedYear,
+  );
   const domainRows = getEnvironmentDomainHeatmap(section.questions, compareYears);
 
   return (

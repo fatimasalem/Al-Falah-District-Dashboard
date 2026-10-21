@@ -16,7 +16,6 @@ interface HealthSubgroupChartProps {
   compareYears: CompareYears;
   year: SurveyYear;
   viewMode: ViewMode;
-  calculatedScore: number;
   q501Score: number;
   q502Score: number;
   maxBodyHeight?: number;
@@ -97,7 +96,6 @@ export function HealthSubgroupChart({
   compareYears,
   year,
   viewMode,
-  calculatedScore,
   q501Score,
   q502Score,
   maxBodyHeight = DEFAULT_MAX_SCROLL_HEIGHT,
@@ -160,18 +158,11 @@ export function HealthSubgroupChart({
         </div>
       </div>
 
-      <div className="health-score-callout" aria-label="Calculated health section score">
-        <div className="health-score-callout-main">
-          <span className="health-score-callout-label">Health section score</span>
-          <strong className="health-score-callout-value">{calculatedScore.toFixed(1)}%</strong>
-          <span className="health-score-callout-caption">
-            Average of health centers and healthcare system quality scores — reported wellbeing problems shown separately.
-          </span>
-        </div>
-        <div className="health-score-callout-subgroups">
-          <span>Health centers {q501Score.toFixed(1)}%</span>
-          <span>Healthcare system quality {q502Score.toFixed(1)}%</span>
-        </div>
+      <div className="health-score-callout" aria-label="Health centers and healthcare system quality scores">
+        <p className="health-score-callout-sentence">
+          Health centers scored <strong>{q501Score.toFixed(1)}%</strong> and healthcare system quality
+          scored <strong>{q502Score.toFixed(1)}%</strong>.
+        </p>
       </div>
 
       <div

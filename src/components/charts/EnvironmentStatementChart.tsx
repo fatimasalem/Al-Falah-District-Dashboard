@@ -3,7 +3,6 @@ import { DESIGN } from '../../types';
 import type { CompareYears, SurveyYear, ViewMode } from '../../types';
 import {
   formatCompareYearsLabel,
-  formatDelta,
   generateEnvironmentPositiveStatementsInsight,
   pickYearValue,
   type StatementComparisonItem,
@@ -14,7 +13,6 @@ import { StatementYearLegend } from './StatementYearLegend';
 
 interface EnvironmentStatementChartProps {
   positiveItems: StatementComparisonItem[];
-  insectsRisk: StatementComparisonItem | null;
   compareYears: CompareYears;
   year: SurveyYear;
   viewMode: ViewMode;
@@ -86,7 +84,6 @@ function EnvironmentStatementIcon() {
 
 export function EnvironmentStatementChart({
   positiveItems,
-  insectsRisk,
   compareYears,
   year,
   viewMode,
@@ -112,10 +109,6 @@ export function EnvironmentStatementChart({
 
   const insight = generateEnvironmentPositiveStatementsInsight(positiveItems, displayYear);
   const isScrollable = chartHeight > maxBodyHeight;
-
-  const insectsValue = insectsRisk
-    ? pickYearValue(insectsRisk.value2024, insectsRisk.value2025, displayYear)
-    : null;
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -148,26 +141,6 @@ export function EnvironmentStatementChart({
           />
         </div>
       </div>
-
-      {insectsRisk && insectsValue != null && (
-        <div
-          className={`environment-risk-callout${embedded ? ' environment-risk-callout-embedded' : ''}`}
-          aria-label="Insects and rodents reported concern"
-        >
-          <div className="environment-risk-callout-main">
-            <span className="environment-risk-callout-label">Reported concern</span>
-            <strong className="environment-risk-callout-value">{insectsValue.toFixed(1)}%</strong>
-            <span className="environment-risk-callout-caption">
-              Insects &amp; rodents in living areas — higher agreement means more reported concern, not satisfaction.
-            </span>
-          </div>
-          {isYoY && Math.abs(insectsRisk.movement) >= 0.5 && (
-            <span className="environment-risk-callout-delta">
-              {formatDelta(insectsRisk.movement)} vs {compareYears[0]}
-            </span>
-          )}
-        </div>
-      )}
 
       <div className="health-subgroup-body environment-statement-body">
         {positiveItems.length === 0 ? (

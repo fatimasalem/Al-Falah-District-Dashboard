@@ -3807,9 +3807,9 @@ export function generateInsights(
     const genderTop = profile.find((item) => item.id === 'gender')?.segments
       .slice()
       .sort((a, b) => b.value - a.value)[0];
-    const employmentTop = profile.find((item) => item.id === 'employment')?.segments
-      .slice()
-      .sort((a, b) => b.value - a.value)[0];
+    const employmentTop = pickPrimaryProfileSegment(
+      profile.find((item) => item.id === 'employment')?.segments ?? [],
+    );
 
     return [
       overall2024 != null && overall2025 != null
@@ -4005,6 +4005,47 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
 
 const WHO_ANSWERED_COLORS = ['#2563EB', '#0D9488', '#7C3AED', '#F59E0B', '#DC2626', '#94a3b8'];
 
+const WHO_ANSWERED_AGE_ORDER = [
+  'Under 18',
+  '18-24',
+  '25-34',
+  '35-44',
+  '45-54',
+  '55-64',
+  '65+',
+  'Not mentioned',
+] as const;
+
+const WHO_ANSWERED_EMPLOYMENT_LABELS: Record<string, string> = {
+  'Student (full-time student)': 'Student',
+  'Social conditions': 'Social conditions',
+  'Unwilling to work': 'Not seeking work',
+  'Unable to work (incapacitated/sick/disabled)': 'Unable to work',
+  'Older people (65 years or older and not working)': '65+ not working',
+  "I couldn't find the right job": 'Seeking work',
+  'He/She has income or revenue': 'Working',
+  'He is unemployed and has previously worked': 'Unemployed (experienced)',
+  'He is unemployed and has never worked before': 'Unemployed (new entrant)',
+  'Free for unpaid homework': 'Homemaker',
+  retired: 'Retired',
+  Employed: 'Employed',
+};
+
+const WHO_ANSWERED_EMPLOYMENT_ORDER = [
+  'Employed',
+  'Working',
+  'Student',
+  'Homemaker',
+  'Seeking work',
+  'Unemployed (experienced)',
+  'Unemployed (new entrant)',
+  'Retired',
+  '65+ not working',
+  'Unable to work',
+  'Not seeking work',
+  'Social conditions',
+] as const;
+
 export interface ProfileDistributionSegment {
   label: string;
   value: number;
@@ -4056,6 +4097,63 @@ export function formatSurveyBriefParagraph(data: import('./types').SurveyData): 
   ].join(' ');
 }
   
+function assignWhoAnsweredColors(
+  segments: Omit<ProfileDistributionSegment, 'color'>[],
+): ProfileDistributionSegment[] {
+  return segments.map((segment, index) => ({
+    ...segment,
+    color: WHO_ANSWERED_COLORS[index % WHO_ANSWERED_COLORS.length],
+  }));
+}
+
+function sortWhoAnsweredSegments(
+  segments: ProfileDistributionSegment[],
+  order: readonly string[],
+): ProfileDistributionSegment[] {
+  const orderIndex = new Map(order.map((label, index) => [label, index]));
+  const fallbackIndex = order.length;
+
+  return assignWhoAnsweredColors(
+    [...segments].sort((a, b) => {
+      const aIndex = a.label === 'Other'
+        ? fallbackIndex + 1
+        : (orderIndex.get(a.label) ?? fallbackIndex);
+      const bIndex = b.label === 'Other'
+        ? fallbackIndex + 1
+        : (orderIndex.get(b.label) ?? fallbackIndex);
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return b.value - a.value;
+    }),
+  );
+}
+
+function formatWhoAnsweredAgeLabel(categoryEn: string | undefined, categoryAr: string): string {
+  const raw = categoryEn ?? categoryAr;
+  if (raw === '65 years and over' || raw === '65 سنة فأكثر') return '65+';
+  if (raw === 'Under 18 years old' || raw === 'أقل من 18 سنة') return 'Under 18';
+  if (raw === 'Not mentioned' || raw === 'لم يذكر') return 'Not mentioned';
+  return translateLabel(raw);
+}
+
+function formatWhoAnsweredEmploymentLabel(
+  categoryEn: string | undefined,
+  categoryAr: string,
+): string {
+  const raw = categoryEn ?? categoryAr;
+  return WHO_ANSWERED_EMPLOYMENT_LABELS[raw]
+    ?? WHO_ANSWERED_EMPLOYMENT_LABELS[categoryAr]
+    ?? translateLabel(raw);
+}
+
+export function pickPrimaryProfileSegment(
+  segments: ProfileDistributionSegment[],
+): ProfileDistributionSegment | undefined {
+  const ranked = [...segments]
+    .filter((segment) => segment.label !== 'Other')
+    .sort((a, b) => b.value - a.value);
+  return ranked[0] ?? segments[0];
+}
+
 function getCategoricalDistribution(
   questions: import('./types').Question[],
   code: string,
@@ -4077,10 +4175,7 @@ function getCategoricalDistribution(
 
   const topItems = items.slice(0, maxSegments);
   const otherValue = items.slice(maxSegments).reduce((sum, item) => sum + item.value, 0);
-  const segments = topItems.map((item, index) => ({
-    ...item,
-    color: WHO_ANSWERED_COLORS[index % WHO_ANSWERED_COLORS.length],
-  }));
+  const segments = assignWhoAnsweredColors(topItems);
 
   if (otherValue > 0) {
     segments.push({
@@ -4128,7 +4223,10 @@ export function getWhoAnsweredProfileData(
       id: 'age',
       label: 'Age group',
       sampleBase,
-      segments: getCategoricalDistribution(questions, 'Q903', year, 5),
+      segments: sortWhoAnsweredSegments(
+        getCategoricalDistribution(questions, 'Q903', year, 5, formatWhoAnsweredAgeLabel),
+        WHO_ANSWERED_AGE_ORDER,
+      ),
     },
     {
       id: 'marital',
@@ -4154,7 +4252,16 @@ export function getWhoAnsweredProfileData(
       id: 'employment',
       label: 'Employment status',
       sampleBase,
-      segments: getCategoricalDistribution(work.questions, 'Q201', year, 4),
+      segments: sortWhoAnsweredSegments(
+        getCategoricalDistribution(
+          work.questions,
+          'Q201',
+          year,
+          4,
+          formatWhoAnsweredEmploymentLabel,
+        ),
+        WHO_ANSWERED_EMPLOYMENT_ORDER,
+      ),
     });
   }
 
@@ -4737,14 +4844,45 @@ export function getEnvironmentPositiveStatements(
 export function getEnvironmentInsectsRiskStatement(
   questions: import('./types').Question[],
   compareYears: import('./types').CompareYears,
+  viewMode: ViewMode = 'yoy',
+  selectedYear: SurveyYear = '2025',
 ): StatementComparisonItem | null {
-  const question = getLikertStatementsByCode(questions, 'Q601').find(
-    (entry) => resolveStatementPolarity(entry, []) === 'negative',
-  );
-  if (!question) return null;
+  const displayYear = viewMode === 'yoy' ? compareYears[1] : selectedYear;
+  const concerns = getLikertStatementsByCode(questions, 'Q601')
+    .filter((entry) => resolveStatementPolarity(entry, []) === 'negative')
+    .map((question) => {
+      const statement = question.statementEn ?? question.statementAr;
+      const row = toStatementComparisonItem(question, compareYears);
+      return { ...row, name: getEnvironmentQ601ShortLabel(statement) };
+    })
+    .sort(
+      (a, b) =>
+        pickYearValue(b.value2024, b.value2025, displayYear) -
+        pickYearValue(a.value2024, a.value2025, displayYear),
+    );
 
-  const row = toStatementComparisonItem(question, compareYears);
-  return { ...row, name: 'Insects & rodents' };
+  return concerns[0] ?? null;
+}
+
+export function buildEnvironmentWorstConcernSentence(
+  concern: StatementComparisonItem,
+  viewMode: ViewMode,
+  year: SurveyYear,
+  compareYears: CompareYears,
+): string {
+  const displayYear = viewMode === 'yoy' ? compareYears[1] : year;
+  const value = pickYearValue(concern.value2024, concern.value2025, displayYear);
+  const topic = concern.name.toLowerCase();
+  const lead = `${value.toFixed(1)}% report ${topic} in living areas.`;
+
+  if (viewMode !== 'yoy') return lead;
+
+  if (Math.abs(concern.movement) < 0.05) {
+    return `${lead} Unchanged compared with ${compareYears[0]}.`;
+  }
+
+  const direction = concern.movement < 0 ? 'decrease' : 'increase';
+  return `${lead} A ${formatDelta(concern.movement)} ${direction} compared with ${compareYears[0]}.`;
 }
 
 export function getEnvironmentDomainHeatmap(

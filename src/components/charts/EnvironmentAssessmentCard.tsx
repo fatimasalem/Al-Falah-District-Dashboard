@@ -1,5 +1,10 @@
 import type { CompareYears, SurveyYear, ViewMode } from '../../types';
-import { formatCompareYearsLabel, type StatementComparisonItem, type WellbeingHeatmapRow } from '../../utils';
+import {
+  buildEnvironmentWorstConcernSentence,
+  formatCompareYearsLabel,
+  type StatementComparisonItem,
+  type WellbeingHeatmapRow,
+} from '../../utils';
 import { EnvironmentDomainHeatmap } from './EnvironmentDomainHeatmap';
 import { EnvironmentStatementChart } from './EnvironmentStatementChart';
 import { PillarTabIcon } from './PillarTabIcon';
@@ -32,6 +37,10 @@ export function EnvironmentAssessmentCard({
     ? `Positive environment statements and domain satisfaction (${formatCompareYearsLabel(compareYears)}).`
     : `Positive environment statements and domain satisfaction for ${year}.`;
 
+  const worstConcernSentence = insectsRisk
+    ? buildEnvironmentWorstConcernSentence(insectsRisk, viewMode, year, compareYears)
+    : null;
+
   return (
     <section className="environment-assessment-shell-card" aria-label={title}>
       <header className="environment-assessment-shell-header">
@@ -42,6 +51,14 @@ export function EnvironmentAssessmentCard({
           <div className="environment-assessment-shell-heading-text">
             <h2 className="environment-assessment-shell-title">{title}</h2>
             <p className="environment-assessment-shell-subtitle">{shellSubtitle}</p>
+            {worstConcernSentence && (
+              <div
+                className="environment-risk-callout environment-risk-callout-shell"
+                aria-label="Worst reported environment concern"
+              >
+                <p className="environment-risk-callout-sentence">{worstConcernSentence}</p>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -49,7 +66,6 @@ export function EnvironmentAssessmentCard({
       <div className="environment-assessment-shell-grid">
         <EnvironmentStatementChart
           positiveItems={positiveItems}
-          insectsRisk={insectsRisk}
           compareYears={compareYears}
           year={year}
           viewMode={viewMode}
