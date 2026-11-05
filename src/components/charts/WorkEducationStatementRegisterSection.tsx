@@ -47,8 +47,8 @@ export function WorkEducationStatementRegisterSection({
     : 'Satisfaction and confidence statements behind the Education pillar.';
 
   const riskTabSubtitle = questionCode === 'Q210'
-    ? 'Employment risk indicators — higher agreement means more reported concern.'
-    : 'Bullying and harm indicators — higher agreement means more reported concern.';
+    ? 'Employment risk indicators — higher agreement signals reported concern.'
+    : 'Bullying and harm indicators — higher agreement signals reported concern.';
 
   const riskTabLabel = questionCode === 'Q210' ? 'Employment risk' : 'School safety risk';
 

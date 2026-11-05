@@ -99,8 +99,8 @@ export function HousingStatementChart({
   const currentBarColor = DESIGN.positive;
 
   const laneSubtitle = isYoY
-    ? `${compareYears[0]} vs ${compareYears[1]} satisfaction statements — ranked by ${compareYears[1]} agreement.`
-    : `Positive Q701 statements for ${displayYear} — ranked by agreement.`;
+    ? `${compareYears[0]} vs ${compareYears[1]} satisfaction statements — higher agreement signals satisfaction.`
+    : `Positive Q701 statements for ${displayYear} — higher agreement signals satisfaction.`;
 
   const rows = buildChartRows(positiveItems, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;

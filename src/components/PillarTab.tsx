@@ -292,7 +292,7 @@ function SecurityCharts({ section, viewMode, selectedYear, compareYears }: Secti
             id: 'concern',
             label: 'Reported concern',
             rows: concernRegister,
-            subtitle: 'Risk-framed indicators — higher agreement means more reported concern.',
+            subtitle: 'Risk-framed indicators — higher agreement signals reported concern.',
           },
         ]}
       />
@@ -407,7 +407,7 @@ function EnvironmentCharts({ section, viewMode, selectedYear, compareYears }: Se
             id: 'risk',
             label: 'Reported concern',
             rows: riskRegister,
-            subtitle: 'Insects and rodents — higher agreement means more reported concern.',
+            subtitle: 'Insects and rodents — higher agreement signals reported concern.',
           },
         ]}
       />

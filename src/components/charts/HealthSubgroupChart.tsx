@@ -112,11 +112,11 @@ export function HealthSubgroupChart({
   const activeItems = activeTab === 'q501' ? centresItems : systemItems;
   const laneSubtitle = isYoY
     ? activeTab === 'q501'
-      ? `${compareYears[0]} vs ${compareYears[1]} health center assessments — ranked by ${compareYears[1]} agreement.`
-      : `${compareYears[0]} vs ${compareYears[1]} healthcare system quality — ranked by ${compareYears[1]} agreement.`
+      ? `${compareYears[0]} vs ${compareYears[1]} health center assessments — higher agreement signals satisfaction.`
+      : `${compareYears[0]} vs ${compareYears[1]} healthcare system quality — higher agreement signals satisfaction.`
     : activeTab === 'q501'
-      ? `Health center assessments for ${displayYear} — ranked by agreement.`
-      : `Healthcare system quality for ${displayYear} — ranked by agreement.`;
+      ? `Health center assessments for ${displayYear} — higher agreement signals satisfaction.`
+      : `Healthcare system quality for ${displayYear} — higher agreement signals satisfaction.`;
 
   const rows = buildChartRows(activeItems, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;

@@ -65,8 +65,8 @@ export function EducationStatementsCard({
     ? `${positiveItems.length} positive and ${riskItems.length} risk education statements (${formatCompareYearsLabel(compareYears)}).`
     : `${positiveItems.length} positive and ${riskItems.length} risk education statements for ${year}.`;
   const positiveSubtitle = isYoY
-    ? `${formatCompareYearsLabel(compareYears)} satisfaction and confidence statements, ranked by agreement.`
-    : `Satisfaction and confidence statements for ${year}, ranked by agreement.`;
+    ? `${formatCompareYearsLabel(compareYears)} satisfaction and confidence statements — Higher agreement signals satisfaction.`
+    : `Satisfaction and confidence statements for ${year} — Higher agreement signals satisfaction.`;
   const riskSubtitle = isYoY
     ? `${formatCompareYearsLabel(compareYears)} bullying and harm indicators — higher agreement signals reported concern.`
     : `Bullying and harm indicators for ${year} — higher agreement signals reported concern.`;

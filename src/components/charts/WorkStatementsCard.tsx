@@ -49,8 +49,8 @@ export function WorkStatementsCard({
     ? `${positiveItems.length} positive and ${riskItems.length} risk Q210 statements (${formatCompareYearsLabel(compareYears)}).`
     : `${positiveItems.length} positive and ${riskItems.length} risk Q210 statements for ${year}.`;
   const positiveSubtitle = isYoY
-    ? `${formatCompareYearsLabel(compareYears)} employment satisfaction statements, ranked by agreement.`
-    : `Employment satisfaction statements for ${year}, ranked by agreement.`;
+    ? `${formatCompareYearsLabel(compareYears)} employment satisfaction indicators — Higher agreement signals satisfaction.`
+    : `Employment satisfaction indicators for ${year} — higher agreement signals satisfaction.`;
   const riskSubtitle = isYoY
     ? `${formatCompareYearsLabel(compareYears)} employment risk indicators — higher agreement signals reported concern.`
     : `Employment risk indicators for ${year} — higher agreement signals reported concern.`;

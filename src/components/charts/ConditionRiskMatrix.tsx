@@ -85,8 +85,8 @@ export function ConditionRiskMatrix({
   const shouldCapHeight = embedded && !fillHeight;
 
   const laneSubtitle = isYoY
-    ? `${compareYears[0]} vs ${compareYears[1]} housing condition risk — higher agreement means more reported concern.`
-    : `Housing condition risk for ${displayYear} — higher agreement means more reported concern, not satisfaction.`;
+    ? `${compareYears[0]} vs ${compareYears[1]} housing condition risk — higher agreement signals reported concern.`
+    : `Housing condition risk for ${displayYear} — higher agreement signals reported concern.`;
 
   const heatmapBody = (
     <div className={`chart-card-body agreement-heatmap-body condition-risk-matrix-body${embedded ? ' agreement-heatmap-body-embedded' : ''}`}>

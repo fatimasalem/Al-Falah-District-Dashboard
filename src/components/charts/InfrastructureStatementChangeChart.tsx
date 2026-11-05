@@ -102,8 +102,8 @@ export function InfrastructureStatementChangeChart({
   const previousBarColor = DESIGN.chart.yearPrevious;
 
   const laneSubtitle = isYoY
-    ? `${compareYears[0]} vs ${compareYears[1]} infrastructure statements — ranked by ${compareYears[1]} agreement.`
-    : `Infrastructure statements for ${displayYear} — ranked by agreement.`;
+    ? `${compareYears[0]} vs ${compareYears[1]} infrastructure statements — higher agreement signals satisfaction.`
+    : `Infrastructure statements for ${displayYear} — higher agreement signals satisfaction.`;
 
   const rows = buildChartRows(items, isYoY, displayYear);
   const rowHeight = isYoY ? ROW_HEIGHT_YOY : ROW_HEIGHT_SINGLE;

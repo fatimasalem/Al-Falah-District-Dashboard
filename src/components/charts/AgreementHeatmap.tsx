@@ -83,7 +83,7 @@ export function AgreementHeatmap({
   const isScrollable = !fillHeight && rows.length > 0 && rowsHeight > maxBodyHeight;
   const shouldCapHeight = embedded && !fillHeight;
   const laneSubtitle = isYoY
-    ? `${compareYears[0]} vs ${compareYears[1]} reported problems — higher agreement means more concern, not improvement.`
+    ? `${compareYears[0]} vs ${compareYears[1]} reported problems — higher agreement signals reported concern`
     : `Reported wellbeing problems for ${displayYear} — shown separately from the health section score.`;
 
   const heatmapBody = (
