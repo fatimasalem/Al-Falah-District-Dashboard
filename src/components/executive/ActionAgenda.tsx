@@ -11,12 +11,12 @@ interface ActionAgendaProps {
 const PROMPT_META: Record<ActionPrompt, { title: string; description: string; icon: ChartSectionIconName }> = {
   scale: {
     title: 'Scale',
-    description: 'Survey items with strong satisfaction that can be expanded.',
+    description: 'Survey items in the 70–74% band that can be expanded.',
     icon: 'scale',
   },
   protect: {
     title: 'Protect',
-    description: 'Solid survey items in the 70–74% band that need to be held.',
+    description: 'Strong survey items at 75%+ that need to be held.',
     icon: 'protect',
   },
   target: {
@@ -25,9 +25,9 @@ const PROMPT_META: Record<ActionPrompt, { title: string; description: string; ic
     icon: 'target',
   },
   close: {
-    title: 'Close',
-    description: 'Survey items with weaker satisfaction that need to be closed.',
-    icon: 'close',
+    title: 'Warning',
+    description: 'Survey items with weaker satisfaction that needs attention.',
+    icon: 'risk-register',
   },
 };
 
@@ -55,7 +55,8 @@ function getAgendaValueTone(value: string, prompt: ActionPrompt): 'positive' | '
     if (Number.isNaN(numeric)) return 'neutral';
     if (prompt === 'target') return 'negative';
     if (prompt === 'close') return 'negative';
-    if (prompt === 'protect') return numeric >= 70 ? 'neutral' : 'negative';
+    if (prompt === 'protect') return numeric >= 75 ? 'positive' : 'neutral';
+    if (prompt === 'scale') return numeric >= 70 ? 'positive' : 'neutral';
     if (numeric >= 70) return 'positive';
     return 'neutral';
   }

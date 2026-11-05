@@ -1,5 +1,5 @@
 import type { TabId, TabStatus } from '../types';
-import { isTabAccessible } from '../types';
+import { isTabAccessible, isTabVisible } from '../types';
 import { TabStatusBadge } from './TabStatusBadge';
 
 interface SidebarNavProps {
@@ -104,7 +104,7 @@ export function SidebarNav({ activeTab, onTabChange, tabs }: SidebarNavProps) {
   return (
     <nav className="dashboard-sidebar" role="tablist" aria-label="Dashboard sections">
       <div className="sidebar-nav-panel">
-        {tabs.map((tab) => {
+        {tabs.filter((tab) => isTabVisible(tab.id as TabId)).map((tab) => {
           const isActive = activeTab === tab.id;
           const isAccessible = isTabAccessible(tab.id as TabId);
 

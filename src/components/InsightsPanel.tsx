@@ -1,16 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useInsights } from '../context/InsightsContext';
-import { generateInsights, generateOverviewInsightIntro } from '../utils';
+import { generateInsights } from '../utils';
 import type { SurveyData } from '../types';
-
-const INSIGHTS_WIDGET_POSITION_KEY = 'insights-widget-position';
-const DRAG_THRESHOLD_PX = 4;
-const VIEWPORT_PADDING_PX = 8;
-
-interface WidgetPosition {
-  x: number;
-  y: number;
-}
 
 interface InsightsPanelProps {
   data: SurveyData;
@@ -19,7 +10,7 @@ interface InsightsPanelProps {
 
 function InsightsSparkleIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M12 2l1.2 4.4L17 8l-3.8 1.2L12 14l-1.2-4.8L7 8l3.8-1.6L12 2z"
         fill="currentColor"
@@ -50,228 +41,97 @@ function CloseIcon() {
 
 export function InsightsPanel({ data, activeTab }: InsightsPanelProps) {
   const insights = generateInsights(activeTab, data);
-  const { followUp, isPanelOpen, clearFollowUp, closePanel } = useInsights();
-  const followUpRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<WidgetPosition | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [suppressHover, setSuppressHover] = useState(false);
-  const dragStateRef = useRef({
-    active: false,
-    moved: false,
-    startX: 0,
-    startY: 0,
-    startPosX: 0,
-    startPosY: 0,
-  });
-
-  const clampPosition = useCallback((x: number, y: number): WidgetPosition => {
-    const widget = widgetRef.current;
-    if (!widget) {
-      return { x, y };
-    }
-
-    const { width, height } = widget.getBoundingClientRect();
-    return {
-      x: Math.max(VIEWPORT_PADDING_PX, Math.min(x, window.innerWidth - width - VIEWPORT_PADDING_PX)),
-      y: Math.max(VIEWPORT_PADDING_PX, Math.min(y, window.innerHeight - height - VIEWPORT_PADDING_PX)),
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    const savedPosition = localStorage.getItem(INSIGHTS_WIDGET_POSITION_KEY);
-    if (savedPosition) {
-      try {
-        const parsed = JSON.parse(savedPosition) as WidgetPosition;
-        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          setPosition(clampPosition(parsed.x, parsed.y));
-          return;
-        }
-      } catch {
-        localStorage.removeItem(INSIGHTS_WIDGET_POSITION_KEY);
-      }
-    }
-
-    const widget = widgetRef.current;
-    if (!widget) {
-      return;
-    }
-
-    const rect = widget.getBoundingClientRect();
-    setPosition(clampPosition(rect.left, rect.top));
-  }, [clampPosition]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setPosition((current) => (current ? clampPosition(current.x, current.y) : current));
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [clampPosition]);
-
-  const handleTriggerPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!position) {
-      return;
-    }
-
-    dragStateRef.current = {
-      active: true,
-      moved: false,
-      startX: event.clientX,
-      startY: event.clientY,
-      startPosX: position.x,
-      startPosY: position.y,
-    };
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleTriggerPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const dragState = dragStateRef.current;
-    if (!dragState.active || !position) {
-      return;
-    }
-
-    const deltaX = event.clientX - dragState.startX;
-    const deltaY = event.clientY - dragState.startY;
-
-    if (!dragState.moved && (Math.abs(deltaX) > DRAG_THRESHOLD_PX || Math.abs(deltaY) > DRAG_THRESHOLD_PX)) {
-      dragState.moved = true;
-    }
-
-    setPosition(clampPosition(dragState.startPosX + deltaX, dragState.startPosY + deltaY));
-  };
-
-  const finishTriggerDrag = (target: HTMLDivElement, pointerId: number, clientX: number, clientY: number) => {
-    const dragState = dragStateRef.current;
-    if (!dragState.active) {
-      return;
-    }
-
-    dragState.active = false;
-    setIsDragging(false);
-
-    if (target.hasPointerCapture(pointerId)) {
-      target.releasePointerCapture(pointerId);
-    }
-
-    if (dragState.moved) {
-      const finalPosition = clampPosition(
-        dragState.startPosX + (clientX - dragState.startX),
-        dragState.startPosY + (clientY - dragState.startY),
-      );
-      setPosition(finalPosition);
-      localStorage.setItem(INSIGHTS_WIDGET_POSITION_KEY, JSON.stringify(finalPosition));
-      setSuppressHover(true);
-      window.setTimeout(() => setSuppressHover(false), 250);
-    }
-
-    dragState.moved = false;
-  };
-
-  const handleTriggerPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    finishTriggerDrag(event.currentTarget, event.pointerId, event.clientX, event.clientY);
-  };
-
-  const handleTriggerPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
-    finishTriggerDrag(event.currentTarget, event.pointerId, event.clientX, event.clientY);
-  };
+  const { followUp, clearFollowUp, closePanel } = useInsights();
+  const cardRef = useRef<HTMLElement>(null);
+  const [isGenerating, setIsGenerating] = useState(true);
 
   useEffect(() => {
     clearFollowUp();
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setIsGenerating(false);
+      return;
+    }
+
+    setIsGenerating(true);
+    const timer = window.setTimeout(() => setIsGenerating(false), 700);
+    return () => window.clearTimeout(timer);
   }, [activeTab, clearFollowUp]);
 
   useEffect(() => {
-    if (followUp && followUpRef.current) {
-      followUpRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (followUp && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [followUp]);
 
-  const introText = activeTab === 'overview'
-    ? generateOverviewInsightIntro(data)
-    : `Al Falah district resident survey data for ${data.years.join(' and ')} shows overall satisfaction at ${data.overview.overallScore2025}%, with notable movement across key quality-of-life pillars.`;
-
-  const widgetClassName = [
-    'insights-floating-widget',
-    isPanelOpen ? 'is-open' : '',
-    position ? 'is-positioned' : '',
-    isDragging ? 'is-dragging' : '',
-    suppressHover ? 'suppress-hover' : '',
-  ].filter(Boolean).join(' ');
+  const showFollowUp = Boolean(followUp) && !isGenerating;
 
   return (
-    <div
-      ref={widgetRef}
-      className={widgetClassName}
-      style={position ? { left: position.x, top: position.y } : undefined}
-      tabIndex={0}
+    <section
+      ref={cardRef}
+      className={`insights-banner-card${isGenerating ? ' is-generating' : ''}`}
+      aria-label="AI Insights"
+      aria-busy={isGenerating}
     >
-      <div
-        className="insights-floating-trigger"
-        aria-hidden="true"
-        onPointerDown={handleTriggerPointerDown}
-        onPointerMove={handleTriggerPointerMove}
-        onPointerUp={handleTriggerPointerUp}
-        onPointerCancel={handleTriggerPointerCancel}
-      >
-        <span className="insights-ai-sparkle" aria-hidden="true">
-          <InsightsSparkleIcon />
-        </span>
-        <span className="insights-floating-trigger-label">AI Insights</span>
-      </div>
-
-      <aside className="insights-panel" aria-label="AI Insights">
-        <div className="insights-header">
-          <div className="insights-title-row">
-            <h2 className="insights-title">AI Insights</h2>
-          </div>
-          <div className="insights-header-actions">
-            <span className="insights-ai-sparkle" aria-label="Bayaan AI">
-              <InsightsSparkleIcon />
-            </span>
-            {isPanelOpen && (
-              <button
-                type="button"
-                className="insights-panel-close"
-                aria-label="Close AI Insights"
-                onClick={closePanel}
-              >
-                <CloseIcon />
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="insights-panel-body">
-          {followUp ? (
-            <div className="insights-follow-up insights-follow-up-prominent" ref={followUpRef}>
-              <p className="insights-follow-up-chart-title">{followUp.chartTitle}</p>
-              <div className="insights-follow-up-question">
-                <InsightsChatIcon />
-                <p>{followUp.question}</p>
-              </div>
-              <div className="insights-follow-up-answer">
-                <span className="insights-ai-sparkle" aria-label="Bayaan AI">
-                  <InsightsSparkleIcon />
-                </span>
-                <p>{followUp.answer}</p>
-              </div>
-            </div>
+      <div className="insights-banner-header">
+        <div className="insights-banner-title-row">
+          <span className="insights-banner-sparkle" aria-hidden="true">
+            <InsightsSparkleIcon />
+          </span>
+          {isGenerating ? (
+            <span className="insights-banner-title-skeleton" aria-hidden="true" />
           ) : (
-            <>
-              <p className="insights-text">{introText}</p>
-              <div className="insights-takeaways">
-                <div className="insights-section-title">Key Takeaways</div>
-                <ul className="insights-list">
-                  {insights.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
+            <h2 className="insights-banner-title">
+              {showFollowUp ? 'Chart Insight' : 'Key Takeaways'}
+            </h2>
           )}
         </div>
-      </aside>
-    </div>
+        {showFollowUp && (
+          <button
+            type="button"
+            className="insights-banner-close"
+            aria-label="Back to key takeaways"
+            onClick={closePanel}
+          >
+            <CloseIcon />
+          </button>
+        )}
+      </div>
+
+      <div className="insights-banner-body">
+        {isGenerating ? (
+          <div className="insights-banner-skeleton" aria-hidden="true">
+            <span className="insights-banner-skeleton-line" style={{ width: '92%' }} />
+            <span className="insights-banner-skeleton-line" style={{ width: '78%' }} />
+            <span className="insights-banner-skeleton-line" style={{ width: '64%' }} />
+            <span className="insights-banner-skeleton-line" style={{ width: '48%' }} />
+          </div>
+        ) : showFollowUp && followUp ? (
+          <div className="insights-banner-follow-up">
+            <p className="insights-banner-follow-up-chart">{followUp.chartTitle}</p>
+            <div className="insights-banner-follow-up-question">
+              <InsightsChatIcon />
+              <p>{followUp.question}</p>
+            </div>
+            <div className="insights-banner-follow-up-answer">
+              <span className="insights-banner-sparkle insights-banner-sparkle-inline" aria-label="Bayaan AI">
+                <InsightsSparkleIcon />
+              </span>
+              <p>{followUp.answer}</p>
+            </div>
+          </div>
+        ) : (
+          <ul className="insights-banner-list">
+            {insights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="insights-banner-footer">
+        {isGenerating ? 'Generating insights' : 'AI Insights'}
+      </div>
+    </section>
   );
 }

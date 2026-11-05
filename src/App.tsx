@@ -370,6 +370,7 @@ export default function App() {
           <div className="dashboard-content">
             {activeTab === 'overview' && <EvidenceCoverageStrip data={data} />}
             {activeTab === 'overview' && <SurveyBriefSection data={data} />}
+            <InsightsPanel data={data} activeTab={activeTab} />
             <KpiCards
               items={kpiItems}
               sectionTitle={kpiSectionMeta.title}
@@ -408,7 +409,6 @@ export default function App() {
                 <div className="error-state">Section not found</div>
               )}
             </div>
-            <InsightsPanel data={data} activeTab={activeTab} />
           </div>
         </div>
       </div>

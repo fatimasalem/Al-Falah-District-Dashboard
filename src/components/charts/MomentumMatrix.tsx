@@ -39,8 +39,8 @@ const TILE_RADIUS = 10;
 const TILE_PADDING = 12;
 
 export const SCORE_BAND_LEGEND: Array<{ key: MomentumQuadrant; label: string; color: string }> = [
-  { key: 'scale', label: 'Scale · 75%+', color: '#86efac' },
-  { key: 'protect', label: 'Protect · 70–74%', color: '#93c5fd' },
+  { key: 'protect', label: 'Protect · 75%+', color: '#86efac' },
+  { key: 'scale', label: 'Scale · 70–74%', color: '#93c5fd' },
   { key: 'investigate', label: 'Target · Below 70%', color: '#f8d7d7' },
 ];
 
@@ -55,8 +55,8 @@ function getDeltaToneClass(yoyChange: number): string {
 }
 
 export function getScoreBandFill(quadrant: MomentumQuadrant): string {
-  if (quadrant === 'scale') return '#bbf7d0';
-  if (quadrant === 'protect') return '#dbeafe';
+  if (quadrant === 'protect') return '#bbf7d0';
+  if (quadrant === 'scale') return '#dbeafe';
   return '#f8d7d7';
 }
 

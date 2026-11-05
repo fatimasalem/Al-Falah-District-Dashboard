@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "set CHOKIDAR_USEPOLLING=1&& set CHOKIDAR_INTERVAL=1000&& vite --configLoader native",
     "build": "tsc -b && vite build",
+    "build:share": "tsc -b && vite build --base ./ --outDir dist-share --configLoader native && node scripts/pack-single-html.mjs",
     "preview": "vite preview",
     "data:build": "source .venv/bin/activate && python scripts/build-data.py"
   },

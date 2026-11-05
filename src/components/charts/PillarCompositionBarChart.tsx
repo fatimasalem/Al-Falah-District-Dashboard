@@ -39,8 +39,8 @@ const ROW_HEIGHT_SINGLE = 36;
 const MAX_SCROLL_HEIGHT = 300;
 const DOMAIN_TICKS = [0, 25, 50, 75, 100];
 const BAND_ORDER: Record<MomentumQuadrant, number> = {
-  scale: 0,
-  protect: 1,
+  protect: 0,
+  scale: 1,
   investigate: 2,
 };
 

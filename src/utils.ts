@@ -3212,14 +3212,14 @@ export function generateMomentumMatrixInsight(
   }
 
   const leader = [...items].sort((a, b) => b.score2025 - a.score2025)[0];
-  const scaleCount = items.filter((item) => item.quadrant === 'scale').length;
+  const protectCount = items.filter((item) => item.quadrant === 'protect').length;
   const investigateCount = items.filter((item) => item.quadrant === 'investigate').length;
 
   if (viewMode === 'yoy') {
     return [
-      { bold: String(scaleCount) },
+      { bold: String(protectCount) },
       ' pillars sit in the ',
-      { bold: 'Scale' },
+      { bold: 'Protect' },
       ' quadrant, led by ',
       { bold: leader.pillar },
       ' at ',
@@ -4388,8 +4388,8 @@ export interface MomentumMatrixItem {
 }
 
 export function getMomentumQuadrant(score2025: number): MomentumQuadrant {
-  if (score2025 >= 75) return 'scale';
-  if (score2025 >= 70) return 'protect';
+  if (score2025 >= 75) return 'protect';
+  if (score2025 >= 70) return 'scale';
   return 'investigate';
 }
 
@@ -5658,8 +5658,8 @@ const AGENDA_CONCERN_CLAUSES: Array<[RegExp, string]> = [
 ];
 
 const AGENDA_TARGET_MIN = 55;
-const AGENDA_SCALE_MIN = 75;
-const AGENDA_PROTECT_MIN = 70;
+const AGENDA_PROTECT_MIN = 75;
+const AGENDA_SCALE_MIN = 70;
 const AGENDA_LANE_LIMITS: Record<ActionPrompt, number> = {
   target: 6,
   close: 6,
@@ -5751,8 +5751,8 @@ function classifyAgendaSignal(signal: AgendaStatementSignal): ActionPrompt | nul
   if (signal.polarity === 'negative') {
     return signal.agreement >= AGENDA_TARGET_MIN ? 'target' : null;
   }
-  if (signal.agreement >= AGENDA_SCALE_MIN) return 'scale';
   if (signal.agreement >= AGENDA_PROTECT_MIN) return 'protect';
+  if (signal.agreement >= AGENDA_SCALE_MIN) return 'scale';
   return 'close';
 }
 

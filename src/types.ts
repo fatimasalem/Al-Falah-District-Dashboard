@@ -136,8 +136,15 @@ export type TabId = (typeof PILLAR_TABS)[number]['id'];
 /** Tabs blocked until score approval or other release criteria are met. */
 export const DISABLED_TABS: readonly TabId[] = ['income'];
 
+/** Tabs omitted from the sidebar navigation entirely. */
+export const HIDDEN_TABS: readonly TabId[] = ['income'];
+
 export function isTabAccessible(tabId: TabId): boolean {
   return !DISABLED_TABS.includes(tabId);
+}
+
+export function isTabVisible(tabId: TabId): boolean {
+  return !HIDDEN_TABS.includes(tabId);
 }
 
 /** Design tokens matched to Foreign Trade Dashboard reference */
